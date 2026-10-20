@@ -183,17 +183,19 @@ const MockProvider = {
         orderId: "ORD-9421",
         timestamp: "2026-10-20 07:15:00",
         tableNumber: "3",
-        items: "2x Special Chicken Dum Biryani (₹240), 1x Chicken Tikka Kebab (₹190) [Notes: Spicy]",
+        items: "2x Special Chicken Dum Biryani (₹480), 1x Chicken Tikka Kebab (₹190)",
         totalPrice: 670,
-        status: "Pending"
+        status: "Pending",
+        customerNotes: "Make it extra spicy, serve with extra onions and sliced lemon."
       },
       {
         orderId: "ORD-8812",
         timestamp: "2026-10-20 07:05:00",
         tableNumber: "5",
-        items: "1x Paneer Butter Masala (₹180), 3x Butter Garlic Naan (₹45)",
+        items: "1x Paneer Butter Masala (₹180), 3x Butter Garlic Naan (₹135)",
         totalPrice: 315,
-        status: "Pending"
+        status: "Pending",
+        customerNotes: "Less butter on the naan please."
       },
       {
         orderId: "ORD-7619",
@@ -201,7 +203,8 @@ const MockProvider = {
         tableNumber: "1",
         items: "1x Mutton Hyderabadi Biryani (₹320)",
         totalPrice: 320,
-        status: "Completed"
+        status: "Completed",
+        customerNotes: ""
       }
     ],
     rateLimits: {}
@@ -253,13 +256,24 @@ const MockProvider = {
 
           this.db.rateLimits[rateKey] = now;
 
+          let itemsFormatted = params.items_summary || params.itemsSummary;
+          if (!itemsFormatted && Array.isArray(params.items)) {
+            itemsFormatted = params.items.map(function(it) {
+              const q = it.quantity || it.qty || 1;
+              const n = it.name || it.item_name || "Dish";
+              const p = it.price ? ` (₹${it.price * q})` : "";
+              return `${q}x ${n}${p}`;
+            }).join(", ");
+          }
+
           const newOrder = {
             orderId: "ORD-" + Math.floor(1000 + Math.random() * 9000),
-            timestamp: new Date().toLocaleString(),
+            timestamp: new Date().toLocaleTimeString(),
             tableNumber: table,
-            items: params.itemsSummary || (typeof params.items === "string" ? params.items : "Items ordered"),
+            items: itemsFormatted || (typeof params.items === "string" ? params.items : "Items ordered"),
             totalPrice: Number(params.total_price) || 0,
-            status: "Pending"
+            status: "Pending",
+            customerNotes: params.customer_notes || ""
           };
 
           this.db.orders.unshift(newOrder);

@@ -388,7 +388,8 @@
       tableNumber: String(o.tableNumber || o.table_number || o.table || "1"),
       items: String(o.items || o.itemsSummary || "Items ordered"),
       totalPrice: Number(o.totalPrice || o.total_price || o.total) || 0,
-      status: String(o.status || "Pending").trim()
+      status: String(o.status || "Pending").trim(),
+      customerNotes: String(o.customerNotes || o.customer_notes || o.notes || "").trim()
     }));
 
     let hasNewPendingOrder = false;
@@ -427,7 +428,86 @@
   }
 
   /**
-   * Render Ticket Cards
+   * Rush Hour Helper: Parses individual dish text into quantity, name, price, note
+   */
+  function parseSingleDishItem(str) {
+    str = String(str || "").trim();
+    let qty = 1;
+    let name = str;
+    let price = "";
+    let note = "";
+
+    // Extract embedded [Notes: ...] or (Note: ...)
+    const noteMatch = name.match(/\[(?:Notes?|Note|Instructions?):\s*([^\]]+)\]/i);
+    if (noteMatch) {
+      note = noteMatch[1].trim();
+      name = name.replace(noteMatch[0], "").trim();
+    }
+
+    // Extract trailing price in parentheses: e.g. "(₹440)"
+    const priceMatch = name.match(/^(.*?)\s*\(([^()]+)\)$/);
+    if (priceMatch) {
+      name = priceMatch[1].trim();
+      price = priceMatch[2].trim();
+    }
+
+    // Extract leading quantity: e.g. "2x ", "2 x ", "2× "
+    const qtyMatch = name.match(/^(\d+)\s*[xX×]\s*(.*)$/);
+    if (qtyMatch) {
+      qty = parseInt(qtyMatch[1], 10);
+      name = qtyMatch[2].trim();
+    }
+
+    return { qty, name, price, note };
+  }
+
+  /**
+   * Rush Hour Helper: Breaks order item summaries into a clean array of dishes
+   */
+  function parseOrderDishItems(itemsRaw) {
+    if (!itemsRaw) return [];
+    if (Array.isArray(itemsRaw)) {
+      return itemsRaw.map((item) => {
+        if (typeof item === "string") return parseSingleDishItem(item);
+        const q = item.quantity || item.qty || 1;
+        const p = item.price ? formatCurrency(item.price * q) : "";
+        return {
+          qty: q,
+          name: item.name || item.item_name || "Dish",
+          price: p,
+          note: item.note || item.notes || ""
+        };
+      });
+    }
+
+    const rawStr = String(itemsRaw).trim();
+    let parts = [];
+    if (rawStr.includes("\n")) {
+      parts = rawStr.split("\n");
+    } else if (rawStr.match(/\d+\s*[xX×]/)) {
+      // Split by comma followed by a quantity like '2x' or '1 x'
+      parts = rawStr.split(/,\s*(?=\d+\s*[xX×])/);
+    } else {
+      parts = rawStr.split(/,\s*/);
+    }
+
+    return parts.map((p) => p.trim()).filter(Boolean).map(parseSingleDishItem);
+  }
+
+  /**
+   * Helper: Formats timestamp into clean readable time (e.g. '09:53 PM')
+   */
+  function formatTicketTime(rawStr) {
+    if (!rawStr) return "Just now";
+    const d = new Date(rawStr);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+    return String(rawStr).replace(/GMT.*$/, "").trim();
+  }
+
+  /**
+   * Render Ticket Cards (Optimized with Rush-Hour Bullet Points & Check-off)
    */
   function renderTickets() {
     const filtered = state.orders.filter((o) => {
@@ -451,6 +531,9 @@
     el.ticketGrid.innerHTML = "";
     filtered.forEach((ord) => {
       const isPending = ord.status.toLowerCase() === "pending" || ord.status.toLowerCase() === "new";
+      const dishList = parseOrderDishItems(ord.items);
+      const totalQty = dishList.reduce((sum, d) => sum + (d.qty || 1), 0);
+
       const card = document.createElement("article");
       card.className = `ticket-card ${isPending ? "pending" : "completed"}`;
 
@@ -460,10 +543,40 @@
             <span class="ticket-table-badge">TABLE ${escapeHtml(ord.tableNumber)}</span>
             <div style="font-size:0.75rem; color:var(--text-dim); margin-top:4px;">ID: ${escapeHtml(ord.orderId)}</div>
           </div>
-          <span class="ticket-time">${escapeHtml(ord.timestamp)}</span>
+          <span class="ticket-time">⏱️ ${escapeHtml(formatTicketTime(ord.timestamp))}</span>
         </div>
 
-        <div class="ticket-items">${escapeHtml(ord.items)}</div>
+        <div class="ticket-dish-section">
+          <div class="ticket-rush-meta">
+            <span class="ticket-total-items-badge">🍽️ ${totalQty} ${totalQty === 1 ? "Item" : "Items"} (${dishList.length} ${dishList.length === 1 ? "dish" : "dishes"})</span>
+            ${isPending ? `<span class="ticket-rush-hint">Tap item when plated</span>` : ""}
+          </div>
+
+          <ul class="ticket-bullet-list">
+            ${dishList.map((dish) => `
+              <li class="ticket-bullet-item ${!isPending ? 'dish-prepared' : ''}" ${isPending ? 'onclick="this.classList.toggle(\'dish-prepared\')"' : ''} title="${isPending ? 'Tap to mark plated' : ''}">
+                <div class="ticket-dish-bullet-left">
+                  <span class="ticket-dish-qty-badge ${dish.qty > 1 ? 'multi-qty' : ''}">${dish.qty}×</span>
+                  <div class="ticket-dish-title-wrap">
+                    <span class="ticket-dish-title">${escapeHtml(dish.name)}</span>
+                    ${dish.note ? `<span class="ticket-dish-inline-note">Note: ${escapeHtml(dish.note)}</span>` : ""}
+                  </div>
+                </div>
+                ${dish.price ? `<span class="ticket-dish-price-tag">${escapeHtml(dish.price)}</span>` : ""}
+              </li>
+            `).join("")}
+          </ul>
+
+          ${ord.customerNotes ? `
+            <div class="ticket-notes-callout">
+              <div class="ticket-notes-header">
+                <span class="ticket-notes-icon">📝</span>
+                <span>Special Instructions:</span>
+              </div>
+              <div class="ticket-notes-content">${escapeHtml(ord.customerNotes)}</div>
+            </div>
+          ` : ""}
+        </div>
 
         <div class="ticket-footer">
           <div class="ticket-price">${formatCurrency(ord.totalPrice)}</div>
