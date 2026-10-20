@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AOLA QR Menu - Order Online</title>
+  <meta name="description" content="Instant contactless dining and QR code ordering system. Zero apps required.">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
+</head>
+<body>
+
+  <!-- Main Mobile App Frame -->
+  <main class="app-container" id="app">
+    
+    <!-- Hero / Restaurant Branding -->
+    <header class="brand-hero" id="brand-hero">
+      <div class="brand-logo-wrap" id="brand-logo-container">
+        <div class="skeleton" style="width:100%;height:100%;"></div>
+      </div>
+      <h1 class="brand-title" id="restaurant-name">Loading Menu...</h1>
+      <div class="brand-meta">
+        <span class="table-pill" id="table-badge">
+          <span></span> <span id="table-label">Table ...</span>
+        </span>
+        <span style="font-size: 0.8rem; color: var(--text-muted);" id="shop-id-tag"></span>
+      </div>
+    </header>
+
+    <!-- Sticky Category Navigation Bar -->
+    <nav class="category-bar-sticky" id="category-bar" aria-label="Menu Categories">
+      <button class="cat-chip active" data-category="all">All Items</button>
+    </nav>
+
+    <!-- Menu Items Feed -->
+    <section class="menu-feed" id="menu-feed" aria-label="Menu Items">
+      <!-- Loading Skeletons -->
+      <div class="skeleton skeleton-card"></div>
+      <div class="skeleton skeleton-card"></div>
+      <div class="skeleton skeleton-card"></div>
+    </section>
+
+    <!-- Floating Sticky Cart Bar (Shown when items > 0) -->
+    <aside class="cart-floating-bar" id="cart-bar" style="display: none;">
+      <div class="cart-bar-info">
+        <span class="cart-items-count" id="cart-item-count">0 ITEMS</span>
+        <span class="cart-bar-total" id="cart-bar-total">₹0</span>
+      </div>
+      <button class="btn-view-cart" id="btn-open-cart">
+        View Order
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </button>
+    </aside>
+
+    <!-- Cart Slide-Up Review Modal -->
+    <div class="modal-backdrop" id="cart-modal" role="dialog" aria-modal="true" aria-labelledby="modal-cart-title">
+      <div class="modal-sheet">
+        <div class="modal-header">
+          <h2 class="modal-title" id="modal-cart-title">Your Order Summary</h2>
+          <button class="btn-close-modal" id="btn-close-cart" aria-label="Close cart">&times;</button>
+        </div>
+
+        <!-- Cart Items List -->
+        <div class="cart-list" id="modal-cart-items">
+          <!-- Dynamically populated -->
+        </div>
+
+        <!-- Bill Breakdown -->
+        <div class="cart-summary">
+          <div class="summary-row">
+            <span>Subtotal</span>
+            <span id="summary-subtotal">₹0</span>
+          </div>
+          <div class="summary-row">
+            <span>Service & Taxes (Included)</span>
+            <span>₹0</span>
+          </div>
+          <div class="summary-row total">
+            <span>Total Payable</span>
+            <span id="summary-total">₹0</span>
+          </div>
+        </div>
+
+        <!-- Order Form & Security Layer -->
+        <form id="order-form" onsubmit="return false;">
+          <!-- Security Layer 1: Anti-Bot Honeypot -->
+          <div class="honeypot-field">
+            <label for="customer_fax">Fax Number (Leave Blank)</label>
+            <input type="text" name="customer_fax" id="customer_fax" tabindex="-1" autocomplete="off">
+          </div>
+
+          <!-- Table Number Confirmation -->
+          <div class="form-group">
+            <label class="form-label" for="order-table-input">Table Number</label>
+            <input type="number" id="order-table-input" class="form-input" placeholder="e.g. 4" min="1" max="99" required>
+          </div>
+
+          <!-- Kitchen Cooking Notes -->
+          <div class="form-group">
+            <label class="form-label" for="order-notes-input">Special Instructions (Optional)</label>
+            <textarea id="order-notes-input" class="form-textarea" placeholder="e.g. Less spicy, extra sauce, allergy info..."></textarea>
+          </div>
+
+          <!-- Submit Order Button -->
+          <button type="submit" class="btn-primary" id="btn-submit-order">
+            <span>Send Order to Kitchen</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 2L11 13"></path>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Order Success Full-Screen View -->
+    <div class="modal-backdrop" id="success-modal" role="dialog" aria-modal="true">
+      <div class="modal-sheet" style="text-align: center; max-height: 90vh;">
+        <div class="success-icon-wrap">
+          ✓
+        </div>
+        <h2 style="font-size: 1.5rem; margin-bottom: 8px;">Order Placed!</h2>
+        <p style="color: var(--text-muted); font-size: 0.95rem;">
+          Your order has been sent directly to the kitchen display.
+        </p>
+
+        <div class="order-badge-pill" id="success-order-id">ORD-0000</div>
+
+        <div style="background: var(--bg-card); border-radius: var(--radius-md); padding: 16px; margin: 20px 0; text-align: left;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+            <span style="color:var(--text-muted);">Table Number:</span>
+            <strong id="success-table-num" style="color:var(--primary);">--</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+            <span style="color:var(--text-muted);">Total Amount:</span>
+            <strong id="success-total-amt">₹0</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between;">
+            <span style="color:var(--text-muted);">Status:</span>
+            <span class="status-badge active">Pending Kitchen</span>
+          </div>
+        </div>
+
+        <button class="btn-secondary" id="btn-order-more" style="width:100%;">
+          Order More Items
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/customer.js"></script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AOLA - Kitchen & Owner Dashboard</title>
+  <meta name="description" content="Real-time live kitchen display system and ticket manager for restaurant owners.">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👨‍🍳</text></svg>">
+</head>
+<body>
+
+  <!-- Login Overlay (Required Auth with Shop ID + PIN) -->
+  <div class="modal-backdrop open" id="login-overlay" role="dialog" aria-modal="true">
+    <div class="modal-popup" style="max-width: 400px; text-align: center;">
+      <div style="font-size: 2.5rem; margin-bottom: 12px;">🔐</div>
+      <h2 style="font-size: 1.4rem; margin-bottom: 6px;">Kitchen Login</h2>
+      <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 22px;">
+        Enter your Restaurant ID and 4-digit security PIN to access live kitchen orders.
+      </p>
+
+      <form id="owner-login-form" onsubmit="return false;">
+        <div class="form-group" style="text-align: left;">
+          <label class="form-label" for="login-shop-id">Shop ID</label>
+          <input type="text" id="login-shop-id" class="form-input" placeholder="e.g. bismillah" required>
+        </div>
+
+        <div class="form-group" style="text-align: left;">
+          <label class="form-label" for="login-pin">4-Digit Owner PIN</label>
+          <input type="password" id="login-pin" class="form-input" placeholder="••••" maxlength="6" inputmode="numeric" required>
+        </div>
+
+        <button type="submit" class="btn-primary" id="btn-login-submit" style="margin-top: 20px;">
+          <span>Unlock Kitchen Display</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Dashboard Main Layout -->
+  <main class="desktop-container" id="dashboard-container" style="display: none;">
+    
+    <!-- Top Header Bar -->
+    <header class="owner-header">
+      <div>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
+          <h1 id="owner-shop-name" style="font-size: 1.6rem;">Kitchen Display</h1>
+          <span class="live-indicator" id="poll-indicator">Live Sync (15s)</span>
+        </div>
+        <div style="font-size: 0.85rem; color: var(--text-muted);">
+          Logged in as: <strong id="owner-shop-tag" style="color: var(--primary);">@shop</strong> &bull;
+          <span id="last-sync-time">Last updated: Just now</span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <button class="btn-secondary" id="btn-manual-refresh" title="Refresh orders now">
+          🔄 Refresh
+        </button>
+        <button class="btn-danger" id="btn-logout" title="Log out of dashboard">
+          Logout
+        </button>
+      </div>
+    </header>
+
+    <!-- Filter Tabs (Pending vs All/Completed) -->
+    <nav style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 14px;">
+      <div style="display: flex; gap: 8px;">
+        <button class="cat-chip active" id="tab-pending">
+          Pending Orders (<span id="count-pending">0</span>)
+        </button>
+        <button class="cat-chip" id="tab-completed">
+          Completed History (<span id="count-completed">0</span>)
+        </button>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-muted);">
+        <input type="checkbox" id="chk-audio" checked style="accent-color: var(--primary); cursor: pointer;">
+        <label for="chk-audio" style="cursor: pointer;">Sound alert on new order</label>
+      </div>
+    </nav>
+
+    <!-- Live Ticket Grid -->
+    <section class="ticket-grid" id="ticket-grid">
+      <!-- Dynamically filled with order cards -->
+    </section>
+
+  </main>
+
+  <!-- Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/owner.js"></script>
+</body>
+</html>
