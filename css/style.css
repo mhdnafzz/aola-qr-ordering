@@ -98,6 +98,64 @@ button, input, select, textarea {
 }
 
 /* ==========================================
+   GLOBAL PORTAL NAV SWITCHER
+   ========================================== */
+.portal-nav-bar {
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  z-index: 90;
+  position: relative;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.portal-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.portal-nav-link {
+  color: var(--text-muted);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.2s;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.portal-nav-link:hover, .portal-nav-link.active {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.portal-shop-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.portal-shop-selector select {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  color: var(--primary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  outline: none;
+  cursor: pointer;
+}
+
+/* ==========================================
    LAYOUT CONTAINERS
    ========================================== */
 .app-container {

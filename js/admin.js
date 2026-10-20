@@ -36,7 +36,15 @@
     btnCloseBackend: document.getElementById("btn-close-backend"),
     backendUrlInput: document.getElementById("backend-url-input"),
     btnSaveBackendUrl: document.getElementById("btn-save-backend-url"),
-    btnResetMock: document.getElementById("btn-reset-mock")
+    btnResetMock: document.getElementById("btn-reset-mock"),
+    qrModal: document.getElementById("qr-modal"),
+    btnCloseQr: document.getElementById("btn-close-qr"),
+    qrModalShopName: document.getElementById("qr-modal-shop-name"),
+    qrTableSelect: document.getElementById("qr-table-select"),
+    qrImage: document.getElementById("qr-image"),
+    qrTargetUrl: document.getElementById("qr-target-url"),
+    btnOpenQrLink: document.getElementById("btn-open-qr-link"),
+    btnCopyQrLink: document.getElementById("btn-copy-qr-link")
   };
 
   /**
@@ -256,6 +264,9 @@
             <button class="btn-secondary" style="padding:4px 8px;font-size:0.75rem;" onclick="window.open('${customerUrl}', '_blank')" title="Open Customer Menu">
               Menu ↗
             </button>
+            <button class="btn-secondary btn-view-qr" data-id="${escapeHtml(shop.shopId)}" style="padding:4px 8px;font-size:0.75rem;color:var(--primary);" title="View & Print Table QR Code">
+              QR Code 📱
+            </button>
             <button class="btn-secondary" style="padding:4px 8px;font-size:0.75rem;" onclick="navigator.clipboard.writeText('${customerUrl}');showToast('Customer QR URL copied!','success');" title="Copy QR Menu URL">
               Copy URL 🔗
             </button>
@@ -287,6 +298,46 @@
     el.shopsTbody.querySelectorAll(".btn-edit-shop").forEach((b) => {
       b.onclick = () => openEditShop(b.dataset.id);
     });
+
+    el.shopsTbody.querySelectorAll(".btn-view-qr").forEach((b) => {
+      b.onclick = () => openQrModal(b.dataset.id);
+    });
+  }
+
+  /**
+   * Action: Open Live QR Code Modal
+   */
+  function openQrModal(shopId) {
+    const shop = state.shops.find((s) => s.shopId === shopId);
+    if (!shop) return;
+
+    el.qrModalShopName.textContent = `${shop.shopName} (QR Code)`;
+
+    function updateQr() {
+      const table = el.qrTableSelect.value || "1";
+      const baseUrl = window.location.origin + window.location.pathname.replace("admin.html", "");
+      const fullUrl = `${baseUrl}?shop=${encodeURIComponent(shop.shopId)}&table=${encodeURIComponent(table)}`;
+      const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(fullUrl)}`;
+
+      el.qrImage.src = qrApiUrl;
+      el.qrTargetUrl.textContent = fullUrl;
+
+      el.btnOpenQrLink.onclick = () => window.open(fullUrl, "_blank");
+      el.btnCopyQrLink.onclick = () => {
+        navigator.clipboard.writeText(fullUrl);
+        showToast(`Table ${table} QR link copied!`, "success");
+      };
+    }
+
+    el.qrTableSelect.onchange = updateQr;
+    updateQr();
+
+    el.btnCloseQr.onclick = () => el.qrModal.classList.remove("open");
+    el.qrModal.onclick = (e) => {
+      if (e.target === el.qrModal) el.qrModal.classList.remove("open");
+    };
+
+    el.qrModal.classList.add("open");
   }
 
   /**

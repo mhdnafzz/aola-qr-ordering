@@ -40,7 +40,9 @@
     successOrderId: document.getElementById("success-order-id"),
     successTableNum: document.getElementById("success-table-num"),
     successTotalAmt: document.getElementById("success-total-amt"),
-    btnOrderMore: document.getElementById("btn-order-more")
+    btnOrderMore: document.getElementById("btn-order-more"),
+    quickShopSelect: document.getElementById("quick-shop-select"),
+    linkOwnerPortal: document.getElementById("link-owner-portal")
   };
 
   /**
@@ -55,6 +57,38 @@
     if (!state.shopId) {
       state.shopId = "bismillah";
       console.info("[AOLA] No ?shop= parameter detected. Defaulting to demo shop 'bismillah'. Try visiting ?shop=bismillah&table=4");
+    }
+
+    if (el.quickShopSelect) {
+      const knownShops = ["bismillah", "kfc"];
+      if (knownShops.includes(state.shopId)) {
+        el.quickShopSelect.value = state.shopId;
+      } else {
+        // Add custom option dynamically
+        const opt = document.createElement("option");
+        opt.value = state.shopId;
+        opt.textContent = state.shopId.toUpperCase();
+        opt.selected = true;
+        el.quickShopSelect.insertBefore(opt, el.quickShopSelect.firstChild);
+      }
+
+      el.quickShopSelect.onchange = () => {
+        const val = el.quickShopSelect.value;
+        if (val === "custom") {
+          const customId = prompt("Enter your Hotel / Restaurant ID (slug):", "");
+          if (customId && customId.trim()) {
+            window.location.href = `?shop=${encodeURIComponent(customId.trim().toLowerCase())}&table=${state.tableNumber || 1}`;
+          } else {
+            el.quickShopSelect.value = state.shopId;
+          }
+        } else {
+          window.location.href = `?shop=${encodeURIComponent(val)}&table=${state.tableNumber || 1}`;
+        }
+      };
+    }
+
+    if (el.linkOwnerPortal) {
+      el.linkOwnerPortal.href = `./owner.html?shop=${encodeURIComponent(state.shopId)}`;
     }
 
     if (state.tableNumber) {

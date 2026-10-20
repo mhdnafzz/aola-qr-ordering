@@ -10,6 +10,16 @@
 </head>
 <body>
 
+  <!-- Quick Portal Switcher & Navigation Header -->
+  <header class="portal-nav-bar" id="portal-bar">
+    <div style="font-weight:700;color:var(--primary);">🛡️ Agency Master Console</div>
+    <nav class="portal-nav-links">
+      <a href="./" class="portal-nav-link">📱 Customer Menu</a>
+      <a href="./owner.html" class="portal-nav-link">👨‍🍳 Kitchen</a>
+      <a href="./admin.html" class="portal-nav-link active">🛡️ Admin</a>
+    </nav>
+  </header>
+
   <!-- Admin Master PIN Login Overlay -->
   <div class="modal-backdrop open" id="admin-login-overlay" role="dialog" aria-modal="true">
     <div class="modal-popup" style="max-width: 380px; text-align: center;">
@@ -198,6 +208,46 @@
         </button>
         <button class="btn-secondary" id="btn-reset-mock" title="Switch back to Mock provider">
           Use Demo Mock
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live Table QR Code Generator Modal -->
+  <div class="modal-backdrop" id="qr-modal" role="dialog" aria-modal="true">
+    <div class="modal-popup" style="max-width: 420px; text-align: center;">
+      <div class="modal-header">
+        <h2 class="modal-title" id="qr-modal-shop-name">Table QR Code</h2>
+        <button class="btn-close-modal" id="btn-close-qr">&times;</button>
+      </div>
+
+      <div style="margin: 10px 0;">
+        <label class="form-label" for="qr-table-select">Select Dining Table</label>
+        <select id="qr-table-select" class="form-select" style="max-width: 200px; margin: 0 auto 16px;">
+          <option value="1">Table 1</option>
+          <option value="2">Table 2</option>
+          <option value="3">Table 3</option>
+          <option value="4">Table 4</option>
+          <option value="5">Table 5</option>
+          <option value="10">Table 10</option>
+        </select>
+      </div>
+
+      <!-- Live QR Display -->
+      <div id="qr-image-container" style="background:#fff; padding:16px; border-radius:var(--radius-md); display:inline-block; margin-bottom:14px; box-shadow:0 4px 20px rgba(0,0,0,0.4);">
+        <img id="qr-image" src="" alt="Table QR Code" style="width:200px; height:200px; display:block;">
+      </div>
+
+      <p style="font-size: 0.8rem; color: var(--text-muted); word-break: break-all; margin-bottom: 16px;" id="qr-target-url">
+        https://...
+      </p>
+
+      <div style="display:flex; gap:10px;">
+        <button class="btn-primary" id="btn-open-qr-link" style="flex:1;">
+          Open Menu Link ↗
+        </button>
+        <button class="btn-secondary" id="btn-copy-qr-link">
+          Copy Link 📋
         </button>
       </div>
     </div>
