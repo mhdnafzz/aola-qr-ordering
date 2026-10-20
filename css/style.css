@@ -234,29 +234,60 @@ button, input, select, textarea {
   gap: 10px;
   font-size: 0.85rem;
   color: var(--text-muted);
+  flex-wrap: wrap;
+  margin-top: 8px;
 }
 
 .table-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   background: rgba(245, 158, 11, 0.12);
   color: var(--primary);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  padding: 4px 12px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  padding: 5px 14px;
   border-radius: var(--radius-full);
-  font-weight: 600;
-  font-size: 0.8rem;
+  font-weight: 700;
+  font-size: 0.82rem;
   letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
 }
 
-.table-pill span {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
+.table-pill:hover {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.table-pulse-dot {
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--primary);
   animation: pulse-glow 2s infinite;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+#table-label {
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.shop-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
 }
 
 @keyframes pulse-glow {
