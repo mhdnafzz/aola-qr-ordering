@@ -706,11 +706,23 @@ function handleAdminSaveShop(params) {
   var status = sanitizeString(params.status || "Active");
   var currency = sanitizeString(params.currency || "₹");
 
-  if (!shopId || !shopName || !sheetId || !ownerPin) {
+  if (!shopId || !shopName || !ownerPin) {
     return {
       success: false,
-      error: "Missing required shop fields (shop_id, shop_name, sheet_id, owner_pin)."
+      error: "Missing required shop fields (shop_id, shop_name, owner_pin)."
     };
+  }
+
+  // Auto-Provision Google Sheet if sheet_id was not provided
+  if (!sheetId) {
+    try {
+      sheetId = autoProvisionClientSheet(shopName);
+    } catch (provisionErr) {
+      return {
+        success: false,
+        error: "Failed to auto-create Google Sheet for " + shopName + ": " + provisionErr.toString()
+      };
+    }
   }
 
   var lock = LockService.getScriptLock();
@@ -760,6 +772,7 @@ function handleAdminSaveShop(params) {
     return {
       success: true,
       shop_id: shopId,
+      sheet_id: sheetId,
       message: "Restaurant saved successfully in Master DB."
     };
   } catch (err) {
@@ -767,6 +780,62 @@ function handleAdminSaveShop(params) {
   } finally {
     lock.releaseLock();
   }
+}
+
+/**
+ * Auto-creates a new Google Sheet for a client by cloning the template sheet
+ */
+function autoProvisionClientSheet(shopName) {
+  var templateId = getTemplateSheetId();
+  var templateSs = SpreadsheetApp.openById(templateId);
+  var newSs = SpreadsheetApp.create(shopName + " - AOLA Orders & Menu");
+
+  // Copy Menu sheet from template
+  var templateMenu = templateSs.getSheetByName("Menu") || templateSs.getSheets()[0];
+  var newMenu = templateMenu.copyTo(newSs);
+  newMenu.setName("Menu");
+
+  // Copy Orders sheet from template
+  var templateOrders = templateSs.getSheetByName("Orders") || templateSs.getSheets()[1];
+  if (templateOrders) {
+    var newOrders = templateOrders.copyTo(newSs);
+    newOrders.setName("Orders");
+  } else {
+    var newOrders = newSs.insertSheet("Orders");
+    newOrders.appendRow(["Order_ID", "Timestamp", "Table_Number", "Items_Summary", "Total_Price", "Order_Status", "Customer_Notes"]);
+  }
+
+  // Delete default "Sheet1"
+  var defaultSheet = newSs.getSheetByName("Sheet1");
+  if (defaultSheet && newSs.getSheets().length > 1) {
+    newSs.deleteSheet(defaultSheet);
+  }
+
+  return newSs.getId();
+}
+
+/**
+ * Returns template sheet ID for cloning
+ */
+function getTemplateSheetId() {
+  var propId = PropertiesService.getScriptProperties().getProperty("TEMPLATE_SHEET_ID");
+  if (propId && propId.trim().length > 0) return propId.trim();
+
+  // Find first active client in Tenants tab (e.g. bismillah)
+  var masterDbId = getMasterDbId();
+  if (masterDbId) {
+    try {
+      var ss = SpreadsheetApp.openById(masterDbId);
+      var sheet = ss.getSheetByName("Tenants") || ss.getSheetByName("Shops") || ss.getSheets()[0];
+      var data = sheet.getDataRange().getValues();
+      for (var i = 1; i < data.length; i++) {
+        var sId = String(data[i][3] || "").trim();
+        if (sId) return sId;
+      }
+    } catch (e) {}
+  }
+
+  return "18R-Fs7QSRzrvDQbf0wxU5pe6TCILLj01Y8j2dhMHR_g";
 }
 
 // =========================================================================

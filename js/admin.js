@@ -526,13 +526,15 @@
       status: el.formStatus.value
     };
 
-    if (!payload.shop_id || !payload.shop_name || !payload.sheet_id || !payload.owner_pin) {
-      showToast("Please fill in all required fields.", "error");
+    if (!payload.shop_id || !payload.shop_name || !payload.owner_pin) {
+      showToast("Please enter Shop ID, Restaurant Name, and Security PIN.", "error");
       return;
     }
 
     el.btnSaveShopSubmit.disabled = true;
-    el.btnSaveShopSubmit.innerHTML = `<span>Saving to Master DB...</span>`;
+    el.btnSaveShopSubmit.innerHTML = payload.sheet_id 
+      ? `<span>Saving to Master DB...</span>` 
+      : `<span>⚡ Auto-Cloning Google Sheet...</span>`;
 
     try {
       const response = await AOLA_API.post("admin_save_shop", payload);

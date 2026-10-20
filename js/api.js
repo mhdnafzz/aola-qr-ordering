@@ -436,7 +436,7 @@ const MockProvider = {
             shopId: params.shop_id,
             shopName: params.shop_name,
             logoUrl: params.logo_url,
-            sheetId: params.sheet_id,
+            sheetId: params.sheet_id || ("mock_sheet_" + Date.now()),
             ownerPin: params.owner_pin,
             status: params.status || "Active"
           };
