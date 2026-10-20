@@ -207,7 +207,7 @@
     if (e && e.preventDefault) e.preventDefault();
     const pin = el.adminPinInput.value.trim();
     if (!pin) {
-      showToast("Please enter master PIN (Default: 998877).", "error");
+      showToast("Please enter your Master Security PIN.", "error");
       return;
     }
 
@@ -225,13 +225,6 @@
       el.btnAdminLoginSubmit.innerHTML = `<span>Enter Master Console</span>`;
     }
   }
-
-  // Global helper for 1-click bypass login
-  window.AOLA_FORCE_ADMIN_LOGIN = function(pin = "998877") {
-    el.adminPinInput.value = pin;
-    state.adminPin = pin;
-    performLogin();
-  };
 
   async function performLogin() {
     try {
@@ -358,7 +351,10 @@
           </span>
         </td>
         <td>
-          <span style="font-family:monospace;font-weight:700;">${escapeHtml(shop.ownerPin)}</span>
+          <div style="display:inline-flex;align-items:center;gap:6px;">
+            <span class="owner-pin-text" data-pin="${escapeHtml(shop.ownerPin)}" style="font-family:monospace;font-weight:700;letter-spacing:1px;">••••</span>
+            <button type="button" class="btn-toggle-row-pin" style="background:none;border:none;cursor:pointer;color:var(--text-dim);font-size:0.85rem;" title="Show/Hide PIN">👁️</button>
+          </div>
         </td>
         <td>
           <span class="status-badge ${isActive ? "active" : "suspended"}">
@@ -407,6 +403,15 @@
 
     el.shopsTbody.querySelectorAll(".btn-view-qr").forEach((b) => {
       b.onclick = () => openQrModal(b.dataset.id);
+    });
+
+    el.shopsTbody.querySelectorAll(".btn-toggle-row-pin").forEach((b) => {
+      b.onclick = () => {
+        const span = b.parentElement.querySelector(".owner-pin-text");
+        const isMasked = span.textContent === "••••";
+        span.textContent = isMasked ? span.dataset.pin : "••••";
+        b.textContent = isMasked ? "🙈" : "👁️";
+      };
     });
   }
 

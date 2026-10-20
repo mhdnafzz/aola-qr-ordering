@@ -280,15 +280,6 @@
     }
   }
 
-  // Global helper for instant 1-click test login
-  window.AOLA_FORCE_OWNER_LOGIN = function (shopId = "bismillah", pin = "1234") {
-    el.loginShopId.value = shopId;
-    el.loginPin.value = pin;
-    state.shopId = shopId;
-    state.pin = pin;
-    performLogin();
-  };
-
   async function performLogin() {
     try {
       const response = await AOLA_API.post("get_orders", {
