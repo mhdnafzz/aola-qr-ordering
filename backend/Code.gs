@@ -43,6 +43,7 @@
 
 // Global Configuration
 var CONFIG = {
+  DEFAULT_MASTER_DB_ID: "1Az3xVyiz1NnSuMj1wxlHxCcvYz87W5Wy-jdrgxYlALc",
   DEFAULT_ADMIN_PIN: "998877",
   RATE_LIMIT_SECONDS: 60,
   CACHE_KEY_PREFIX: "RATE_LIMIT_TABLE_",
@@ -50,11 +51,11 @@ var CONFIG = {
 };
 
 /**
- * Retrieves the Master DB Sheet ID from Script Properties
+ * Retrieves the Master DB Sheet ID from Script Properties with fallback
  */
 function getMasterDbId() {
   var prop = PropertiesService.getScriptProperties().getProperty("MASTER_DB_SHEET_ID");
-  return prop ? String(prop).trim() : "";
+  return prop ? String(prop).trim() : (CONFIG.DEFAULT_MASTER_DB_ID || "");
 }
 
 // =========================================================================
