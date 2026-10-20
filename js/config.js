@@ -16,8 +16,26 @@ const AOLA_CONFIG = {
   RATE_LIMIT_COOLDOWN_SECONDS: 60,
 
   // Enable Mock Mode if Apps Script URL is empty or unreachable during local development
-  ENABLE_MOCK_FALLBACK: true
+  ENABLE_MOCK_FALLBACK: true,
+
+  // Live Production domain for customer QR codes and shareable links
+  PRODUCTION_URL: "https://aola-blue.vercel.app"
 };
+
+/**
+ * Get public base URL for customer menus & QR codes
+ * Always uses the live production domain (https://aola-blue.vercel.app)
+ * so generated QR codes work on customer phones outside localhost!
+ */
+function getAppBaseUrl() {
+  if (AOLA_CONFIG.PRODUCTION_URL && AOLA_CONFIG.PRODUCTION_URL.trim().length > 0) {
+    let prod = AOLA_CONFIG.PRODUCTION_URL.trim().replace(/\/+$/, "");
+    return prod + "/";
+  }
+  let path = window.location.pathname.replace(/\/admin(\.html)?\/?$/, "/");
+  if (!path.endsWith("/")) path += "/";
+  return window.location.origin + path;
+}
 
 /**
  * Resolve active backend URL (prioritizes config, cleans up stale overrides)

@@ -329,8 +329,8 @@
       const isActive = shop.status.toLowerCase() === "active";
       const tr = document.createElement("tr");
 
-      // Generate base URLs for customer & owner
-      const baseUrl = window.location.origin + window.location.pathname.replace("admin.html", "");
+      // Generate base URLs for customer & owner (always uses live production URL)
+      const baseUrl = getAppBaseUrl();
       const customerUrl = `${baseUrl}?shop=${encodeURIComponent(shop.shopId)}`;
       const ownerUrl = `${baseUrl}owner.html?shop=${encodeURIComponent(shop.shopId)}`;
 
@@ -421,7 +421,7 @@
 
     function updateQr() {
       const table = el.qrTableSelect.value || "1";
-      const baseUrl = window.location.origin + window.location.pathname.replace("admin.html", "");
+      const baseUrl = getAppBaseUrl();
       const fullUrl = `${baseUrl}?shop=${encodeURIComponent(shop.shopId)}&table=${encodeURIComponent(table)}`;
       const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(fullUrl)}`;
 
