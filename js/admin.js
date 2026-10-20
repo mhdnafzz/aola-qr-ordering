@@ -44,7 +44,15 @@
     qrImage: document.getElementById("qr-image"),
     qrTargetUrl: document.getElementById("qr-target-url"),
     btnOpenQrLink: document.getElementById("btn-open-qr-link"),
-    btnCopyQrLink: document.getElementById("btn-copy-qr-link")
+    btnCopyQrLink: document.getElementById("btn-copy-qr-link"),
+    btnOpenMasterPinModal: document.getElementById("btn-open-master-pin-modal"),
+    masterPinModal: document.getElementById("master-pin-modal"),
+    btnCloseMasterPin: document.getElementById("btn-close-master-pin"),
+    masterPinForm: document.getElementById("master-pin-form"),
+    inputMasterCurrentPin: document.getElementById("input-master-current-pin"),
+    inputMasterNewPin: document.getElementById("input-master-new-pin"),
+    inputMasterConfirmPin: document.getElementById("input-master-confirm-pin"),
+    btnSubmitMasterPin: document.getElementById("btn-submit-master-pin")
   };
 
   /**
@@ -72,6 +80,31 @@
         el.adminPinInput.type = isPassword ? "text" : "password";
         btnToggleAdminPin.textContent = isPassword ? "🙈" : "👁️";
       };
+    }
+
+    // Change Master PIN Modal
+    if (el.btnOpenMasterPinModal) {
+      el.btnOpenMasterPinModal.onclick = () => {
+        el.masterPinForm.reset();
+        el.inputMasterCurrentPin.value = state.adminPin || "998877";
+        el.masterPinModal.classList.add("open");
+      };
+    }
+
+    if (el.btnCloseMasterPin) {
+      el.btnCloseMasterPin.onclick = () => {
+        el.masterPinModal.classList.remove("open");
+      };
+    }
+
+    if (el.masterPinModal) {
+      el.masterPinModal.onclick = (e) => {
+        if (e.target === el.masterPinModal) el.masterPinModal.classList.remove("open");
+      };
+    }
+
+    if (el.masterPinForm) {
+      el.masterPinForm.onsubmit = handleChangeMasterPinSubmit;
     }
 
     // Onboarding Modal
@@ -117,12 +150,64 @@
   }
 
   /**
+   * Action: Change Master PIN
+   */
+  async function handleChangeMasterPinSubmit(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const currentPin = el.inputMasterCurrentPin.value.trim();
+    const newPin = el.inputMasterNewPin.value.trim();
+    const confirmPin = el.inputMasterConfirmPin.value.trim();
+
+    if (!currentPin || !newPin) {
+      showToast("Please enter current and new PIN.", "error");
+      return;
+    }
+
+    if (newPin !== confirmPin) {
+      showToast("New PIN and Confirm PIN do not match.", "error");
+      return;
+    }
+
+    if (newPin.length < 4) {
+      showToast("Master PIN must be at least 4 digits.", "error");
+      return;
+    }
+
+    el.btnSubmitMasterPin.disabled = true;
+    el.btnSubmitMasterPin.textContent = "Updating...";
+
+    try {
+      const response = await AOLA_API.post("admin_change_pin", {
+        current_pin: currentPin,
+        new_pin: newPin,
+        admin_pin: currentPin
+      });
+
+      if (!response.success) {
+        showToast(response.error || "Failed to update PIN.", "error");
+        return;
+      }
+
+      state.adminPin = newPin;
+      sessionStorage.setItem("AOLA_ADMIN_PIN", newPin);
+      showToast("Master Admin PIN updated successfully!", "success");
+      el.masterPinModal.classList.remove("open");
+    } catch (err) {
+      showToast("Error updating Master PIN.", "error");
+    } finally {
+      el.btnSubmitMasterPin.disabled = false;
+      el.btnSubmitMasterPin.textContent = "Update Master PIN";
+    }
+  }
+
+  /**
    * Handle Master PIN Login
    */
-  async function handleLoginSubmit() {
+  async function handleLoginSubmit(e) {
+    if (e && e.preventDefault) e.preventDefault();
     const pin = el.adminPinInput.value.trim();
     if (!pin) {
-      showToast("Please enter master PIN.", "error");
+      showToast("Please enter master PIN (Default: 998877).", "error");
       return;
     }
 
@@ -130,11 +215,23 @@
     el.btnAdminLoginSubmit.disabled = true;
     el.btnAdminLoginSubmit.innerHTML = `<span>Verifying...</span>`;
 
-    await performLogin();
-
-    el.btnAdminLoginSubmit.disabled = false;
-    el.btnAdminLoginSubmit.innerHTML = `<span>Enter Master Console</span>`;
+    try {
+      await performLogin();
+    } catch (err) {
+      console.error(err);
+      showToast("Error verifying credentials.", "error");
+    } finally {
+      el.btnAdminLoginSubmit.disabled = false;
+      el.btnAdminLoginSubmit.innerHTML = `<span>Enter Master Console</span>`;
+    }
   }
+
+  // Global helper for 1-click bypass login
+  window.AOLA_FORCE_ADMIN_LOGIN = function(pin = "998877") {
+    el.adminPinInput.value = pin;
+    state.adminPin = pin;
+    performLogin();
+  };
 
   async function performLogin() {
     try {

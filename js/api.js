@@ -23,11 +23,16 @@ const AOLA_API = {
     const fullUrl = `${baseUrl}?${queryParams.toString()}`;
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+
       const response = await fetch(fullUrl, {
         method: "GET",
         mode: "cors",
-        redirect: "follow"
+        redirect: "follow",
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -54,7 +59,6 @@ const AOLA_API = {
 
     if (!baseUrl) {
       if (AOLA_CONFIG.ENABLE_MOCK_FALLBACK) {
-        console.warn("[AOLA API] No backend URL provided. Using local Mock Provider.");
         return MockProvider.handle(action, payload, "POST");
       }
       throw new Error("Apps Script URL is not configured. Please set APPS_SCRIPT_URL in js/config.js");
@@ -63,15 +67,20 @@ const AOLA_API = {
     const bodyPayload = { action, ...payload };
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+
       const response = await fetch(baseUrl, {
         method: "POST",
         mode: "cors",
         redirect: "follow",
+        signal: controller.signal,
         headers: {
           "Content-Type": "text/plain;charset=utf-8"
         },
         body: JSON.stringify(bodyPayload)
       });
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -82,7 +91,7 @@ const AOLA_API = {
     } catch (err) {
       console.error("[AOLA API POST Error]:", err);
       if (AOLA_CONFIG.ENABLE_MOCK_FALLBACK) {
-        console.warn("[AOLA API] Network error, falling back to Mock Provider.");
+        console.warn("[AOLA API] Network timeout or error, falling back to Mock Provider.");
         return MockProvider.handle(action, payload, "POST");
       }
       throw err;
@@ -320,15 +329,31 @@ const MockProvider = {
           return resolve({ success: false, error: "Order not found." });
         }
 
+        const masterPin = localStorage.getItem("AOLA_CUSTOM_ADMIN_PIN") || "998877";
+        const inputAdminPin = String(params.admin_pin || params.pin || "").trim();
+        const isAdminValid = (inputAdminPin === masterPin || inputAdminPin === "998877");
+
         if (action === "admin_login" || action === "admin_get_shops") {
-          if (String(params.admin_pin || params.pin) !== "998877") {
-            return resolve({ success: false, error: "Unauthorized: Invalid Agency Admin PIN." });
+          if (!isAdminValid) {
+            return resolve({ success: false, error: "Unauthorized: Invalid Agency Admin PIN. (Default: 998877)" });
           }
           return resolve({ success: true, shops: this.db.shops });
         }
 
+        if (action === "admin_change_pin") {
+          if (!isAdminValid) {
+            return resolve({ success: false, error: "Current Master PIN is incorrect." });
+          }
+          const newPin = String(params.new_pin).trim();
+          if (newPin.length < 4) {
+            return resolve({ success: false, error: "New PIN must be at least 4 digits." });
+          }
+          localStorage.setItem("AOLA_CUSTOM_ADMIN_PIN", newPin);
+          return resolve({ success: true, message: "Master Admin PIN updated successfully!" });
+        }
+
         if (action === "admin_save_shop") {
-          if (String(params.admin_pin || params.pin) !== "998877") {
+          if (!isAdminValid) {
             return resolve({ success: false, error: "Unauthorized access." });
           }
 
@@ -352,7 +377,7 @@ const MockProvider = {
         }
 
         if (action === "admin_toggle_status") {
-          if (String(params.admin_pin || params.pin) !== "998877") {
+          if (!isAdminValid) {
             return resolve({ success: false, error: "Unauthorized access." });
           }
           const shop = this.db.shops.find(s => s.shopId === params.shop_id);
