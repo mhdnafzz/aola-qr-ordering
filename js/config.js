@@ -7,7 +7,7 @@
 
 const AOLA_CONFIG = {
   // Set your deployed Web App URL here, or leave empty to use localStorage / mock fallback
-  APPS_SCRIPT_URL: "",
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyXmHNb2jtcFS1gqLkb4zbQ2Bl760ilxCOEEK4RBk89HF6c-Nk30iC1X4dNybcDhGfp/exec",
 
   // Polling interval for Owner Kitchen Dashboard (in milliseconds)
   OWNER_POLL_INTERVAL_MS: 15000,
