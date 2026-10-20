@@ -20,14 +20,22 @@ const AOLA_CONFIG = {
 };
 
 /**
- * Resolve active backend URL (prioritizes localStorage override, then config, then prompt)
+ * Resolve active backend URL (prioritizes config, cleans up stale overrides)
  */
 function getActiveApiUrl() {
+  if (AOLA_CONFIG.APPS_SCRIPT_URL && AOLA_CONFIG.APPS_SCRIPT_URL.trim().length > 0) {
+    // If a stale URL exists in localStorage, remove it
+    if (localStorage.getItem("AOLA_BACKEND_URL")) {
+      localStorage.removeItem("AOLA_BACKEND_URL");
+    }
+    return AOLA_CONFIG.APPS_SCRIPT_URL.trim();
+  }
+
   const localUrl = localStorage.getItem("AOLA_BACKEND_URL");
   if (localUrl && localUrl.trim().length > 0) {
     return localUrl.trim();
   }
-  return AOLA_CONFIG.APPS_SCRIPT_URL || "";
+  return "";
 }
 
 /**
