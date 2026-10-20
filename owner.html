@@ -97,29 +97,155 @@
       </div>
     </header>
 
-    <!-- Filter Tabs (Pending vs All/Completed) -->
-    <nav style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 14px;">
+    <!-- View Switcher (Tickets vs Menu Catalog) -->
+    <div style="display: flex; gap: 10px; margin-bottom: 22px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
       <div style="display: flex; gap: 8px;">
-        <button class="cat-chip active" id="tab-pending">
-          Pending Orders (<span id="count-pending">0</span>)
+        <button class="cat-chip active" id="view-tab-orders" style="padding: 8px 18px; font-size: 0.92rem; font-weight: 600;">
+          👨‍🍳 Kitchen Tickets
         </button>
-        <button class="cat-chip" id="tab-completed">
-          Completed History (<span id="count-completed">0</span>)
+        <button class="cat-chip" id="view-tab-menu" style="padding: 8px 18px; font-size: 0.92rem; font-weight: 600;">
+          📋 Menu Manager (<span id="count-menu-items">0</span>)
         </button>
       </div>
 
-      <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-muted);">
-        <input type="checkbox" id="chk-audio" checked style="accent-color: var(--primary); cursor: pointer;">
-        <label for="chk-audio" style="cursor: pointer;">Sound alert on new order</label>
+      <div id="menu-view-actions" style="display: none; gap: 8px;">
+        <button class="btn-secondary" id="btn-refresh-menu" style="padding: 7px 14px; font-size: 0.85rem;" title="Refresh menu from Google Sheet">
+          🔄 Sync Menu
+        </button>
+        <button class="btn-primary" id="btn-open-add-dish" style="width: auto; padding: 7px 16px; font-size: 0.88rem;">
+          + Add New Dish
+        </button>
       </div>
-    </nav>
+    </div>
 
-    <!-- Live Ticket Grid -->
-    <section class="ticket-grid" id="ticket-grid">
-      <!-- Dynamically filled with order cards -->
-    </section>
+    <!-- VIEW 1: Live Kitchen Tickets -->
+    <div id="section-orders-view">
+      <!-- Filter Tabs (Pending vs All/Completed) -->
+      <nav style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 14px;">
+        <div style="display: flex; gap: 8px;">
+          <button class="cat-chip active" id="tab-pending">
+            Pending Orders (<span id="count-pending">0</span>)
+          </button>
+          <button class="cat-chip" id="tab-completed">
+            Completed History (<span id="count-completed">0</span>)
+          </button>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-muted);">
+          <input type="checkbox" id="chk-audio" checked style="accent-color: var(--primary); cursor: pointer;">
+          <label for="chk-audio" style="cursor: pointer;">Sound alert on new order</label>
+        </div>
+      </nav>
+
+      <!-- Live Ticket Grid -->
+      <section class="ticket-grid" id="ticket-grid">
+        <!-- Dynamically filled with order cards -->
+      </section>
+    </div>
+
+    <!-- VIEW 2: Restaurant Menu Manager -->
+    <div id="section-menu-view" style="display: none;">
+      <!-- Search & Category Filters -->
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 20px; flex-wrap: wrap;">
+        <div style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;" id="owner-menu-cats">
+          <!-- Dynamically populated category chips -->
+        </div>
+
+        <div style="position: relative; min-width: 240px;">
+          <input type="text" id="owner-menu-search" class="form-input" placeholder="🔍 Search menu dishes..." style="padding: 8px 14px; font-size: 0.85rem;">
+        </div>
+      </div>
+
+      <!-- Menu Items Table -->
+      <div class="card" style="padding: 0; overflow: hidden; border: 1px solid var(--border-subtle);">
+        <div style="overflow-x: auto;">
+          <table class="data-table" style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr>
+                <th style="width: 35%;">Dish Details</th>
+                <th style="width: 15%;">Category</th>
+                <th style="width: 12%;">Type</th>
+                <th style="width: 12%;">Price</th>
+                <th style="width: 12%;">Availability</th>
+                <th style="width: 14%; text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="owner-menu-tbody">
+              <!-- Dynamically populated dish rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
 
   </main>
+
+  <!-- Add / Edit Dish Modal -->
+  <div class="modal-backdrop" id="dish-modal" role="dialog" aria-modal="true">
+    <div class="modal-popup" style="max-width: 480px;">
+      <div class="modal-header">
+        <h2 class="modal-title" id="dish-modal-title">Add New Dish</h2>
+        <button class="btn-close-modal" id="btn-close-dish-modal">&times;</button>
+      </div>
+
+      <form id="dish-form" onsubmit="return false;">
+        <input type="hidden" id="dish-form-id" value="">
+
+        <div class="form-group">
+          <label class="form-label" for="dish-form-name">Dish Name *</label>
+          <input type="text" id="dish-form-name" class="form-input" placeholder="e.g. Special Chicken Dum Biryani" required>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label class="form-label" for="dish-form-category">Category *</label>
+            <input type="text" id="dish-form-category" class="form-input" placeholder="e.g. Biryani" list="category-suggestions" required>
+            <datalist id="category-suggestions">
+              <option value="Biryani">
+              <option value="Starters">
+              <option value="Curries">
+              <option value="Breads">
+              <option value="Beverages">
+              <option value="Desserts">
+              <option value="Sides">
+            </datalist>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="dish-form-price">Price (₹) *</label>
+            <input type="number" id="dish-form-price" class="form-input" placeholder="e.g. 240" min="0" step="1" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="dish-form-desc">Description (Optional)</label>
+          <textarea id="dish-form-desc" class="form-input" rows="2" placeholder="Ingredients, taste, spice level..." style="resize: vertical;"></textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Dietary Preference</label>
+            <select id="dish-form-is-veg" class="form-input">
+              <option value="false">🔴 Non-Vegetarian</option>
+              <option value="true">🟢 Vegetarian</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 0;">
+            <label class="form-label">Stock Status</label>
+            <select id="dish-form-in-stock" class="form-input">
+              <option value="true">✅ In Stock (Available)</option>
+              <option value="false">❌ Out of Stock (86)</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary" id="btn-save-dish-submit">
+          <span>Save Dish</span>
+        </button>
+      </form>
+    </div>
+  </div>
 
   <!-- Change PIN Modal -->
   <div class="modal-backdrop" id="change-pin-modal" role="dialog" aria-modal="true">

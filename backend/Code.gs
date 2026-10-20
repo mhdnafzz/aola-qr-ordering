@@ -151,8 +151,20 @@ function handleRequest(e, method) {
         responseData = handleChangePin(params);
         break;
 
-      case "admin_change_pin":
-        responseData = handleAdminChangePin(params);
+      case "owner_get_menu":
+        responseData = handleOwnerGetMenu(params);
+        break;
+
+      case "owner_save_dish":
+        responseData = handleOwnerSaveDish(params);
+        break;
+
+      case "owner_toggle_stock":
+        responseData = handleOwnerToggleStock(params);
+        break;
+
+      case "owner_delete_dish":
+        responseData = handleOwnerDeleteDish(params);
         break;
 
       default:
@@ -891,6 +903,231 @@ function handleAdminChangePin(params) {
     return { success: true, message: "Master Admin PIN updated successfully." };
   } catch (err) {
     return { success: false, error: "Failed to update Master PIN: " + err.toString() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// =========================================================================
+// CONTROLLER: RESTAURANT OWNER MENU MANAGEMENT (owner.html)
+// =========================================================================
+
+/**
+ * Fetches all menu items for the authenticated owner
+ */
+function handleOwnerGetMenu(params) {
+  var shopId = params.shop_id || params.shop;
+  var pin = params.pin || params.owner_pin;
+
+  var auth = verifyOwnerAuth(shopId, pin);
+  if (!auth.valid) {
+    return { success: false, error: auth.error };
+  }
+
+  var tenant = auth.tenant;
+  try {
+    var clientSs = SpreadsheetApp.openById(tenant.sheetId);
+    var menuSheet = clientSs.getSheetByName("Menu") || clientSs.getSheets()[0];
+    var data = menuSheet.getDataRange().getValues();
+
+    var items = [];
+    // Menu Headers: A(0): Item_ID, B(1): Category, C(2): Item_Name,
+    // D(3): Description, E(4): Price, F(5): Is_Veg, G(6): In_Stock
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      var itemId = String(row[0]).trim();
+      if (!itemId) continue;
+
+      var inStockVal = row[6];
+      var isInStock = inStockVal === true || String(inStockVal).toLowerCase() === "true" || inStockVal === 1 || inStockVal === "1";
+
+      var isVegVal = row[5];
+      var isVeg = isVegVal === true || String(isVegVal).toLowerCase() === "true" || isVegVal === 1 || isVegVal === "1";
+
+      items.push({
+        id: itemId,
+        category: String(row[1] || "General").trim(),
+        name: String(row[2] || itemId).trim(),
+        description: String(row[3] || "").trim(),
+        price: parseFloat(row[4]) || 0,
+        isVeg: isVeg,
+        inStock: isInStock
+      });
+    }
+
+    return {
+      success: true,
+      shopId: tenant.shopId,
+      shopName: tenant.shopName,
+      currency: tenant.currency,
+      menu: items
+    };
+  } catch (err) {
+    return { success: false, error: "Failed to load menu: " + err.toString() };
+  }
+}
+
+/**
+ * Adds a new dish or updates an existing dish in the client's Menu sheet
+ */
+function handleOwnerSaveDish(params) {
+  var shopId = params.shop_id || params.shop;
+  var pin = params.pin || params.owner_pin;
+
+  var auth = verifyOwnerAuth(shopId, pin);
+  if (!auth.valid) {
+    return { success: false, error: auth.error };
+  }
+
+  var tenant = auth.tenant;
+  var itemId = sanitizeString(params.item_id);
+  var category = sanitizeString(params.category || "General");
+  var name = sanitizeString(params.name || params.item_name);
+  var description = sanitizeString(params.description || "");
+  var price = parseFloat(params.price) || 0;
+  var isVeg = params.is_veg === true || String(params.is_veg).toLowerCase() === "true" || params.is_veg === 1;
+  var inStock = params.in_stock !== false && String(params.in_stock).toLowerCase() !== "false";
+
+  if (!name) {
+    return { success: false, error: "Dish name cannot be empty." };
+  }
+
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(CONFIG.LOCK_TIMEOUT_MS);
+
+    var clientSs = SpreadsheetApp.openById(tenant.sheetId);
+    var menuSheet = clientSs.getSheetByName("Menu") || clientSs.getSheets()[0];
+    var data = menuSheet.getDataRange().getValues();
+
+    var existingRow = -1;
+    if (itemId) {
+      for (var i = 1; i < data.length; i++) {
+        if (String(data[i][0]).toLowerCase().trim() === itemId.toLowerCase()) {
+          existingRow = i + 1; // 1-based index
+          break;
+        }
+      }
+    }
+
+    if (existingRow > -1) {
+      // Update existing item
+      menuSheet.getRange(existingRow, 1, 1, 7).setValues([[
+        itemId,
+        category,
+        name,
+        description,
+        price,
+        isVeg ? "TRUE" : "FALSE",
+        inStock ? "TRUE" : "FALSE"
+      ]]);
+      return { success: true, item_id: itemId, message: "Dish updated successfully!" };
+    } else {
+      // Add new item with generated ID
+      var newItemId = itemId || ("DISH-" + Math.floor(100 + Math.random() * 900));
+      menuSheet.appendRow([
+        newItemId,
+        category,
+        name,
+        description,
+        price,
+        isVeg ? "TRUE" : "FALSE",
+        inStock ? "TRUE" : "FALSE"
+      ]);
+      return { success: true, item_id: newItemId, message: "New dish added to menu!" };
+    }
+  } catch (err) {
+    return { success: false, error: "Failed to save dish: " + err.toString() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * 1-Click stock availability toggle (In Stock vs 86 Out of Stock)
+ */
+function handleOwnerToggleStock(params) {
+  var shopId = params.shop_id || params.shop;
+  var pin = params.pin || params.owner_pin;
+  var itemId = sanitizeString(params.item_id);
+  var inStock = params.in_stock === true || String(params.in_stock).toLowerCase() === "true" || params.in_stock === 1;
+
+  if (!itemId) {
+    return { success: false, error: "Missing item_id." };
+  }
+
+  var auth = verifyOwnerAuth(shopId, pin);
+  if (!auth.valid) {
+    return { success: false, error: auth.error };
+  }
+
+  var tenant = auth.tenant;
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(CONFIG.LOCK_TIMEOUT_MS);
+
+    var clientSs = SpreadsheetApp.openById(tenant.sheetId);
+    var menuSheet = clientSs.getSheetByName("Menu") || clientSs.getSheets()[0];
+    var data = menuSheet.getDataRange().getValues();
+
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).toLowerCase().trim() === itemId.toLowerCase()) {
+        // Column G is In_Stock (Column 7 in 1-based index)
+        menuSheet.getRange(i + 1, 7).setValue(inStock ? "TRUE" : "FALSE");
+        var dishName = String(data[i][2] || itemId).trim();
+        return {
+          success: true,
+          item_id: itemId,
+          in_stock: inStock,
+          message: dishName + " is now " + (inStock ? "Available" : "Marked Out of Stock")
+        };
+      }
+    }
+
+    return { success: false, error: "Dish not found: " + itemId };
+  } catch (err) {
+    return { success: false, error: "Failed to update stock: " + err.toString() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Removes a dish from the restaurant's Menu sheet
+ */
+function handleOwnerDeleteDish(params) {
+  var shopId = params.shop_id || params.shop;
+  var pin = params.pin || params.owner_pin;
+  var itemId = sanitizeString(params.item_id);
+
+  if (!itemId) {
+    return { success: false, error: "Missing item_id." };
+  }
+
+  var auth = verifyOwnerAuth(shopId, pin);
+  if (!auth.valid) {
+    return { success: false, error: auth.error };
+  }
+
+  var tenant = auth.tenant;
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(CONFIG.LOCK_TIMEOUT_MS);
+
+    var clientSs = SpreadsheetApp.openById(tenant.sheetId);
+    var menuSheet = clientSs.getSheetByName("Menu") || clientSs.getSheets()[0];
+    var data = menuSheet.getDataRange().getValues();
+
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).toLowerCase().trim() === itemId.toLowerCase()) {
+        menuSheet.deleteRow(i + 1);
+        return { success: true, item_id: itemId, message: "Dish removed from menu." };
+      }
+    }
+
+    return { success: false, error: "Dish not found: " + itemId };
+  } catch (err) {
+    return { success: false, error: "Failed to delete dish: " + err.toString() };
   } finally {
     lock.releaseLock();
   }

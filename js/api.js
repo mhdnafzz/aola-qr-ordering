@@ -315,6 +315,80 @@ const MockProvider = {
           });
         }
 
+        if (action === "owner_get_menu") {
+          const shop = this.db.shops.find(s => s.shopId === cleanShop);
+          if (!shop) return resolve({ success: false, error: "Shop not found" });
+          if (String(shop.ownerPin) !== String(params.pin)) {
+            return resolve({ success: false, error: "Invalid PIN code." });
+          }
+          const menu = this.db.menus[cleanShop] || this.db.menus.bismillah;
+          return resolve({
+            success: true,
+            shopId: shop.shopId,
+            shopName: shop.shopName,
+            currency: "₹",
+            menu: menu
+          });
+        }
+
+        if (action === "owner_save_dish") {
+          const shop = this.db.shops.find(s => s.shopId === cleanShop);
+          if (!shop || String(shop.ownerPin) !== String(params.pin)) {
+            return resolve({ success: false, error: "Unauthorized PIN." });
+          }
+          if (!this.db.menus[cleanShop]) this.db.menus[cleanShop] = [];
+          const menu = this.db.menus[cleanShop];
+          const itemId = params.item_id;
+          const dishObj = {
+            id: itemId || ("dish_" + Date.now()),
+            name: params.name || params.item_name,
+            category: params.category || "General",
+            price: Number(params.price) || 0,
+            description: params.description || "",
+            isVeg: params.is_veg === true || params.is_veg === "true",
+            inStock: params.in_stock !== false && params.in_stock !== "false"
+          };
+
+          const existingIdx = menu.findIndex(d => String(d.id).toLowerCase() === String(itemId).toLowerCase());
+          if (existingIdx >= 0) {
+            menu[existingIdx] = dishObj;
+          } else {
+            menu.push(dishObj);
+          }
+          return resolve({ success: true, item_id: dishObj.id, message: "Dish saved successfully!" });
+        }
+
+        if (action === "owner_toggle_stock") {
+          const shop = this.db.shops.find(s => s.shopId === cleanShop);
+          if (!shop || String(shop.ownerPin) !== String(params.pin)) {
+            return resolve({ success: false, error: "Unauthorized PIN." });
+          }
+          const menu = this.db.menus[cleanShop] || this.db.menus.bismillah;
+          const dish = menu.find(d => String(d.id).toLowerCase() === String(params.item_id).toLowerCase());
+          if (!dish) return resolve({ success: false, error: "Dish not found." });
+          dish.inStock = params.in_stock === true || params.in_stock === "true";
+          return resolve({
+            success: true,
+            item_id: dish.id,
+            in_stock: dish.inStock,
+            message: `${dish.name} is now ${dish.inStock ? "Available" : "Marked Out of Stock"}`
+          });
+        }
+
+        if (action === "owner_delete_dish") {
+          const shop = this.db.shops.find(s => s.shopId === cleanShop);
+          if (!shop || String(shop.ownerPin) !== String(params.pin)) {
+            return resolve({ success: false, error: "Unauthorized PIN." });
+          }
+          const menu = this.db.menus[cleanShop] || this.db.menus.bismillah;
+          const idx = menu.findIndex(d => String(d.id).toLowerCase() === String(params.item_id).toLowerCase());
+          if (idx >= 0) {
+            menu.splice(idx, 1);
+            return resolve({ success: true, item_id: params.item_id, message: "Dish removed from menu." });
+          }
+          return resolve({ success: false, error: "Dish not found." });
+        }
+
         if (action === "complete_order") {
           const shop = this.db.shops.find(s => s.shopId === cleanShop);
           if (!shop || String(shop.ownerPin) !== String(params.pin)) {
