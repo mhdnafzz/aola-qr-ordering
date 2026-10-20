@@ -286,7 +286,8 @@
 
     let hasNewPendingOrder = false;
     state.orders.forEach((o) => {
-      if (o.status.toLowerCase() === "pending") {
+      const isPending = o.status.toLowerCase() === "pending" || o.status.toLowerCase() === "new";
+      if (isPending) {
         if (!state.knownOrderIds.has(o.orderId)) {
           if (!state.isInitialLoad) {
             hasNewPendingOrder = true;
@@ -308,7 +309,10 @@
   }
 
   function updateCounts() {
-    const pendingCount = state.orders.filter((o) => o.status.toLowerCase() === "pending").length;
+    const pendingCount = state.orders.filter((o) => {
+      const s = o.status.toLowerCase();
+      return s === "pending" || s === "new";
+    }).length;
     const completedCount = state.orders.filter((o) => o.status.toLowerCase() === "completed").length;
 
     el.countPending.textContent = pendingCount;
@@ -320,7 +324,7 @@
    */
   function renderTickets() {
     const filtered = state.orders.filter((o) => {
-      const isPending = o.status.toLowerCase() === "pending";
+      const isPending = o.status.toLowerCase() === "pending" || o.status.toLowerCase() === "new";
       return state.activeTab === "pending" ? isPending : !isPending;
     });
 
