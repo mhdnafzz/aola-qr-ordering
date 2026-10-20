@@ -49,6 +49,10 @@
         <button type="button" class="btn-emerald" id="btn-quick-admin-login" style="width:100%; margin-top:10px; font-size:0.9rem;" onclick="window.AOLA_FORCE_ADMIN_LOGIN('998877');">
           ⚡ 1-Click Instant Unlock (998877)
         </button>
+
+        <div style="margin-top:14px; font-size:0.75rem; color:var(--text-dim); text-align:center;">
+          Having trouble? <a href="javascript:void(0)" onclick="localStorage.removeItem('AOLA_BACKEND_URL'); sessionStorage.clear(); location.reload();" style="color:var(--primary); text-decoration:underline;">Reset Local Cache & Reload</a>
+        </div>
       </form>
     </div>
   </div>

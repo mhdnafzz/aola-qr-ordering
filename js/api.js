@@ -24,7 +24,7 @@ const AOLA_API = {
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout for Apps Script cold starts
 
       const response = await fetch(fullUrl, {
         method: "GET",
@@ -68,7 +68,7 @@ const AOLA_API = {
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout for Apps Script cold starts
 
       const response = await fetch(baseUrl, {
         method: "POST",

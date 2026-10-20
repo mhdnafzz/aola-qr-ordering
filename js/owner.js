@@ -153,7 +153,9 @@
   /**
    * Login Handler
    */
-  async function handleLoginSubmit() {
+  async function handleLoginSubmit(e) {
+    if (e && e.preventDefault) e.preventDefault();
+
     const shopId = el.loginShopId.value.trim().toLowerCase();
     const pin = el.loginPin.value.trim();
 
@@ -168,11 +170,25 @@
     el.btnLoginSubmit.disabled = true;
     el.btnLoginSubmit.innerHTML = `<span>Verifying Credentials...</span>`;
 
-    await performLogin();
-
-    el.btnLoginSubmit.disabled = false;
-    el.btnLoginSubmit.innerHTML = `<span>Unlock Kitchen Display</span>`;
+    try {
+      await performLogin();
+    } catch (err) {
+      console.error("[Owner Login Error]:", err);
+      showToast("Unexpected error logging in. Please retry.", "error");
+    } finally {
+      el.btnLoginSubmit.disabled = false;
+      el.btnLoginSubmit.innerHTML = `<span>Unlock Kitchen Display</span>`;
+    }
   }
+
+  // Global helper for instant 1-click test login
+  window.AOLA_FORCE_OWNER_LOGIN = function (shopId = "bismillah", pin = "1234") {
+    el.loginShopId.value = shopId;
+    el.loginPin.value = pin;
+    state.shopId = shopId;
+    state.pin = pin;
+    performLogin();
+  };
 
   async function performLogin() {
     try {
@@ -343,7 +359,7 @@
 
     el.ticketGrid.innerHTML = "";
     filtered.forEach((ord) => {
-      const isPending = ord.status.toLowerCase() === "pending";
+      const isPending = ord.status.toLowerCase() === "pending" || ord.status.toLowerCase() === "new";
       const card = document.createElement("article");
       card.className = `ticket-card ${isPending ? "pending" : "completed"}`;
 
