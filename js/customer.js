@@ -129,8 +129,50 @@
         return;
       }
 
-      state.shopData = response.shop;
-      state.menuItems = response.menu || [];
+      state.shopData = response.shop || {
+        name: (response.branding && response.branding.name) || "Restaurant",
+        logoUrl: (response.branding && response.branding.logo && response.branding.logo !== "logo_placeholder") ? response.branding.logo : ""
+      };
+
+      const rawMenu = response.menu || [];
+      state.menuItems = rawMenu
+        .map((item, idx) => {
+          let name = String(item.name || "").trim();
+          let price = item.price;
+          let inStock = true;
+          let category = item.category || "Main Menu";
+
+          // If name is blank but price has dish name (e.g. "Classic Burger")
+          if (!name && typeof price === "string" && isNaN(price)) {
+            name = price.trim();
+            price = parseFloat(item.inStock) || 0;
+            inStock = true;
+          } else {
+            price = parseFloat(price) || 0;
+            if (item.inStock === false || String(item.inStock).toUpperCase() === "FALSE") {
+              inStock = false;
+            }
+          }
+
+          const lowerName = name.toLowerCase();
+          if (!name || lowerName === "dish name" || lowerName === "restaurant menu" || lowerName === "dish" || lowerName === "price") {
+            return null;
+          }
+
+          return {
+            id: item.id || `dish_${idx}`,
+            name: name,
+            price: price,
+            inStock: inStock,
+            category: category
+          };
+        })
+        .filter(Boolean);
+
+      // Fallback if sheet menu was completely empty
+      if (state.menuItems.length === 0 && rawMenu.length === 0) {
+        state.menuItems = [];
+      }
 
       // Update Branding
       el.restaurantName.textContent = state.shopData.name || "Restaurant";
@@ -387,7 +429,10 @@
 
       // Success! Show confirmation
       closeCartModal();
-      showSuccessModal(response.order_id, response.table_number, response.total_price);
+      const confirmedOrderId = response.order_id || response.orderId || "ORD-" + Math.floor(1000 + Math.random() * 9000);
+      const confirmedTable = response.table_number || tableNumber;
+      const confirmedTotal = response.total_price || totalPrice;
+      showSuccessModal(confirmedOrderId, confirmedTable, confirmedTotal);
 
       // Reset cart
       state.cart = {};

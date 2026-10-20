@@ -275,10 +275,17 @@
    * Process updated orders list and trigger sound alerts
    */
   function handleOrdersUpdate(newOrders) {
-    state.orders = newOrders;
+    state.orders = (newOrders || []).map((o, idx) => ({
+      orderId: String(o.orderId || o.order_id || o.id || `ORD-${idx + 1}`).trim(),
+      timestamp: String(o.timestamp || o.time || new Date().toLocaleTimeString()),
+      tableNumber: String(o.tableNumber || o.table_number || o.table || "1"),
+      items: String(o.items || o.itemsSummary || "Items ordered"),
+      totalPrice: Number(o.totalPrice || o.total_price || o.total) || 0,
+      status: String(o.status || "Pending").trim()
+    }));
 
     let hasNewPendingOrder = false;
-    newOrders.forEach((o) => {
+    state.orders.forEach((o) => {
       if (o.status.toLowerCase() === "pending") {
         if (!state.knownOrderIds.has(o.orderId)) {
           if (!state.isInitialLoad) {
