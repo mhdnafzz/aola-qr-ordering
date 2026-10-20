@@ -506,13 +506,22 @@
   /**
    * Action: Save / Onboard Shop
    */
-  async function handleSaveShopSubmit() {
+  async function handleSaveShopSubmit(e) {
+    if (e && e.preventDefault) e.preventDefault();
+
+    let rawSheetId = el.formSheetId.value.trim();
+    // Auto-extract Sheet ID if full Google Sheets URL was pasted
+    const match = rawSheetId.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    if (match && match[1]) {
+      rawSheetId = match[1];
+    }
+
     const payload = {
       admin_pin: state.adminPin,
       shop_id: el.formShopId.value.trim().toLowerCase().replace(/\s+/g, ""),
       shop_name: el.formShopName.value.trim(),
       logo_url: el.formLogoUrl.value.trim(),
-      sheet_id: el.formSheetId.value.trim(),
+      sheet_id: rawSheetId,
       owner_pin: el.formOwnerPin.value.trim(),
       status: el.formStatus.value
     };
