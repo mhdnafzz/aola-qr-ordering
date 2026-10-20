@@ -65,6 +65,15 @@
     el.btnAdminLogout.onclick = logout;
     el.btnRefreshClients.onclick = () => loadShops(true);
 
+    const btnToggleAdminPin = document.getElementById("btn-toggle-admin-pin");
+    if (btnToggleAdminPin) {
+      btnToggleAdminPin.onclick = () => {
+        const isPassword = el.adminPinInput.type === "password";
+        el.adminPinInput.type = isPassword ? "text" : "password";
+        btnToggleAdminPin.textContent = isPassword ? "🙈" : "👁️";
+      };
+    }
+
     // Onboarding Modal
     el.btnOpenOnboardModal.onclick = () => {
       el.onboardForm.reset();

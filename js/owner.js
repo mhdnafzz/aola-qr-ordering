@@ -31,7 +31,16 @@
     countPending: document.getElementById("count-pending"),
     countCompleted: document.getElementById("count-completed"),
     ticketGrid: document.getElementById("ticket-grid"),
-    chkAudio: document.getElementById("chk-audio")
+    chkAudio: document.getElementById("chk-audio"),
+    btnTogglePinVisibility: document.getElementById("btn-toggle-pin-visibility"),
+    btnOpenChangePin: document.getElementById("btn-open-change-pin"),
+    changePinModal: document.getElementById("change-pin-modal"),
+    btnCloseChangePin: document.getElementById("btn-close-change-pin"),
+    changePinForm: document.getElementById("change-pin-form"),
+    inputCurrentPin: document.getElementById("input-current-pin"),
+    inputNewPin: document.getElementById("input-new-pin"),
+    inputConfirmPin: document.getElementById("input-confirm-pin"),
+    btnSubmitChangePin: document.getElementById("btn-submit-change-pin")
   };
 
   /**
@@ -69,6 +78,17 @@
     const urlShop = getUrlParam("shop");
     if (urlShop) {
       el.loginShopId.value = urlShop.toLowerCase().trim();
+    } else if (!el.loginShopId.value) {
+      el.loginShopId.value = "bismillah";
+    }
+
+    // Toggle PIN visibility
+    if (el.btnTogglePinVisibility) {
+      el.btnTogglePinVisibility.onclick = () => {
+        const isPassword = el.loginPin.type === "password";
+        el.loginPin.type = isPassword ? "text" : "password";
+        el.btnTogglePinVisibility.textContent = isPassword ? "🙈" : "👁️";
+      };
     }
 
     const savedShop = sessionStorage.getItem("AOLA_OWNER_SHOP");
@@ -89,6 +109,31 @@
     el.btnManualRefresh.onclick = () => {
       fetchOrders(true);
     };
+
+    // Change PIN Modal
+    if (el.btnOpenChangePin) {
+      el.btnOpenChangePin.onclick = () => {
+        el.changePinForm.reset();
+        el.inputCurrentPin.value = state.pin || "";
+        el.changePinModal.classList.add("open");
+      };
+    }
+
+    if (el.btnCloseChangePin) {
+      el.btnCloseChangePin.onclick = () => {
+        el.changePinModal.classList.remove("open");
+      };
+    }
+
+    if (el.changePinModal) {
+      el.changePinModal.onclick = (e) => {
+        if (e.target === el.changePinModal) el.changePinModal.classList.remove("open");
+      };
+    }
+
+    if (el.changePinForm) {
+      el.changePinForm.onsubmit = handleChangePinSubmit;
+    }
 
     el.tabPending.onclick = () => {
       state.activeTab = "pending";
@@ -368,6 +413,56 @@
         buttonEl.disabled = false;
         buttonEl.textContent = "✓ Mark Complete";
       }
+    }
+  }
+
+  /**
+   * Action: Change Owner Security PIN
+   */
+  async function handleChangePinSubmit() {
+    const currentPin = el.inputCurrentPin.value.trim();
+    const newPin = el.inputNewPin.value.trim();
+    const confirmPin = el.inputConfirmPin.value.trim();
+
+    if (!currentPin || !newPin) {
+      showToast("Please enter current and new PIN.", "error");
+      return;
+    }
+
+    if (newPin !== confirmPin) {
+      showToast("New PIN and Confirm PIN do not match.", "error");
+      return;
+    }
+
+    if (newPin.length < 4) {
+      showToast("New PIN must be at least 4 digits.", "error");
+      return;
+    }
+
+    el.btnSubmitChangePin.disabled = true;
+    el.btnSubmitChangePin.textContent = "Updating...";
+
+    try {
+      const response = await AOLA_API.post("change_pin", {
+        shop_id: state.shopId,
+        current_pin: currentPin,
+        new_pin: newPin
+      });
+
+      if (!response.success) {
+        showToast(response.error || "Failed to update PIN.", "error");
+        return;
+      }
+
+      state.pin = newPin;
+      sessionStorage.setItem("AOLA_OWNER_PIN", newPin);
+      showToast("PIN updated successfully! Use your new PIN for future logins.", "success");
+      el.changePinModal.classList.remove("open");
+    } catch (err) {
+      showToast("Error updating PIN. Please check connection.", "error");
+    } finally {
+      el.btnSubmitChangePin.disabled = false;
+      el.btnSubmitChangePin.textContent = "Update PIN";
     }
   }
 

@@ -131,6 +131,10 @@ function handleRequest(e, method) {
         responseData = handleAdminToggleStatus(params);
         break;
 
+      case "change_pin":
+        responseData = handleChangePin(params);
+        break;
+
       default:
         responseData = { success: false, error: "Invalid action specified: " + action };
         break;
@@ -572,6 +576,50 @@ function handleCompleteOrder(params) {
     };
   } catch (err) {
     return { success: false, error: "Error updating order: " + err.toString() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Changes owner PIN for client
+ * Input: { shop_id: "bismillah", current_pin: "1234", new_pin: "5678" }
+ */
+function handleChangePin(params) {
+  var shopId = params.shop_id || params.shop;
+  var currentPin = params.current_pin || params.pin;
+  var newPin = sanitizeString(params.new_pin);
+
+  if (!newPin || newPin.length < 4) {
+    return { success: false, error: "New PIN must be at least 4 digits." };
+  }
+
+  var auth = verifyOwnerAuth(shopId, currentPin);
+  if (!auth.valid) {
+    return { success: false, error: auth.error };
+  }
+
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(CONFIG.LOCK_TIMEOUT_MS);
+
+    var masterDbId = getMasterDbId();
+    var masterSpreadsheet = SpreadsheetApp.openById(masterDbId);
+    var sheet = masterSpreadsheet.getSheetByName("Shops") || masterSpreadsheet.getSheets()[0];
+    var data = sheet.getDataRange().getValues();
+
+    var cleanShopId = String(shopId).toLowerCase().trim();
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).toLowerCase().trim() === cleanShopId) {
+        // Column E (5) is Owner_PIN
+        sheet.getRange(i + 1, 5).setValue(newPin);
+        return { success: true, message: "Owner PIN updated successfully in Master DB." };
+      }
+    }
+
+    return { success: false, error: "Shop not found in Master DB." };
+  } catch (err) {
+    return { success: false, error: "Failed to update PIN: " + err.toString() };
   } finally {
     lock.releaseLock();
   }

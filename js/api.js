@@ -264,12 +264,39 @@ const MockProvider = {
           });
         }
 
+        // Load any custom saved PINs from localStorage
+        try {
+          const savedPins = JSON.parse(localStorage.getItem("AOLA_CUSTOM_PINS") || "{}");
+          if (savedPins[cleanShop]) {
+            const s = this.db.shops.find(x => x.shopId === cleanShop);
+            if (s) s.ownerPin = savedPins[cleanShop];
+          }
+        } catch (e) {}
+
+        if (action === "change_pin") {
+          const shop = this.db.shops.find(s => s.shopId === cleanShop);
+          if (!shop || String(shop.ownerPin) !== String(params.current_pin)) {
+            return resolve({ success: false, error: "Current PIN is incorrect." });
+          }
+          const newPin = String(params.new_pin).trim();
+          if (newPin.length < 4) {
+            return resolve({ success: false, error: "New PIN must be at least 4 digits." });
+          }
+          shop.ownerPin = newPin;
+          try {
+            const savedPins = JSON.parse(localStorage.getItem("AOLA_CUSTOM_PINS") || "{}");
+            savedPins[cleanShop] = newPin;
+            localStorage.setItem("AOLA_CUSTOM_PINS", JSON.stringify(savedPins));
+          } catch (e) {}
+          return resolve({ success: true, message: "Security PIN updated successfully!" });
+        }
+
         if (action === "get_orders") {
           const shop = this.db.shops.find(s => s.shopId === cleanShop);
           if (!shop) return resolve({ success: false, error: "Shop not found" });
           if (shop.status === "Suspended") return resolve({ success: false, error: "Account suspended" });
           if (String(shop.ownerPin) !== String(params.pin)) {
-            return resolve({ success: false, error: "Invalid PIN code." });
+            return resolve({ success: false, error: "Invalid PIN code. (Default demo PIN is 1234)" });
           }
 
           return resolve({
