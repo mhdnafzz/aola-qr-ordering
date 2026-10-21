@@ -175,6 +175,14 @@ function handleRequest(e, method) {
         responseData = handleOwnerDeleteDish(params);
         break;
 
+      case "owner_get_settings":
+        responseData = handleOwnerGetSettings(params);
+        break;
+
+      case "owner_save_settings":
+        responseData = handleOwnerSaveSettings(params);
+        break;
+
       case "archive_orders":
       case "archive_monthly_orders":
         responseData = handleArchiveMonthlyOrders(params);
@@ -1550,4 +1558,173 @@ function archiveMonthlyOrders(sheetId) {
     lock.releaseLock();
   }
 }
+
+// =========================================================================
+// TENANT STORE PROFILE & THERMAL BILLING SETTINGS
+// =========================================================================
+
+/**
+ * Fetch restaurant store profile and receipt settings from the tenant Google Sheet
+ */
+function handleOwnerGetSettings(params) {
+  var auth = verifyOwnerAuth(params.shop_id, params.pin);
+  if (!auth.valid) {
+    return { success: false, error: auth.error };
+  }
+
+  var tenant = auth.tenant;
+  try {
+    var clientSs = SpreadsheetApp.openById(tenant.sheetId);
+    var settingsSheet = clientSs.getSheetByName("Settings");
+
+    var settings = {
+      restaurantName: tenant.shopName || "",
+      storeAddress: "",
+      phoneNumber: "",
+      gstin: "",
+      waiterTag: "Counter POS 01",
+      footerMessage: "Thank you for dining with us! Please visit again.",
+      upiId: ""
+    };
+
+    if (!settingsSheet) {
+      return {
+        success: true,
+        shopId: tenant.shopId,
+        settings: settings
+      };
+    }
+
+    var data = settingsSheet.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      var key = String(data[i][0] || "").trim().toLowerCase();
+      var val = String(data[i][1] || "").trim();
+
+      if (key === "restaurant_name" || key === "restaurantname" || key === "name") settings.restaurantName = val;
+      else if (key === "store_address" || key === "storeaddress" || key === "address") settings.storeAddress = val;
+      else if (key === "phone_number" || key === "phonenumber" || key === "phone" || key === "contact") settings.phoneNumber = val;
+      else if (key === "gstin" || key === "tax_id" || key === "taxid") settings.gstin = val;
+      else if (key === "waiter_tag" || key === "waitertag" || key === "staff") settings.waiterTag = val;
+      else if (key === "footer_message" || key === "footermessage" || key === "footer") settings.footerMessage = val;
+      else if (key === "upi_id" || key === "upiid" || key === "upi") settings.upiId = val;
+    }
+
+    if (!settings.restaurantName && tenant.shopName) {
+      settings.restaurantName = tenant.shopName;
+    }
+
+    return {
+      success: true,
+      shopId: tenant.shopId,
+      settings: settings
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: "Error reading store settings: " + err.toString()
+    };
+  }
+}
+
+/**
+ * Save restaurant store profile and receipt settings to the tenant Google Sheet
+ */
+function handleOwnerSaveSettings(params) {
+  var auth = verifyOwnerAuth(params.shop_id, params.pin);
+  if (!auth.valid) {
+    return { success: false, error: auth.error };
+  }
+
+  var tenant = auth.tenant;
+  var lock = LockService.getScriptLock();
+
+  try {
+    lock.waitLock(CONFIG.LOCK_TIMEOUT_MS);
+
+    var clientSs = SpreadsheetApp.openById(tenant.sheetId);
+    var settingsSheet = clientSs.getSheetByName("Settings");
+
+    if (!settingsSheet) {
+      settingsSheet = clientSs.insertSheet("Settings");
+      settingsSheet.appendRow(["Setting_Key", "Setting_Value", "Last_Updated"]);
+      settingsSheet.getRange(1, 1, 1, 3).setFontWeight("bold");
+    }
+
+    var restaurantName = sanitizeString(params.restaurant_name || params.restaurantName || tenant.shopName);
+    var storeAddress = sanitizeString(params.store_address || params.storeAddress || "");
+    var phoneNumber = sanitizeString(params.phone_number || params.phoneNumber || "");
+    var gstin = sanitizeString(params.gstin || params.tax_id || "");
+    var waiterTag = sanitizeString(params.waiter_tag || params.waiterTag || "Counter POS 01");
+    var footerMessage = sanitizeString(params.footer_message || params.footerMessage || "Thank you for dining with us! Please visit again.");
+    var upiId = sanitizeString(params.upi_id || params.upiId || "");
+
+    var settingsToSave = {
+      "restaurant_name": restaurantName,
+      "store_address": storeAddress,
+      "phone_number": phoneNumber,
+      "gstin": gstin,
+      "waiter_tag": waiterTag,
+      "footer_message": footerMessage,
+      "upi_id": upiId
+    };
+
+    var data = settingsSheet.getDataRange().getValues();
+    var existingKeys = {};
+    for (var r = 1; r < data.length; r++) {
+      var k = String(data[r][0] || "").trim().toLowerCase();
+      if (k) existingKeys[k] = r + 1; // 1-indexed row number
+    }
+
+    var nowIso = new Date().toISOString();
+    for (var sKey in settingsToSave) {
+      var val = settingsToSave[sKey];
+      if (existingKeys[sKey]) {
+        var rowNum = existingKeys[sKey];
+        settingsSheet.getRange(rowNum, 2).setValue(val);
+        settingsSheet.getRange(rowNum, 3).setValue(nowIso);
+      } else {
+        settingsSheet.appendRow([sKey, val, nowIso]);
+      }
+    }
+
+    // Also sync restaurant name back to Master_DB if changed
+    if (restaurantName && restaurantName !== tenant.shopName) {
+      try {
+        var masterSs = SpreadsheetApp.openById(getMasterDbId());
+        var shopsSheet = masterSs.getSheetByName("Shops") || masterSs.getSheets()[0];
+        var sData = shopsSheet.getDataRange().getValues();
+        for (var s = 1; s < sData.length; s++) {
+          if (String(sData[s][0] || "").trim().toLowerCase() === tenant.shopId.toLowerCase()) {
+            shopsSheet.getRange(s + 1, 2).setValue(restaurantName);
+            break;
+          }
+        }
+      } catch (e) {
+        console.warn("Could not sync name to Master_DB:", e);
+      }
+    }
+
+    return {
+      success: true,
+      message: "Store profile settings saved to Google Sheet!",
+      settings: {
+        restaurantName: restaurantName,
+        storeAddress: storeAddress,
+        phoneNumber: phoneNumber,
+        gstin: gstin,
+        waiterTag: waiterTag,
+        footerMessage: footerMessage,
+        upiId: upiId
+      }
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: "Error saving store settings: " + err.toString()
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 

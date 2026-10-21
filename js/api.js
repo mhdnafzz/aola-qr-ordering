@@ -520,6 +520,55 @@ const MockProvider = {
           return resolve({ success: false, error: "Order not found." });
         }
 
+        if (action === "owner_get_settings") {
+          const shop = this.db.shops.find(s => s.shopId === cleanShop);
+          if (!shop) return resolve({ success: false, error: "Shop not found" });
+          if (!validateOwnerPin(shop, params.pin)) {
+            return resolve({ success: false, error: "Unauthorized PIN." });
+          }
+
+          let saved = {};
+          try {
+            saved = JSON.parse(localStorage.getItem("AOLA_STORE_PROFILE_" + cleanShop) || "{}");
+          } catch (e) {}
+
+          const settings = {
+            restaurantName: saved.restaurantName || shop.shopName || "Bismillah Biryani & Grill",
+            storeAddress: saved.storeAddress || "Shop 4, Market Complex, MG Road",
+            phoneNumber: saved.phoneNumber || "+91 98470 54970",
+            gstin: saved.gstin || "32AABCU9603R1ZM",
+            waiterTag: saved.waiterTag || "Counter POS 01",
+            footerMessage: saved.footerMessage || "Thank you for dining with us! Please visit again.",
+            upiId: saved.upiId || "bismillah@icici"
+          };
+
+          return resolve({ success: true, shopId: shop.shopId, settings: settings });
+        }
+
+        if (action === "owner_save_settings") {
+          const shop = this.db.shops.find(s => s.shopId === cleanShop);
+          if (!shop || !validateOwnerPin(shop, params.pin)) {
+            return resolve({ success: false, error: "Unauthorized PIN." });
+          }
+
+          const settings = {
+            restaurantName: params.restaurant_name || params.restaurantName || shop.shopName,
+            storeAddress: params.store_address || params.storeAddress || "",
+            phoneNumber: params.phone_number || params.phoneNumber || "",
+            gstin: params.gstin || params.tax_id || "",
+            waiterTag: params.waiter_tag || params.waiterTag || "Counter POS 01",
+            footerMessage: params.footer_message || params.footerMessage || "Thank you for dining with us!",
+            upiId: params.upi_id || params.upiId || ""
+          };
+
+          shop.shopName = settings.restaurantName;
+          try {
+            localStorage.setItem("AOLA_STORE_PROFILE_" + cleanShop, JSON.stringify(settings));
+          } catch (e) {}
+
+          return resolve({ success: true, message: "Store profile settings saved!", settings: settings });
+        }
+
         const masterPin = localStorage.getItem("AOLA_CUSTOM_ADMIN_PIN") || "998877";
         const inputAdminPin = String(params.admin_pin || params.current_pin || params.pin || "").trim();
         const isAdminValid = (inputAdminPin === masterPin || inputAdminPin === "998877");

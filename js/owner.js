@@ -18,10 +18,15 @@
     knownOrderIds: new Set(),
     isInitialLoad: true,
     paperWidth: localStorage.getItem("AOLA_THERMAL_PAPER_WIDTH") || "58mm", // 58mm default or 80mm
-    outletAddress: "Main High Street Market, City Center",
-    outletContact: "+91 98470 54970",
-    outletGstin: "32AABCU9603R1ZM",
-    waiterTag: "Counter POS 01",
+    storeProfile: {
+      restaurantName: "",
+      storeAddress: "",
+      phoneNumber: "",
+      gstin: "",
+      waiterTag: "Counter POS 01",
+      footerMessage: "Thank you for dining with us! Please visit again.",
+      upiId: ""
+    },
     historyFilter: {
       dateRange: "today",
       startDate: "",
@@ -44,6 +49,8 @@
     pollIndicator: document.getElementById("poll-indicator"),
     lastSyncTime: document.getElementById("last-sync-time"),
     btnManualRefresh: document.getElementById("btn-manual-refresh"),
+    btnOpenSettings: document.getElementById("btn-open-settings"),
+    btnSidebarSettings: document.getElementById("btn-sidebar-settings"),
     btnLogout: document.getElementById("btn-logout"),
 
     // View Switcher Tabs
@@ -109,6 +116,20 @@
     inputNewPin: document.getElementById("input-new-pin"),
     inputConfirmPin: document.getElementById("input-confirm-pin"),
     btnSubmitChangePin: document.getElementById("btn-submit-change-pin"),
+
+    // Store Profile & Settings Modal
+    settingsModal: document.getElementById("settings-modal"),
+    btnCloseSettings: document.getElementById("btn-close-settings"),
+    btnCancelSettings: document.getElementById("btn-cancel-settings"),
+    settingsForm: document.getElementById("settings-form"),
+    settingsRestaurantName: document.getElementById("settings-restaurant-name"),
+    settingsStoreAddress: document.getElementById("settings-store-address"),
+    settingsPhoneNumber: document.getElementById("settings-phone-number"),
+    settingsGstin: document.getElementById("settings-gstin"),
+    settingsWaiterTag: document.getElementById("settings-waiter-tag"),
+    settingsUpiId: document.getElementById("settings-upi-id"),
+    settingsFooterMessage: document.getElementById("settings-footer-message"),
+    btnSaveSettings: document.getElementById("btn-save-settings"),
 
     // Billing & Thermal Printing System
     printableReceiptWrapper: document.getElementById("printable-receipt-wrapper"),
@@ -187,8 +208,9 @@
   function buildThermalReceiptHtml(order, isKot, options = {}) {
     if (!order) return `<div style="text-align:center;padding:20px;color:#64748B;">No order selected.</div>`;
 
+    const prof = state.storeProfile || {};
     const is58mm = (state.paperWidth || "58mm") === "58mm";
-    const restaurantName = escapeHtml((state.shopName || "AOLA RESTAURANT").toUpperCase());
+    const restaurantName = escapeHtml((prof.restaurantName || state.shopName || "RESTAURANT").toUpperCase());
     const orderId = escapeHtml(order.orderId || "ORD");
     const tableNum = escapeHtml(order.tableNumber || "1");
     const formattedDate = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
@@ -196,10 +218,11 @@
     const paymentMode = escapeHtml(options.paymentMode || "Paid (UPI / Online)");
     const taxRate = typeof options.taxRate === "number" ? options.taxRate : 5;
     const discountInput = typeof options.discountAmount === "number" ? options.discountAmount : 0;
-    const waiterTag = escapeHtml(state.waiterTag || "Counter POS 01");
-    const outletAddress = escapeHtml(state.outletAddress || "Main Market, City Center");
-    const outletContact = escapeHtml(state.outletContact || "+91 98470 54970");
-    const gstin = escapeHtml(state.outletGstin || "32AABCU9603R1ZM");
+    const waiterTag = escapeHtml(prof.waiterTag || "Counter POS 01");
+    const outletAddress = escapeHtml(prof.storeAddress || "");
+    const outletContact = escapeHtml(prof.phoneNumber || "");
+    const gstin = escapeHtml(prof.gstin || "");
+    const footerMsg = escapeHtml(prof.footerMessage || "Thank you for dining with us! Please visit again.");
 
     const dishList = parseOrderDishItems(order.items);
     let subtotal = 0;
@@ -242,8 +265,18 @@
       <div class="receipt-header">
         <div class="receipt-brand-title">${restaurantName}</div>
         <div class="receipt-subtitle">${isKot ? "*** KITCHEN ORDER TICKET (KOT) ***" : "TAX INVOICE / CASH BILL"}</div>
-        <div class="receipt-tagline">${isKot ? "Live Preparation Docket" : `${outletAddress} &bull; Ph: ${outletContact}`}</div>
-        ${(!isKot && gstin) ? `<div style="font-size:0.7rem; font-weight:600; color:#334155; margin-top:1px;">GSTIN: ${gstin}</div>` : ""}
+        ${!isKot ? `
+          ${(outletAddress || outletContact) ? `
+            <div class="receipt-tagline">
+              ${outletAddress ? `${outletAddress}` : ""}
+              ${(outletAddress && outletContact) ? ` &bull; ` : ""}
+              ${outletContact ? `Ph: ${outletContact}` : ""}
+            </div>
+          ` : `<div class="receipt-tagline" style="font-style:italic;color:#94a3b8;font-size:0.68rem;">(Set address in Store Profile)</div>`}
+          ${gstin ? `<div style="font-size:0.7rem; font-weight:600; color:#334155; margin-top:1px;">GSTIN: ${gstin}</div>` : ""}
+        ` : `
+          <div class="receipt-tagline">Live Preparation Docket</div>
+        `}
       </div>
 
       <div class="receipt-divider">------------------------------------------------</div>
@@ -332,8 +365,7 @@
 
       <div class="receipt-footer">
         ${!isKot ? `
-          <div>Thank you for dining with us!</div>
-          <div>Please visit us again soon.</div>
+          <div style="font-weight:600; white-space:pre-line;">${footerMsg}</div>
 
           <!-- Crisp UPI Quick-Pay / Verification QR Code Container -->
           <div class="receipt-qr-wrap">
@@ -393,8 +425,12 @@
     const tax = (subtotal - discount) * (billState.taxRate / 100);
     const grandTotal = Math.max(0, subtotal - discount + tax);
 
+    const prof = state.storeProfile || {};
+    const upiPayee = prof.upiId || "aola.pay@icici";
+    const upiName = prof.restaurantName || state.shopName || "Restaurant";
+
     // Standard NPCI UPI Intent URI for instantaneous counter payments
-    const upiUri = `upi://pay?pa=aola.pay@icici&pn=${encodeURIComponent(state.shopName || "Restaurant")}&am=${grandTotal.toFixed(2)}&cu=INR&tn=${encodeURIComponent("Order " + ord.orderId)}`;
+    const upiUri = `upi://pay?pa=${encodeURIComponent(upiPayee)}&pn=${encodeURIComponent(upiName)}&am=${grandTotal.toFixed(2)}&cu=INR&tn=${encodeURIComponent("Order " + ord.orderId)}`;
 
     if (typeof QRCode !== "undefined") {
       try {
@@ -589,6 +625,8 @@
       pushLine(left + " ".repeat(spaces) + right);
     }
 
+    const prof = state.storeProfile || {};
+
     // 1. Initialize Printer (ESC @)
     pushBytes(0x1B, 0x40);
 
@@ -597,15 +635,15 @@
 
     // Double Height & Width for Restaurant Name
     pushBytes(0x1B, 0x21, 0x30);
-    pushLine(state.shopName || "AOLA RESTAURANT");
+    pushLine((prof.restaurantName || state.shopName || "RESTAURANT").toUpperCase());
 
     // Reset Font
     pushBytes(0x1B, 0x21, 0x00);
     if (!isKot) {
       pushLine("TAX INVOICE / CASH BILL");
-      pushLine(state.outletAddress || "Main Market, City Center");
-      pushLine("Ph: " + (state.outletContact || "+91 98470 54970"));
-      if (state.outletGstin) pushLine("GSTIN: " + state.outletGstin);
+      if (prof.storeAddress) pushLine(prof.storeAddress);
+      if (prof.phoneNumber) pushLine("Ph: " + prof.phoneNumber);
+      if (prof.gstin) pushLine("GSTIN: " + prof.gstin);
     } else {
       pushLine("*** KITCHEN ORDER TICKET (KOT) ***");
       pushLine("Preparation Docket");
@@ -619,7 +657,7 @@
     const formattedTime = formatTicketTime(order.timestamp);
     pushTwoColumns("Bill: #" + (order.orderId || "ORD"), "Date: " + formattedDate);
     pushTwoColumns("Table: TABLE " + (order.tableNumber || "1"), "Time: " + formattedTime);
-    pushTwoColumns("Staff: " + (state.waiterTag || "Counter POS 01"), options.paymentMode ? options.paymentMode.replace("Paid ", "") : "UPI");
+    pushTwoColumns("Staff: " + (prof.waiterTag || "Counter POS 01"), options.paymentMode ? options.paymentMode.replace("Paid ", "") : "UPI");
 
     pushDivider("=");
 
@@ -711,8 +749,12 @@
     // 6. Footer (Center)
     pushBytes(0x1B, 0x61, 0x01);
     if (!isKot) {
-      pushLine("Thank you for dining with us!");
-      pushLine("Please visit us again soon.");
+      if (prof.footerMessage) {
+        pushLine(prof.footerMessage);
+      } else {
+        pushLine("Thank you for dining with us!");
+        pushLine("Please visit us again soon.");
+      }
       pushLine("Powered by AOLA Smart QR");
     } else {
       pushLine("*** READY FOR DISPATCH TO TABLE " + (order.tableNumber || "1") + " ***");
@@ -929,9 +971,13 @@
     const tax = (subtotal - discount) * (billState.taxRate / 100);
     const grandTotal = Math.max(0, subtotal - discount + tax);
 
+    const prof = state.storeProfile || {};
+    const restaurantName = (prof.restaurantName || state.shopName || "RESTAURANT").toUpperCase();
+    const footerMsg = prof.footerMessage || "Thank you for dining with us! 🙏";
+
     const digitalBillUrl = `${window.location.origin}${window.location.pathname.replace("owner.html", "index.html")}?shop=${encodeURIComponent(state.shopId)}&bill=${encodeURIComponent(ord.orderId)}`;
 
-    const text = `🧾 *${(state.shopName || "AOLA RESTAURANT").toUpperCase()}*\n` +
+    const text = `🧾 *${restaurantName}*\n` +
       `*TAX INVOICE / DINING BILL #${ord.orderId}*\n` +
       `🍽️ Table: ${ord.tableNumber} | ⏰ ${formatTicketTime(ord.timestamp)}\n` +
       `💳 Payment: ${billState.paymentMode}\n` +
@@ -946,7 +992,7 @@
       `📄 *View / Download Your Digital Bill Online:*\n${digitalBillUrl}\n` +
       `--------------------------------\n` +
       `_Customer consented to receive receipt via WhatsApp (DPDP Tag: DPDP-AOLA-${ord.orderId})_\n\n` +
-      `Thank you for dining with us! 🙏`;
+      `${footerMsg}`;
 
     const waUrl = `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
     window.open(waUrl, "_blank");
@@ -983,9 +1029,173 @@
   }
 
   /**
+   * Load store profile details from localStorage for fast offline rendering
+   */
+  function loadStoreProfileFromStorage() {
+    try {
+      const tenantKey = state.shopId ? `AOLA_STORE_PROFILE_${state.shopId}` : "AOLA_STORE_PROFILE_default";
+      const localData = localStorage.getItem(tenantKey) || localStorage.getItem("AOLA_STORE_PROFILE");
+      if (localData) {
+        const parsed = JSON.parse(localData);
+        if (parsed && typeof parsed === "object") {
+          state.storeProfile = { ...state.storeProfile, ...parsed };
+        }
+      }
+      if (!state.storeProfile.restaurantName && el.ownerShopName && el.ownerShopName.textContent) {
+        state.storeProfile.restaurantName = el.ownerShopName.textContent;
+      }
+    } catch (err) {
+      console.warn("Could not parse storeProfile from localStorage:", err);
+    }
+  }
+
+  /**
+   * Fetch saved store profile from backend / Google Sheets (Settings tab)
+   */
+  async function fetchStoreProfileFromBackend() {
+    if (!state.shopId || !state.pin) return;
+    try {
+      const res = await AOLA_API.post("owner_get_settings", {
+        shop_id: state.shopId,
+        pin: state.pin
+      });
+      if (res && res.success && res.settings) {
+        state.storeProfile = {
+          ...state.storeProfile,
+          ...res.settings
+        };
+        // Persist to localStorage
+        const tenantKey = `AOLA_STORE_PROFILE_${state.shopId}`;
+        localStorage.setItem(tenantKey, JSON.stringify(state.storeProfile));
+        localStorage.setItem("AOLA_STORE_PROFILE", JSON.stringify(state.storeProfile));
+
+        if (state.storeProfile.restaurantName && el.ownerShopName) {
+          el.ownerShopName.textContent = state.storeProfile.restaurantName;
+        }
+
+        // If receipt preview is currently open, re-render it with new settings
+        if (billState.order) {
+          updateBillPreview();
+        }
+      }
+    } catch (err) {
+      console.warn("Error fetching store profile from cloud:", err);
+    }
+  }
+
+  /**
+   * Open the Store Profile & Settings Modal
+   */
+  function openSettingsModal() {
+    loadStoreProfileFromStorage();
+    if (el.settingsRestaurantName) {
+      el.settingsRestaurantName.value = state.storeProfile.restaurantName || (el.ownerShopName ? el.ownerShopName.textContent : "") || "";
+    }
+    if (el.settingsStoreAddress) {
+      el.settingsStoreAddress.value = state.storeProfile.storeAddress || "";
+    }
+    if (el.settingsPhoneNumber) {
+      el.settingsPhoneNumber.value = state.storeProfile.phoneNumber || "";
+    }
+    if (el.settingsGstin) {
+      el.settingsGstin.value = state.storeProfile.gstin || "";
+    }
+    if (el.settingsWaiterTag) {
+      el.settingsWaiterTag.value = state.storeProfile.waiterTag || "Counter POS 01";
+    }
+    if (el.settingsUpiId) {
+      el.settingsUpiId.value = state.storeProfile.upiId || "";
+    }
+    if (el.settingsFooterMessage) {
+      el.settingsFooterMessage.value = state.storeProfile.footerMessage || "Thank you for dining with us! Please visit again.";
+    }
+
+    if (el.settingsModal) {
+      el.settingsModal.classList.add("open");
+      if (el.settingsRestaurantName) el.settingsRestaurantName.focus();
+    }
+    if (window.lucide) lucide.createIcons();
+  }
+
+  /**
+   * Close the Store Profile & Settings Modal
+   */
+  function closeSettingsModal() {
+    if (el.settingsModal) {
+      el.settingsModal.classList.remove("open");
+    }
+  }
+
+  /**
+   * Handle Settings form submission
+   */
+  async function handleSaveSettingsSubmit(e) {
+    if (e && e.preventDefault) e.preventDefault();
+
+    const newProfile = {
+      restaurantName: el.settingsRestaurantName ? el.settingsRestaurantName.value.trim() : "",
+      storeAddress: el.settingsStoreAddress ? el.settingsStoreAddress.value.trim() : "",
+      phoneNumber: el.settingsPhoneNumber ? el.settingsPhoneNumber.value.trim() : "",
+      gstin: el.settingsGstin ? el.settingsGstin.value.trim().toUpperCase() : "",
+      waiterTag: (el.settingsWaiterTag && el.settingsWaiterTag.value.trim()) || "Counter POS 01",
+      upiId: el.settingsUpiId ? el.settingsUpiId.value.trim() : "",
+      footerMessage: (el.settingsFooterMessage && el.settingsFooterMessage.value.trim()) || "Thank you for dining with us! Please visit again."
+    };
+
+    state.storeProfile = { ...state.storeProfile, ...newProfile };
+
+    // Persist immediately to localStorage
+    const tenantKey = state.shopId ? `AOLA_STORE_PROFILE_${state.shopId}` : "AOLA_STORE_PROFILE_default";
+    localStorage.setItem(tenantKey, JSON.stringify(state.storeProfile));
+    localStorage.setItem("AOLA_STORE_PROFILE", JSON.stringify(state.storeProfile));
+
+    if (state.storeProfile.restaurantName && el.ownerShopName) {
+      el.ownerShopName.textContent = state.storeProfile.restaurantName;
+    }
+
+    // Refresh active bill preview if open
+    if (billState.order) {
+      updateBillPreview();
+    }
+
+    closeSettingsModal();
+    showToast("✅ Store profile saved! Receipts updated instantly.", "success");
+
+    // Sync to backend if logged in
+    if (state.shopId && state.pin) {
+      if (el.btnSaveSettings) {
+        el.btnSaveSettings.disabled = true;
+        el.btnSaveSettings.textContent = "Syncing to Cloud...";
+      }
+      try {
+        const res = await AOLA_API.post("owner_save_settings", {
+          shop_id: state.shopId,
+          pin: state.pin,
+          settings: state.storeProfile
+        });
+        if (res && res.success) {
+          showToast("☁️ Store profile synced to cloud & other devices!", "success");
+        } else if (res && res.error) {
+          console.warn("Cloud sync warning:", res.error);
+        }
+      } catch (err) {
+        console.warn("Failed to sync settings with backend:", err);
+      } finally {
+        if (el.btnSaveSettings) {
+          el.btnSaveSettings.disabled = false;
+          el.btnSaveSettings.innerHTML = `<i data-lucide="save" style="width:16px;height:16px;"></i> Save & Apply to Receipts`;
+          if (window.lucide) lucide.createIcons();
+        }
+      }
+    }
+  }
+
+  /**
    * Initialize Owner Dashboard
    */
   function init() {
+    loadStoreProfileFromStorage();
+
     const urlShop = getUrlParam("shop");
     if (urlShop) {
       el.loginShopId.value = urlShop.toLowerCase().trim();
@@ -1082,6 +1292,20 @@
 
     if (el.changePinForm) {
       el.changePinForm.onsubmit = handleChangePinSubmit;
+    }
+
+    // Store Profile & Settings Modal Events
+    if (el.btnOpenSettings) el.btnOpenSettings.onclick = openSettingsModal;
+    if (el.btnSidebarSettings) el.btnSidebarSettings.onclick = openSettingsModal;
+    if (el.btnCloseSettings) el.btnCloseSettings.onclick = closeSettingsModal;
+    if (el.btnCancelSettings) el.btnCancelSettings.onclick = closeSettingsModal;
+    if (el.settingsModal) {
+      el.settingsModal.onclick = (e) => {
+        if (e.target === el.settingsModal) closeSettingsModal();
+      };
+    }
+    if (el.settingsForm) {
+      el.settingsForm.onsubmit = handleSaveSettingsSubmit;
     }
 
     // Orders Filter Tabs
@@ -1312,6 +1536,10 @@
       el.ownerShopName.textContent = response.shopName || "Kitchen Display";
       el.ownerShopTag.textContent = `@${state.shopId}`;
 
+      // Load tenant-specific store profile and fetch from Google Sheets
+      loadStoreProfileFromStorage();
+      fetchStoreProfileFromBackend();
+
       handleOrdersUpdate(response.orders || []);
       startPolling();
 
@@ -1335,6 +1563,15 @@
     state.menu = [];
     state.knownOrderIds.clear();
     state.isInitialLoad = true;
+    state.storeProfile = {
+      restaurantName: "",
+      storeAddress: "",
+      phoneNumber: "",
+      gstin: "",
+      waiterTag: "Counter POS 01",
+      footerMessage: "Thank you for dining with us! Please visit again.",
+      upiId: ""
+    };
 
     switchView("orders");
     el.dashboardContainer.style.display = "none";

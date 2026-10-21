@@ -105,6 +105,10 @@
           <i data-lucide="receipt" style="width:15px;height:15px;color:var(--accent-emerald);"></i>
           <span>Latest Bill</span>
         </button>
+        <button class="btn-secondary" id="btn-open-settings" title="Store Profile &amp; Receipt Header Settings">
+          <i data-lucide="store" style="width:15px;height:15px;color:var(--primary);"></i>
+          <span>Store Profile</span>
+        </button>
         <button class="btn-secondary" id="btn-open-change-pin" title="Change Security PIN">
           <i data-lucide="key-round" style="width:15px;height:15px;"></i>
           <span>Change PIN</span>
@@ -138,6 +142,10 @@
             <button class="cat-chip" id="view-tab-menu" style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
               <i data-lucide="utensils" style="width:16px;height:16px;"></i>
               <span>Menu Manager (<span id="count-menu-items">0</span>)</span>
+            </button>
+            <button class="cat-chip" id="btn-sidebar-settings" style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
+              <i data-lucide="store" style="width:16px;height:16px;"></i>
+              <span>Store Profile</span>
             </button>
           </div>
         </div>
@@ -579,6 +587,78 @@
 
   <!-- Dedicated Isolated Iframe for Zero-Margin Thermal Printing -->
   <iframe id="isolated-print-frame" style="position:fixed; right:100vw; bottom:100vh; width:0; height:0; border:0;" aria-hidden="true"></iframe>
+
+  <!-- Store Profile & Thermal Header Settings Modal -->
+  <div class="modal-backdrop" id="settings-modal" role="dialog" aria-modal="true">
+    <div class="modal-popup" style="max-width: 520px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="background: var(--bg-subtle); padding: 8px; border-radius: var(--radius-sm); color: var(--primary); display: flex;">
+            <i data-lucide="store" style="width: 20px; height: 20px;"></i>
+          </div>
+          <div>
+            <h2 class="modal-title" style="margin: 0; font-size: 1.15rem;">Store Profile &amp; Billing Header</h2>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">Customize receipt header, GSTIN, and printer details</div>
+          </div>
+        </div>
+        <button class="btn-close-modal" id="btn-close-settings">&times;</button>
+      </div>
+
+      <form id="settings-form" onsubmit="return false;" style="margin-top: 14px;">
+        <div class="form-group">
+          <label class="form-label" for="settings-restaurant-name">Restaurant / Outlet Name *</label>
+          <input type="text" id="settings-restaurant-name" class="form-input" placeholder="e.g. Bismillah Biryani &amp; Grill" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="settings-store-address">Store Address / Location</label>
+          <input type="text" id="settings-store-address" class="form-input" placeholder="e.g. Shop 4, Market Complex, MG Road">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label class="form-label" for="settings-phone-number">Phone Number / Contact</label>
+            <input type="tel" id="settings-phone-number" class="form-input" placeholder="e.g. +91 98470 54970">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="settings-gstin">GSTIN / Tax ID (Optional)</label>
+            <input type="text" id="settings-gstin" class="form-input" placeholder="e.g. 32AABCU9603R1ZM">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label class="form-label" for="settings-waiter-tag">Default Staff / Waiter Tag</label>
+            <input type="text" id="settings-waiter-tag" class="form-input" placeholder="e.g. Counter POS 01">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="settings-upi-id">UPI VPA for QR Code (Optional)</label>
+            <input type="text" id="settings-upi-id" class="form-input" placeholder="e.g. yourname@icici">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="settings-footer-message">Custom Receipt Footer Message</label>
+          <textarea id="settings-footer-message" class="form-input" rows="2" placeholder="e.g. Thank you for dining with us! Please visit again."></textarea>
+        </div>
+
+        <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 16px;">
+          <div style="font-size: 0.76rem; color: #1E40AF; display: flex; align-items: center; gap: 6px;">
+            <i data-lucide="cloud" style="width: 14px; height: 14px; flex-shrink: 0;"></i>
+            <span>Saved locally for instant printing and synchronized to Google Sheet for multi-device harmony.</span>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button type="button" class="btn-secondary" id="btn-cancel-settings">Cancel</button>
+          <button type="submit" class="btn-primary" id="btn-save-settings" style="display: flex; align-items: center; gap: 6px;">
+            <i data-lucide="save" style="width: 15px; height: 15px;"></i>
+            <span>Save Store Profile</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- Change PIN Modal -->
   <div class="modal-backdrop" id="change-pin-modal" role="dialog" aria-modal="true">
