@@ -418,7 +418,7 @@ const MockProvider = {
         }
 
         const masterPin = localStorage.getItem("AOLA_CUSTOM_ADMIN_PIN") || "998877";
-        const inputAdminPin = String(params.admin_pin || params.pin || "").trim();
+        const inputAdminPin = String(params.admin_pin || params.current_pin || params.pin || "").trim();
         const isAdminValid = (inputAdminPin === masterPin || inputAdminPin === "998877");
 
         if (action === "admin_login" || action === "admin_get_shops") {
@@ -432,7 +432,7 @@ const MockProvider = {
           if (!isAdminValid) {
             return resolve({ success: false, error: "Current Master PIN is incorrect." });
           }
-          const newPin = String(params.new_pin).trim();
+          const newPin = String(params.new_pin || params.new_admin_pin || "").trim();
           if (newPin.length < 4) {
             return resolve({ success: false, error: "New PIN must be at least 4 digits." });
           }

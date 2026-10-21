@@ -220,18 +220,36 @@
     try {
       const response = await AOLA_API.post("admin_change_pin", {
         admin_pin: currentPin,
-        new_admin_pin: newPin
+        current_pin: currentPin,
+        new_admin_pin: newPin,
+        new_pin: newPin
       });
 
       if (!response.success) {
+        if (response.error && response.error.includes("admin_change_pin")) {
+          // Fallback locally for this browser session & instruct user on backend deploy
+          state.adminPin = newPin;
+          sessionStorage.setItem("AOLA_ADMIN_PIN", newPin);
+          localStorage.setItem("AOLA_CUSTOM_ADMIN_PIN", newPin);
+          showToast("Master PIN saved locally! Please update and deploy Code.gs in Google Apps Script.", "warning", 8000);
+          el.masterPinModal.classList.remove("open");
+          el.inputMasterCurrentPin.value = "";
+          el.inputMasterNewPin.value = "";
+          el.inputMasterConfirmPin.value = "";
+          return;
+        }
         showToast(response.error || "Failed to update Master PIN.", "error");
         return;
       }
 
       state.adminPin = newPin;
       sessionStorage.setItem("AOLA_ADMIN_PIN", newPin);
+      localStorage.setItem("AOLA_CUSTOM_ADMIN_PIN", newPin);
       showToast("Master Security PIN updated successfully!", "success");
       el.masterPinModal.classList.remove("open");
+      el.inputMasterCurrentPin.value = "";
+      el.inputMasterNewPin.value = "";
+      el.inputMasterConfirmPin.value = "";
     } catch (err) {
       showToast("Error updating PIN on server.", "error");
     } finally {

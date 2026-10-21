@@ -147,6 +147,10 @@ function handleRequest(e, method) {
         responseData = handleAdminToggleStatus(params);
         break;
 
+      case "admin_change_pin":
+        responseData = handleAdminChangePin(params);
+        break;
+
       case "change_pin":
         responseData = handleChangePin(params);
         break;
@@ -935,7 +939,7 @@ function handleChangePin(params) {
 
 function handleAdminChangePin(params) {
   var currentPin = params.current_pin || params.admin_pin || params.pin;
-  var newPin = sanitizeString(params.new_pin);
+  var newPin = sanitizeString(params.new_pin || params.new_admin_pin);
 
   if (!verifyAdminAuth(currentPin)) {
     return { success: false, error: "Current Master Admin PIN is incorrect." };
