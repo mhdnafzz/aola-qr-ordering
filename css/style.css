@@ -1426,3 +1426,220 @@ button, input, select, textarea {
   font-weight: 500;
 }
 
+/* ==========================================================================
+   AOLA GLOBAL FOOTER (MARKETING & PAYMENT GATEWAY COMPLIANCE)
+   Palette: Background #1E293B, Text #F8FAFC, Warm Amber #F59E0B, WA #25D366
+   ========================================================================== */
+
+body > main {
+  flex: 1 0 auto;
+}
+
+.aola-footer {
+  width: 100%;
+  background-color: #1E293B;
+  background-image: radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.08) 0%, transparent 70%);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: #F8FAFC;
+  font-family: var(--font-body, 'Plus Jakarta Sans', -apple-system, sans-serif);
+  padding: 32px 16px calc(92px + env(safe-area-inset-bottom));
+  margin-top: auto;
+  position: relative;
+  z-index: 10;
+  box-sizing: border-box;
+}
+
+@media (min-width: 768px) {
+  .aola-footer {
+    padding: 36px 24px calc(36px + env(safe-area-inset-bottom));
+  }
+}
+
+.aola-footer-container {
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+}
+
+/* 1. Viral Branding Pill */
+.aola-footer-brand {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.aola-brand-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 9999px;
+  padding: 8px 18px;
+  font-size: 0.88rem;
+  color: #F8FAFC;
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25), 0 0 12px rgba(245, 158, 11, 0.12);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.aola-brand-pill:hover {
+  border-color: rgba(245, 158, 11, 0.7);
+  background: rgba(15, 23, 42, 0.95);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), 0 0 20px rgba(245, 158, 11, 0.28);
+  transform: translateY(-2px);
+}
+
+.aola-bolt {
+  color: #F59E0B;
+  display: inline-block;
+  animation: aola-pulse 2s infinite ease-in-out;
+}
+
+@keyframes aola-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.8; }
+}
+
+.aola-brand-name {
+  font-family: var(--font-heading, 'Outfit', sans-serif);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 50%, #F59E0B 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 14px rgba(245, 158, 11, 0.4);
+}
+
+.aola-brand-tag {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #F59E0B;
+  background: rgba(245, 158, 11, 0.12);
+  padding: 3px 8px;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.aola-brand-pill:hover .aola-brand-tag {
+  background: rgba(245, 158, 11, 0.25);
+  color: #FCD34D;
+}
+
+/* 2. Business Contacts Bar */
+.aola-footer-contacts {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+}
+
+.aola-contact-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.84rem;
+  color: #CBD5E1;
+  text-decoration: none;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 6px 14px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.aola-contact-badge:hover {
+  color: #F8FAFC;
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(51, 65, 85, 0.5);
+  transform: translateY(-1px);
+}
+
+.aola-whatsapp-badge:hover {
+  border-color: rgba(37, 211, 102, 0.4);
+  color: #25D366;
+  background: rgba(37, 211, 102, 0.08);
+}
+
+.aola-icon {
+  flex-shrink: 0;
+}
+
+.aola-icon-wa {
+  color: #25D366;
+}
+
+/* 3. Razorpay Gateway Compliance Links */
+.aola-footer-compliance {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  padding-top: 4px;
+}
+
+.aola-legal-link {
+  font-size: 0.8rem;
+  color: #94A3B8;
+  text-decoration: none;
+  transition: color 0.2s ease, text-decoration 0.2s ease;
+  padding: 4px 2px;
+}
+
+.aola-legal-link:hover {
+  color: #F8FAFC;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.aola-legal-dot {
+  color: #475569;
+  font-size: 0.75rem;
+}
+
+/* 4. Sub-legal Note & Copyright */
+.aola-footer-subtext {
+  font-size: 0.74rem;
+  color: #64748B;
+  margin: 0;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+}
+
+/* 5. Mobile Layout (< 480px) */
+@media (max-width: 480px) {
+  .aola-brand-pill {
+    padding: 8px 14px;
+    font-size: 0.82rem;
+  }
+  .aola-brand-tag {
+    display: none;
+  }
+  .aola-footer-contacts {
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+  .aola-contact-badge {
+    width: 100%;
+    max-width: 280px;
+    justify-content: center;
+  }
+  .aola-footer-compliance {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .aola-legal-dot {
+    display: none;
+  }
+}
+
