@@ -98,6 +98,10 @@
           <i data-lucide="refresh-cw" style="width:15px;height:15px;"></i>
           <span>Refresh</span>
         </button>
+        <button class="btn-secondary" id="btn-header-print-last" title="View &amp; Print Latest Order Bill">
+          <i data-lucide="receipt" style="width:15px;height:15px;color:var(--accent-emerald);"></i>
+          <span>Latest Bill</span>
+        </button>
         <button class="btn-secondary" id="btn-open-change-pin" title="Change Security PIN">
           <i data-lucide="key-round" style="width:15px;height:15px;"></i>
           <span>Change PIN</span>
@@ -303,6 +307,92 @@
           <span>Save Dish</span>
         </button>
       </form>
+    </div>
+  </div>
+
+  <!-- Dedicated Hidden Print Receipt Wrapper (targeted for @media print) -->
+  <div id="printable-receipt-wrapper" class="printable-receipt-wrapper" aria-hidden="true">
+    <div id="printable-receipt" class="printable-receipt"></div>
+  </div>
+
+  <!-- Professional Billing & Receipt Modal -->
+  <div class="modal-backdrop" id="bill-modal" role="dialog" aria-modal="true">
+    <div class="modal-popup bill-modal-popup">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title" style="display:flex; align-items:center; gap:8px;">
+            <i data-lucide="receipt" style="width:20px;height:20px;color:var(--accent-emerald);"></i>
+            <span>Order Billing &amp; Invoice</span>
+          </h2>
+          <p style="font-size:0.8rem; color:var(--text-muted); margin-top:2px;">
+            Official tax receipt or kitchen order ticket (KOT)
+          </p>
+        </div>
+        <button class="btn-close-modal" id="btn-close-bill-modal">&times;</button>
+      </div>
+
+      <!-- Bill Controls: Mode Switcher & Adjustments -->
+      <div class="bill-modal-toolbar">
+        <div class="bill-type-tabs">
+          <button type="button" class="bill-type-btn active" id="btn-bill-type-customer">
+            <i data-lucide="file-text" style="width:14px;height:14px;"></i>
+            <span>Customer Invoice</span>
+          </button>
+          <button type="button" class="bill-type-btn" id="btn-bill-type-kot">
+            <i data-lucide="chef-hat" style="width:14px;height:14px;"></i>
+            <span>Kitchen KOT</span>
+          </button>
+        </div>
+
+        <div class="bill-options-row">
+          <div class="form-group" style="margin-bottom:0; flex:1; min-width:130px;">
+            <label class="form-label" style="font-size:0.74rem;">Payment Mode</label>
+            <select id="bill-payment-mode" class="form-select" style="padding:6px 10px; font-size:0.82rem;">
+              <option value="Paid (UPI / Online)">Paid (UPI / Online)</option>
+              <option value="Paid (Cash)">Paid (Cash Counter)</option>
+              <option value="Paid (Card)">Paid (Credit/Debit Card)</option>
+              <option value="Unpaid (Pay at Counter)">Unpaid (Pay at Counter)</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom:0; width:100px;">
+            <label class="form-label" style="font-size:0.74rem;">Tax / GST</label>
+            <select id="bill-tax-rate" class="form-select" style="padding:6px 10px; font-size:0.82rem;">
+              <option value="0">0% (None)</option>
+              <option value="5" selected>5% GST</option>
+              <option value="12">12% GST</option>
+              <option value="18">18% GST</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom:0; width:95px;">
+            <label class="form-label" style="font-size:0.74rem;">Discount (₹)</label>
+            <input type="number" id="bill-discount-amount" class="form-input" min="0" step="5" value="0" placeholder="0" style="padding:6px 10px; font-size:0.82rem;">
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Receipt Thermal Preview -->
+      <div class="bill-preview-container">
+        <div id="bill-preview-card" class="bill-thermal-card">
+          <!-- Dynamically populated thermal receipt -->
+        </div>
+      </div>
+
+      <!-- Modal Footer with Actions -->
+      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-top:16px;">
+        <button type="button" class="btn-secondary" id="btn-bill-whatsapp" style="display:flex; align-items:center; gap:6px;">
+          <svg style="width:15px;height:15px;fill:#25D366;" viewBox="0 0 24 24"><path d="M17.472 14.382c-.301-.15-1.78-.879-2.056-.98-.276-.1-.477-.15-.678.15-.2.301-.778.98-.954 1.18-.175.2-.351.226-.652.075-.301-.15-1.272-.469-2.423-1.496-.896-.799-1.501-1.787-1.677-2.088-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.175.2-.301.301-.501.1-.2.05-.376-.025-.526-.075-.15-.678-1.635-.93-2.24-.244-.589-.493-.509-.678-.519-.175-.01-.376-.01-.577-.01-.2 0-.527.075-.803.376s-1.054 1.029-1.054 2.509 1.079 2.909 1.23 3.109c.15.2 2.124 3.243 5.145 4.549.719.311 1.28.497 1.718.636.722.23 1.378.197 1.898.12.579-.086 1.78-.727 2.031-1.429.251-.702.251-1.304.176-1.429-.076-.126-.276-.201-.577-.352z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.891.524 3.662 1.435 5.179L2 22l4.981-1.399A9.957 9.957 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18.053c-1.63 0-3.14-.476-4.417-1.298l-.317-.202-3.238.91.928-3.125-.213-.332A8.04 8.04 0 0 1 3.947 12C3.947 7.559 7.559 3.947 12 3.947c4.441 0 8.053 3.612 8.053 8.053 0 4.441-3.612 8.053-8.053 8.053z"/></svg>
+          <span>Share WhatsApp</span>
+        </button>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn-secondary" id="btn-cancel-bill-modal">Close</button>
+          <button type="button" class="btn-primary" id="btn-trigger-print" style="display:flex; align-items:center; gap:6px; background:var(--accent-emerald);">
+            <i data-lucide="printer" style="width:16px;height:16px;"></i>
+            <span>Print Receipt</span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 

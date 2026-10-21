@@ -80,7 +80,23 @@
     inputCurrentPin: document.getElementById("input-current-pin"),
     inputNewPin: document.getElementById("input-new-pin"),
     inputConfirmPin: document.getElementById("input-confirm-pin"),
-    btnSubmitChangePin: document.getElementById("btn-submit-change-pin")
+    btnSubmitChangePin: document.getElementById("btn-submit-change-pin"),
+
+    // Billing & Thermal Printing System
+    printableReceiptWrapper: document.getElementById("printable-receipt-wrapper"),
+    printableReceipt: document.getElementById("printable-receipt"),
+    billModal: document.getElementById("bill-modal"),
+    btnCloseBillModal: document.getElementById("btn-close-bill-modal"),
+    btnCancelBillModal: document.getElementById("btn-cancel-bill-modal"),
+    btnTriggerPrint: document.getElementById("btn-trigger-print"),
+    btnBillWhatsapp: document.getElementById("btn-bill-whatsapp"),
+    btnBillTypeCustomer: document.getElementById("btn-bill-type-customer"),
+    btnBillTypeKot: document.getElementById("btn-bill-type-kot"),
+    billPaymentMode: document.getElementById("bill-payment-mode"),
+    billTaxRate: document.getElementById("bill-tax-rate"),
+    billDiscountAmount: document.getElementById("bill-discount-amount"),
+    billPreviewCard: document.getElementById("bill-preview-card"),
+    btnHeaderPrintLast: document.getElementById("btn-header-print-last")
   };
 
   /**
@@ -108,6 +124,259 @@
     } catch (e) {
       console.warn("Audio autoplay blocked or unsupported:", e);
     }
+  }
+
+  // Active Billing & Invoice State
+  const billState = {
+    order: null,
+    isKot: false,
+    paymentMode: "Paid (UPI / Online)",
+    taxRate: 5,
+    discountAmount: 0
+  };
+
+  /**
+   * Restaurant Thermal Receipt & KOT Builder (Standard 80mm POS Format)
+   */
+  function buildThermalReceiptHtml(order, isKot, options = {}) {
+    if (!order) return `<div style="text-align:center;padding:20px;color:#64748B;">No order selected.</div>`;
+
+    const restaurantName = escapeHtml((state.shopName || "AOLA RESTAURANT").toUpperCase());
+    const orderId = escapeHtml(order.orderId || "ORD");
+    const tableNum = escapeHtml(order.tableNumber || "1");
+    const formattedDate = new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+    const formattedTime = formatTicketTime(order.timestamp);
+    const paymentMode = escapeHtml(options.paymentMode || "Paid (UPI / Online)");
+    const taxRate = typeof options.taxRate === "number" ? options.taxRate : 5;
+    const discountInput = typeof options.discountAmount === "number" ? options.discountAmount : 0;
+
+    const dishList = parseOrderDishItems(order.items);
+    let subtotal = 0;
+
+    const rowsHtml = dishList.map(dish => {
+      const qty = dish.qty || 1;
+      let lineTotal = dish.rawPrice || 0;
+      if (!lineTotal && dish.price) {
+        lineTotal = parseFloat(String(dish.price).replace(/[^0-9.]/g, "")) || 0;
+      }
+      const unitRate = (qty > 0 && lineTotal > 0) ? (lineTotal / qty) : lineTotal;
+      subtotal += lineTotal;
+
+      return `
+        <tr>
+          <td style="text-align:left; padding-right:6px;">
+            <strong>${escapeHtml(dish.name)}</strong>
+            ${dish.note ? `<span class="receipt-item-note">Note: ${escapeHtml(dish.note)}</span>` : ""}
+          </td>
+          <td style="text-align:center;">${qty}</td>
+          ${!isKot ? `
+            <td style="text-align:right;">${unitRate > 0 ? (state.currency + unitRate.toFixed(2)) : "-"}</td>
+            <td style="text-align:right; font-weight:700;">${lineTotal > 0 ? (state.currency + lineTotal.toFixed(2)) : "-"}</td>
+          ` : ""}
+        </tr>
+      `;
+    }).join("");
+
+    if (subtotal <= 0 && order.totalPrice) {
+      subtotal = parseFloat(order.totalPrice) || 0;
+    }
+
+    const discount = Math.min(subtotal, Math.max(0, discountInput));
+    const taxable = Math.max(0, subtotal - discount);
+    const taxAmount = (taxRate > 0) ? (taxable * (taxRate / 100)) : 0;
+    const grandTotal = Math.max(0, taxable + taxAmount);
+    const totalQty = dishList.reduce((sum, d) => sum + (d.qty || 1), 0);
+
+    return `
+      <div class="receipt-header">
+        <div class="receipt-brand-title">${restaurantName}</div>
+        <div class="receipt-subtitle">${isKot ? "*** KITCHEN ORDER TICKET (KOT) ***" : "TAX INVOICE / CASH BILL"}</div>
+        <div class="receipt-tagline">${isKot ? "Kitchen Preparation Docket" : "Smart QR Self-Order &bull; Table Dining"}</div>
+      </div>
+
+      <div class="receipt-divider">------------------------------------------------</div>
+
+      <div class="receipt-meta-grid">
+        <div><strong>Bill No:</strong> #${orderId}</div>
+        <div style="text-align:right;"><strong>Date:</strong> ${formattedDate}</div>
+        <div><span class="receipt-table-highlight">TABLE ${tableNum}</span></div>
+        <div style="text-align:right;"><strong>Time:</strong> ${formattedTime}</div>
+        ${!isKot ? `
+          <div><strong>Payment:</strong> ${paymentMode}</div>
+          <div style="text-align:right;"><strong>Counter:</strong> POS 01</div>
+        ` : `
+          <div style="grid-column: 1 / -1; font-weight:700; color:#000;">DINE-IN ORDER &bull; EXPRESS KITCHEN</div>
+        `}
+      </div>
+
+      <div class="receipt-divider double"></div>
+
+      <table class="receipt-items-table">
+        <thead>
+          <tr>
+            <th style="text-align:left; width:${isKot ? '80%' : '48%'};">ITEM</th>
+            <th style="text-align:center; width:14%;">QTY</th>
+            ${!isKot ? `
+              <th style="text-align:right; width:18%;">RATE</th>
+              <th style="text-align:right; width:20%;">TOTAL</th>
+            ` : ""}
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml || `<tr><td colspan="${isKot ? 2 : 4}" style="text-align:center;">No items recorded</td></tr>`}
+        </tbody>
+      </table>
+
+      <div class="receipt-divider">------------------------------------------------</div>
+
+      ${!isKot ? `
+        <div class="receipt-totals-grid">
+          <div class="receipt-total-row">
+            <span>Total Items: ${dishList.length} (Qty: ${totalQty})</span>
+            <span>Subtotal: ${state.currency}${subtotal.toFixed(2)}</span>
+          </div>
+          ${discount > 0 ? `
+            <div class="receipt-total-row" style="color:#DC2626;">
+              <span>Special Discount:</span>
+              <span>-${state.currency}${discount.toFixed(2)}</span>
+            </div>
+          ` : ""}
+          ${taxAmount > 0 ? `
+            <div class="receipt-total-row">
+              <span>GST (${taxRate}%):</span>
+              <span>+${state.currency}${taxAmount.toFixed(2)}</span>
+            </div>
+          ` : ""}
+          <div class="receipt-divider double"></div>
+          <div class="receipt-grand-total">
+            <span>GRAND TOTAL</span>
+            <span>${state.currency}${grandTotal.toFixed(2)}</span>
+          </div>
+          <div class="receipt-divider double"></div>
+        </div>
+      ` : `
+        <div class="receipt-kot-summary">
+          *** TOTAL DISHES: ${dishList.length} (QTY: ${totalQty}) ***
+        </div>
+      `}
+
+      ${order.customerNotes ? `
+        <div class="receipt-notes-box">
+          <strong style="text-transform:uppercase; font-size:0.75rem;">Kitchen Instructions:</strong>
+          <div style="margin-top:2px;">${escapeHtml(order.customerNotes)}</div>
+        </div>
+      ` : ""}
+
+      <div class="receipt-footer">
+        ${!isKot ? `
+          <div>Thank you for dining with us!</div>
+          <div>Please visit us again soon.</div>
+          <div class="receipt-powered">Powered by AOLA Smart QR Ordering</div>
+        ` : `
+          <div>*** DISPATCH TO TABLE ${tableNum} WHEN READY ***</div>
+        `}
+      </div>
+    `;
+  }
+
+  /**
+   * Update the live preview card in the modal and sync to the print container
+   */
+  function updateBillPreview() {
+    if (!billState.order) return;
+    const html = buildThermalReceiptHtml(billState.order, billState.isKot, billState);
+    if (el.billPreviewCard) el.billPreviewCard.innerHTML = html;
+    if (el.printableReceipt) el.printableReceipt.innerHTML = html;
+  }
+
+  /**
+   * Open the Billing & Invoice Modal for a specific order
+   */
+  function openBillModal(orderId, isKot = false) {
+    const order = state.orders.find(o => String(o.orderId) === String(orderId));
+    if (!order) {
+      showToast("Order #" + orderId + " not found.", "error");
+      return;
+    }
+
+    billState.order = order;
+    billState.isKot = isKot;
+
+    if (el.btnBillTypeCustomer) el.btnBillTypeCustomer.classList.toggle("active", !isKot);
+    if (el.btnBillTypeKot) el.btnBillTypeKot.classList.toggle("active", isKot);
+
+    updateBillPreview();
+    if (el.billModal) el.billModal.classList.add("open");
+  }
+
+  function closeBillModal() {
+    if (el.billModal) el.billModal.classList.remove("open");
+  }
+
+  /**
+   * Triggers the browser print dialog cleanly formatted for POS receipts
+   */
+  function triggerPrintReceipt() {
+    updateBillPreview();
+    window.print();
+  }
+
+  /**
+   * Instant 1-Click Print KOT for the kitchen
+   */
+  function quickPrintKot(orderId) {
+    const order = state.orders.find(o => String(o.orderId) === String(orderId));
+    if (!order) {
+      showToast("Order not found.", "error");
+      return;
+    }
+    billState.order = order;
+    billState.isKot = true;
+    updateBillPreview();
+    window.print();
+    showToast("Printing Kitchen KOT for Table " + order.tableNumber + "...", "info");
+  }
+
+  /**
+   * Share the Order Bill via WhatsApp
+   */
+  function shareBillWhatsapp() {
+    const ord = billState.order;
+    if (!ord) return;
+    const dishList = parseOrderDishItems(ord.items);
+    const itemsText = dishList.map(d => `• ${d.qty}x ${d.name} ${d.price ? `(${d.price})` : ""}`).join("\n");
+    const subtotal = ord.totalPrice || 0;
+    const discount = billState.discountAmount || 0;
+    const tax = (subtotal - discount) * (billState.taxRate / 100);
+    const grandTotal = Math.max(0, subtotal - discount + tax);
+
+    const text = `🧾 *${(state.shopName || "AOLA RESTAURANT").toUpperCase()}*\n` +
+      `*Order Bill #${ord.orderId}*\n` +
+      `🍽️ Table: ${ord.tableNumber} | ⏰ ${formatTicketTime(ord.timestamp)}\n` +
+      `💳 Payment: ${billState.paymentMode}\n` +
+      `--------------------------------\n` +
+      `*ITEMS:*\n${itemsText}\n` +
+      `--------------------------------\n` +
+      `Subtotal: ${state.currency}${subtotal.toFixed(2)}\n` +
+      (billState.taxRate > 0 ? `GST (${billState.taxRate}%): +${state.currency}${tax.toFixed(2)}\n` : "") +
+      (discount > 0 ? `Discount: -${state.currency}${discount.toFixed(2)}\n` : "") +
+      `*GRAND TOTAL: ${state.currency}${grandTotal.toFixed(2)}*\n` +
+      `--------------------------------\n` +
+      (ord.customerNotes ? `Note: ${ord.customerNotes}\n--------------------------------\n` : "") +
+      `Thank you for dining with us! 🙏`;
+
+    window.open("https://api.whatsapp.com/send?text=" + encodeURIComponent(text), "_blank");
+  }
+
+  /**
+   * View the latest order's bill
+   */
+  function openLatestBill() {
+    if (!state.orders || state.orders.length === 0) {
+      showToast("No orders available right now to bill.", "info");
+      return;
+    }
+    openBillModal(state.orders[0].orderId, false);
   }
 
   /**
@@ -223,6 +492,57 @@
       el.tabPending.classList.remove("active");
       renderTickets();
     };
+
+    // Bill & Invoice Modal Events
+    if (el.btnCloseBillModal) el.btnCloseBillModal.onclick = closeBillModal;
+    if (el.btnCancelBillModal) el.btnCancelBillModal.onclick = closeBillModal;
+    if (el.billModal) {
+      el.billModal.onclick = (e) => {
+        if (e.target === el.billModal) closeBillModal();
+      };
+    }
+    if (el.btnTriggerPrint) el.btnTriggerPrint.onclick = triggerPrintReceipt;
+    if (el.btnBillWhatsapp) el.btnBillWhatsapp.onclick = shareBillWhatsapp;
+    if (el.btnHeaderPrintLast) el.btnHeaderPrintLast.onclick = openLatestBill;
+
+    if (el.btnBillTypeCustomer) {
+      el.btnBillTypeCustomer.onclick = () => {
+        billState.isKot = false;
+        el.btnBillTypeCustomer.classList.add("active");
+        el.btnBillTypeKot.classList.remove("active");
+        updateBillPreview();
+      };
+    }
+
+    if (el.btnBillTypeKot) {
+      el.btnBillTypeKot.onclick = () => {
+        billState.isKot = true;
+        el.btnBillTypeKot.classList.add("active");
+        el.btnBillTypeCustomer.classList.remove("active");
+        updateBillPreview();
+      };
+    }
+
+    if (el.billPaymentMode) {
+      el.billPaymentMode.onchange = (e) => {
+        billState.paymentMode = e.target.value;
+        updateBillPreview();
+      };
+    }
+
+    if (el.billTaxRate) {
+      el.billTaxRate.onchange = (e) => {
+        billState.taxRate = parseFloat(e.target.value) || 0;
+        updateBillPreview();
+      };
+    }
+
+    if (el.billDiscountAmount) {
+      el.billDiscountAmount.oninput = (e) => {
+        billState.discountAmount = parseFloat(e.target.value) || 0;
+        updateBillPreview();
+      };
+    }
   }
 
   /**
@@ -595,19 +915,23 @@
 
         <div class="ticket-footer">
           <div class="ticket-price">${formatCurrency(ord.totalPrice)}</div>
-          <div style="display:flex; gap:8px;">
-            <button class="btn-secondary btn-print-ticket" data-id="${escapeHtml(ord.orderId)}" title="Print Ticket" style="padding:7px 11px;">
-              <i data-lucide="printer" style="width:15px;height:15px;"></i>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <button class="btn-secondary btn-open-bill" data-id="${escapeHtml(ord.orderId)}" title="Generate Customer Bill &amp; Print" style="padding:6px 10px; display:inline-flex; align-items:center; gap:5px; font-weight:600; font-size:0.8rem; border-color:var(--border-subtle); color:var(--brand-navy);">
+              <i data-lucide="receipt" style="width:14px;height:14px;color:var(--accent-emerald);"></i>
+              <span>Bill</span>
+            </button>
+            <button class="btn-secondary btn-quick-kot" data-id="${escapeHtml(ord.orderId)}" title="Instant Print Kitchen KOT" style="padding:6px 8px; border-color:var(--border-subtle);">
+              <i data-lucide="printer" style="width:14px;height:14px;"></i>
             </button>
             ${
               isPending
                 ? `
-                  <button class="btn-emerald btn-complete-order" data-id="${escapeHtml(ord.orderId)}">
-                    <i data-lucide="check-circle-2" style="width:15px;height:15px;"></i>
-                    <span>Mark Complete</span>
+                  <button class="btn-emerald btn-complete-order" data-id="${escapeHtml(ord.orderId)}" style="padding:6px 12px; font-size:0.8rem;">
+                    <i data-lucide="check-circle-2" style="width:14px;height:14px;"></i>
+                    <span>Complete</span>
                   </button>
                 `
-                : `<span class="status-badge active"><i data-lucide="check" style="width:13px;height:13px;"></i> Completed</span>`
+                : `<span class="status-badge active"><i data-lucide="check" style="width:13px;height:13px;"></i> Done</span>`
             }
           </div>
         </div>
@@ -620,8 +944,12 @@
       b.onclick = () => completeOrder(b.dataset.id, b);
     });
 
-    el.ticketGrid.querySelectorAll(".btn-print-ticket").forEach((b) => {
-      b.onclick = () => window.print();
+    el.ticketGrid.querySelectorAll(".btn-open-bill").forEach((b) => {
+      b.onclick = () => openBillModal(b.dataset.id, false);
+    });
+
+    el.ticketGrid.querySelectorAll(".btn-quick-kot").forEach((b) => {
+      b.onclick = () => quickPrintKot(b.dataset.id);
     });
 
     if (window.lucide) lucide.createIcons();
