@@ -107,11 +107,15 @@
     await loadMenu();
   }
 
-  /**
-   * Load Menu Data from Backend API
-   */
   async function loadMenu() {
     try {
+      // 1. Check Local Cache (10-minute TTL) for instant render without quota impact
+      const cached = AOLA_CACHE.getMenu(state.shopId);
+      if (cached && cached.success) {
+        processMenuResponse(cached);
+        return;
+      }
+
       el.menuFeed.innerHTML = `
         <div class="skeleton skeleton-card"></div>
         <div class="skeleton skeleton-card"></div>
@@ -129,6 +133,17 @@
         return;
       }
 
+      // Store in 10-minute local cache
+      AOLA_CACHE.setMenu(state.shopId, response);
+      processMenuResponse(response);
+    } catch (err) {
+      console.error("[AOLA Load Menu Error]:", err);
+      renderErrorNotice("Failed to connect to restaurant server.");
+    }
+  }
+
+  function processMenuResponse(response) {
+    try {
       state.shopData = response.shop || {
         name: (response.branding && response.branding.name) || "Restaurant",
         logoUrl: (response.branding && response.branding.logo && response.branding.logo !== "logo_placeholder") ? response.branding.logo : ""
@@ -425,14 +440,13 @@
       return;
     }
 
-    // Prepare payload
+    // Prepare tamper-proof payload: client strictly submits dishId and qty
+    // Server independently recalculates prices from tenant Menu sheet
     const itemsPayload = cartEntries.map((e) => ({
-      name: e.item.name,
-      qty: e.qty,
-      price: e.item.price
+      dishId: e.item.id,
+      qty: e.qty
     }));
 
-    const totalPrice = cartEntries.reduce((sum, e) => sum + e.qty * e.item.price, 0);
     const notes = el.orderNotesInput.value.trim();
 
     state.isSubmitting = true;
@@ -444,7 +458,6 @@
         shop_id: state.shopId,
         table_number: tableNumber,
         items: itemsPayload,
-        total_price: totalPrice,
         customer_notes: notes,
         customer_fax: honeypotVal // Pass honeypot for double verification
       });

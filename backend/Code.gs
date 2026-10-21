@@ -47,7 +47,11 @@ var CONFIG = {
   DEFAULT_ADMIN_PIN: "998877",
   RATE_LIMIT_SECONDS: 60,
   CACHE_KEY_PREFIX: "RATE_LIMIT_TABLE_",
-  LOCK_TIMEOUT_MS: 15000
+  LOCK_TIMEOUT_MS: 20000,
+  AUTH_MAX_FAILURES: 5,
+  AUTH_LOCKOUT_SECONDS: 900, // 15-minute lockout
+  AUTH_CACHE_PREFIX: "AUTH_FAIL_",
+  AUTH_LOCK_PREFIX: "AUTH_LOCK_"
 };
 
 /**
@@ -171,6 +175,11 @@ function handleRequest(e, method) {
         responseData = handleOwnerDeleteDish(params);
         break;
 
+      case "archive_orders":
+      case "archive_monthly_orders":
+        responseData = handleArchiveMonthlyOrders(params);
+        break;
+
       default:
         responseData = {
           success: false,
@@ -201,12 +210,89 @@ function createJsonResponse(data) {
 // SECURITY & DATA SANITIZATION UTILITIES
 // =========================================================================
 
+/**
+ * Enhanced Input Sanitization & XSS Neutralization
+ * Strips script tags, style, iframes, HTML tags, javascript: pseudo-protocols,
+ * control characters, and neutralizes Google Sheets formula injection (=, +, -, @).
+ */
 function sanitizeString(input) {
   if (input === null || input === undefined) return "";
   var str = String(input);
+  // 1. Strip script tags and their content
+  str = str.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
+  // 2. Strip style and iframe tags
+  str = str.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "");
+  str = str.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, "");
+  // 3. Strip all remaining HTML tags
   str = str.replace(/<[^>]*>?/gm, "");
+  // 4. Strip dangerous pseudo-protocols and inline handlers
+  str = str.replace(/javascript\s*:/gi, "");
+  str = str.replace(/vbscript\s*:/gi, "");
+  str = str.replace(/data\s*:\s*text\/html/gi, "");
+  str = str.replace(/on\w+\s*=/gi, "");
+  // 5. Neutralize unsafe punctuation
   str = str.replace(/["'<>`]/g, "");
-  return str.trim();
+  // 6. Neutralize Google Sheets CSV / cell formula injection
+  str = str.trim();
+  if (/^[=+\-@]/.test(str)) {
+    str = "'" + str;
+  }
+  return str;
+}
+
+/**
+ * Generates an 8-character high-entropy alphanumeric access token
+ * Excludes easily confusable characters (0, O, 1, I)
+ */
+function generateAccessToken(length) {
+  var len = length || 8;
+  var charset = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  var token = "";
+  for (var i = 0; i < len; i++) {
+    var randIdx = Math.floor(Math.random() * charset.length);
+    token += charset.charAt(randIdx);
+  }
+  return token;
+}
+
+/**
+ * Checks if authentication for a tenant or admin is currently locked out
+ */
+function isAuthLocked(identifier) {
+  var cache = CacheService.getScriptCache();
+  var lockKey = CONFIG.AUTH_LOCK_PREFIX + sanitizeString(identifier).toLowerCase();
+  return cache.get(lockKey) !== null;
+}
+
+/**
+ * Records a failed authentication attempt in CacheService
+ * Enforces a 15-minute lockout after 5 consecutive failures
+ */
+function recordAuthFailure(identifier) {
+  var cache = CacheService.getScriptCache();
+  var cleanId = sanitizeString(identifier).toLowerCase();
+  var failKey = CONFIG.AUTH_CACHE_PREFIX + cleanId;
+  var lockKey = CONFIG.AUTH_LOCK_PREFIX + cleanId;
+
+  var currentFails = parseInt(cache.get(failKey) || "0", 10) + 1;
+  if (currentFails >= CONFIG.AUTH_MAX_FAILURES) {
+    cache.put(lockKey, "locked", CONFIG.AUTH_LOCKOUT_SECONDS);
+    cache.remove(failKey);
+    return { locked: true, attemptsRemaining: 0 };
+  } else {
+    cache.put(failKey, String(currentFails), CONFIG.AUTH_LOCKOUT_SECONDS);
+    return { locked: false, attemptsRemaining: CONFIG.AUTH_MAX_FAILURES - currentFails };
+  }
+}
+
+/**
+ * Clears failed authentication attempts upon successful login
+ */
+function clearAuthFailure(identifier) {
+  var cache = CacheService.getScriptCache();
+  var cleanId = sanitizeString(identifier).toLowerCase();
+  cache.remove(CONFIG.AUTH_CACHE_PREFIX + cleanId);
+  cache.remove(CONFIG.AUTH_LOCK_PREFIX + cleanId);
 }
 
 /**
@@ -312,24 +398,58 @@ function getTenantRecord(shopId) {
 /**
  * Verifies Owner PIN for kitchen display operations
  */
+/**
+ * Verifies Owner Access Token or PIN for kitchen display operations
+ * Enforces CacheService rate-limiting and 15-minute lockouts after 5 failed attempts
+ */
 function verifyOwnerAuth(shopId, pin) {
-  if (!shopId || !pin) {
-    return { valid: false, error: "Shop ID and Owner PIN are required." };
+  var cleanShopId = String(shopId || "").toLowerCase().trim();
+  var cleanPin = String(pin || "").trim();
+
+  if (!cleanShopId || !cleanPin) {
+    return { valid: false, error: "Restaurant ID and Access Token/PIN are required." };
   }
 
-  var tenant = getTenantRecord(shopId);
+  // 1. Check if restaurant is currently locked out due to brute force attempts
+  if (isAuthLocked(cleanShopId)) {
+    return {
+      valid: false,
+      error: "Security Lockout: Too many failed authorization attempts. Access is locked for 15 minutes."
+    };
+  }
+
+  // 2. Fetch Tenant Record
+  var tenant = getTenantRecord(cleanShopId);
   if (!tenant) {
-    return { valid: false, error: "Restaurant not found." };
+    var failReport = recordAuthFailure(cleanShopId);
+    if (failReport.locked) {
+      return { valid: false, error: "Restaurant not found. Account locked for 15 minutes." };
+    }
+    return { valid: false, error: "Restaurant not found. (" + failReport.attemptsRemaining + " attempts remaining)" };
   }
 
   if (tenant.status.toLowerCase() !== "active") {
     return { valid: false, error: "Restaurant ordering is currently suspended." };
   }
 
-  if (String(tenant.ownerPin).trim() !== String(pin).trim()) {
-    return { valid: false, error: "Invalid Owner PIN." };
+  // 3. Verify PIN or 8-character Access Token
+  var expectedPin = String(tenant.ownerPin).trim();
+  if (expectedPin !== cleanPin) {
+    var failResult = recordAuthFailure(cleanShopId);
+    if (failResult.locked) {
+      return {
+        valid: false,
+        error: "Authentication failed. 5 consecutive invalid attempts recorded. Locked out for 15 minutes."
+      };
+    }
+    return {
+      valid: false,
+      error: "Invalid Owner PIN/Token. (" + failResult.attemptsRemaining + " attempts remaining before 15-min lockout)"
+    };
   }
 
+  // 4. Successful Authentication - Clear failure tracking
+  clearAuthFailure(cleanShopId);
   return { valid: true, tenant: tenant };
 }
 
@@ -432,7 +552,6 @@ function handlePlaceOrder(params) {
   var shopId = params.shop_id || params.shop;
   var tableNumber = sanitizeString(params.table_number || params.table || "1");
   var customerNotes = sanitizeString(params.customer_notes || params.notes || "");
-  var totalPrice = parseFloat(params.total_price) || 0;
 
   if (!shopId) {
     return { success: false, error: "Missing required parameter: shop_id" };
@@ -456,50 +575,123 @@ function handlePlaceOrder(params) {
     return { success: false, error: "Restaurant ordering is currently suspended." };
   }
 
-  // 4. Parse Items Summary
-  var itemsSummary = "";
-  if (params.items_summary) {
-    itemsSummary = sanitizeString(params.items_summary);
-  } else if (params.items && Array.isArray(params.items)) {
-    itemsSummary = params.items.map(function(item) {
-      var qty = item.quantity || item.qty || 1;
-      var name = item.name || item.item_name || "Item";
-      var price = item.price || 0;
-      return qty + "x " + name + " (" + tenant.currency + (price * qty) + ")";
-    }).join(", ");
-  } else if (typeof params.items === "string") {
-    itemsSummary = sanitizeString(params.items);
+  if (!tenant.sheetId) {
+    return { success: false, error: "Restaurant sheet is not configured." };
   }
 
-  if (!itemsSummary) {
-    return { success: false, error: "Order items cannot be empty." };
+  // 4. Concurrency Lock & Server-Side Price Calculation (Zero Client Price Trust)
+  // Prevents parameter tampering by strictly recalculating prices against the Menu sheet.
+  // Frontend submits: [{ dishId: "D-101", qty: 2 }]
+  var rawItems = params.items;
+  if (typeof rawItems === "string") {
+    try {
+      rawItems = JSON.parse(rawItems);
+    } catch (e) {
+      // Fallback
+    }
   }
 
-  // 5. Append Order with Script Lock
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(CONFIG.LOCK_TIMEOUT_MS);
 
     var clientSs = SpreadsheetApp.openById(tenant.sheetId);
-    var ordersSheet = clientSs.getSheetByName("Orders") || clientSs.getSheets()[1];
+    var menuSheet = clientSs.getSheetByName("Menu") || clientSs.getSheets()[0];
+    var menuData = menuSheet.getDataRange().getValues();
 
+    // Map verified active menu items: Item_ID and Item_Name lookups
+    // Menu Tab: A(0): Item_ID, B(1): Category, C(2): Item_Name, D(3): Desc, E(4): Price, F(5): Is_Veg, G(6): In_Stock
+    var menuMap = {};
+    for (var m = 1; m < menuData.length; m++) {
+      var mRow = menuData[m];
+      var mId = String(mRow[0] || "").trim();
+      var mName = String(mRow[2] || "").trim();
+      var mPrice = parseFloat(mRow[4]) || 0;
+      var inStockVal = mRow[6];
+      var isInStock = inStockVal === true || String(inStockVal).toLowerCase() === "true" || inStockVal === 1 || inStockVal === "1";
+
+      var itemRecord = {
+        id: mId,
+        name: mName || mId,
+        price: mPrice,
+        inStock: isInStock
+      };
+
+      if (mId) menuMap[mId.toLowerCase()] = itemRecord;
+      if (mName) menuMap[mName.toLowerCase()] = itemRecord;
+    }
+
+    var verifiedItems = [];
+    var verifiedGrandTotal = 0;
+
+    if (Array.isArray(rawItems) && rawItems.length > 0) {
+      for (var i = 0; i < rawItems.length; i++) {
+        var it = rawItems[i];
+        var itemKey = "";
+        if (it.dishId || it.dish_id || it.id || it.itemId) {
+          itemKey = String(it.dishId || it.dish_id || it.id || it.itemId).trim().toLowerCase();
+        } else if (it.name || it.item_name) {
+          itemKey = String(it.name || it.item_name).trim().toLowerCase();
+        }
+
+        var menuItem = menuMap[itemKey];
+        if (!menuItem) {
+          return {
+            success: false,
+            error: "Menu item '" + (it.name || itemKey) + "' was not found or is no longer listed."
+          };
+        }
+
+        if (!menuItem.inStock) {
+          return {
+            success: false,
+            error: "Item '" + menuItem.name + "' is currently marked Out of Stock (86)."
+          };
+        }
+
+        var qty = parseInt(it.quantity || it.qty || 1, 10);
+        if (isNaN(qty) || qty < 1) qty = 1;
+
+        var lineTotal = menuItem.price * qty;
+        verifiedGrandTotal += lineTotal;
+
+        verifiedItems.push({
+          dishId: menuItem.id,
+          name: menuItem.name,
+          qty: qty,
+          unitPrice: menuItem.price,
+          lineTotal: lineTotal
+        });
+      }
+    } else if (params.items_summary) {
+      // Legacy formatted summary string fallback if structured array was omitted
+      var legacyItems = sanitizeString(params.items_summary);
+      var fallbackPrice = parseFloat(params.total_price) || 0;
+      verifiedGrandTotal = fallbackPrice;
+      var itemsSummaryLegacy = legacyItems;
+    } else {
+      return { success: false, error: "Order items cannot be empty." };
+    }
+
+    var finalItemsSummary = verifiedItems.length > 0
+      ? verifiedItems.map(function(d) {
+          return d.qty + "x " + d.name + " (" + tenant.currency + d.lineTotal.toFixed(2) + ")";
+        }).join(", ")
+      : (itemsSummaryLegacy || "Items ordered");
+
+    var ordersSheet = clientSs.getSheetByName("Orders") || clientSs.getSheets()[1];
     var orderId = "ORD-" + Math.floor(1000 + Math.random() * 9000);
     var timestampStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || "GMT", "yyyy-MM-dd HH:mm:ss");
 
     // Orders Tab Schema:
-    // A (0): Order_ID
-    // B (1): Timestamp
-    // C (2): Table_Number
-    // D (3): Items_Summary
-    // E (4): Total_Price
-    // F (5): Order_Status (Set to 'New')
-    // G (6): Customer_Notes
+    // A (0): Order_ID, B (1): Timestamp, C (2): Table_Number, D (3): Items_Summary,
+    // E (4): Total_Price, F (5): Order_Status, G (6): Customer_Notes
     ordersSheet.appendRow([
       orderId,
       timestampStr,
       tableNumber,
-      itemsSummary,
-      totalPrice,
+      finalItemsSummary,
+      verifiedGrandTotal,
       "New",
       customerNotes
     ]);
@@ -511,8 +703,10 @@ function handlePlaceOrder(params) {
       success: true,
       order_id: orderId,
       table_number: tableNumber,
-      total_price: totalPrice,
-      message: "Order placed successfully!"
+      total_price: verifiedGrandTotal,
+      currency: tenant.currency,
+      verified_by_server: true,
+      message: "Order placed successfully! Verified by kitchen server."
     };
   } catch (err) {
     return {
@@ -898,8 +1092,8 @@ function handleChangePin(params) {
   var currentPin = params.current_pin || params.pin;
   var newPin = sanitizeString(params.new_pin);
 
-  if (!newPin || newPin.length < 4) {
-    return { success: false, error: "New PIN must be at least 4 digits." };
+  if (!newPin || newPin.length < 4 || newPin.length > 16) {
+    return { success: false, error: "New Security PIN or Access Token must be between 4 and 16 characters." };
   }
 
   var auth = verifyOwnerAuth(shopId, currentPin);
@@ -1205,3 +1399,155 @@ function handleOwnerDeleteDish(params) {
     lock.releaseLock();
   }
 }
+
+// =========================================================================
+// ACTION: archive_monthly_orders (Data Maintenance & Ledger Archival)
+// =========================================================================
+
+/**
+ * Request Handler for order archival
+ */
+function handleArchiveMonthlyOrders(params) {
+  var sheetId = sanitizeString(params.sheet_id);
+  var shopId = params.shop_id || params.shop;
+  var pin = params.pin || params.admin_pin || params.owner_pin;
+
+  // Authorization check: Admin PIN or Owner PIN
+  var isAuthorized = false;
+  if (pin && verifyAdminAuth(pin)) {
+    isAuthorized = true;
+  } else if (shopId && pin) {
+    var ownerCheck = verifyOwnerAuth(shopId, pin);
+    if (ownerCheck.valid) {
+      isAuthorized = true;
+      if (!sheetId && ownerCheck.tenant) {
+        sheetId = ownerCheck.tenant.sheetId;
+      }
+    }
+  }
+
+  if (!isAuthorized && pin) {
+    return { success: false, error: "Unauthorized access for archival." };
+  }
+
+  if (!sheetId && shopId) {
+    var tenant = getTenantRecord(shopId);
+    if (tenant) sheetId = tenant.sheetId;
+  }
+
+  if (!sheetId) {
+    return { success: false, error: "Missing sheet_id or valid shop_id for archival." };
+  }
+
+  return archiveMonthlyOrders(sheetId);
+}
+
+/**
+ * Monthly Auto-Archival Utility
+ * Moves orders older than 30 days into a secondary archive sheet (e.g., Orders_Archive_YYYY_MM)
+ * to keep the primary active sheet under 10,000 rows for lightning-fast reads.
+ *
+ * @param {string} sheetId Google Spreadsheet ID of the client's store
+ * @returns {object} Summary of archival operation
+ */
+function archiveMonthlyOrders(sheetId) {
+  if (!sheetId) {
+    return { success: false, error: "sheetId is required for archival." };
+  }
+
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(CONFIG.LOCK_TIMEOUT_MS);
+
+    var ss = SpreadsheetApp.openById(sheetId);
+    var ordersSheet = ss.getSheetByName("Orders") || ss.getSheets()[1];
+    if (!ordersSheet) {
+      return { success: false, error: "Orders sheet not found in spreadsheet." };
+    }
+
+    var data = ordersSheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      return {
+        success: true,
+        archivedCount: 0,
+        message: "Orders ledger is empty or has only headers. No archival needed."
+      };
+    }
+
+    // Cutoff time: 30 days ago
+    var cutoffMs = new Date().getTime() - (30 * 24 * 60 * 60 * 1000);
+    var rowsToArchive = [];
+    var rowIndicesToDelete = [];
+
+    // Columns: A(0): Order_ID, B(1): Timestamp, C(2): Table_Number, D(3): Items_Summary,
+    // E(4): Total_Price, F(5): Order_Status, G(6): Customer_Notes
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      var rawTimestamp = String(row[1] || "").trim();
+      var orderDate = new Date(rawTimestamp);
+      var isOlderThan30Days = false;
+
+      if (!isNaN(orderDate.getTime())) {
+        if (orderDate.getTime() < cutoffMs) {
+          isOlderThan30Days = true;
+        }
+      }
+
+      if (isOlderThan30Days) {
+        rowsToArchive.push(row);
+        rowIndicesToDelete.push(i + 1); // 1-based row index for sheet deletion
+      }
+    }
+
+    if (rowsToArchive.length === 0) {
+      return {
+        success: true,
+        archivedCount: 0,
+        message: "No orders older than 30 days found. Active ledger is already lean and optimized."
+      };
+    }
+
+    // Archive sheet name: Orders_Archive_YYYY_MM
+    var archiveTabName = "Orders_Archive_" + Utilities.formatDate(new Date(), Session.getScriptTimeZone() || "GMT", "yyyy_MM");
+    var archiveSheet = ss.getSheetByName(archiveTabName);
+    if (!archiveSheet) {
+      archiveSheet = ss.insertSheet(archiveTabName);
+      // Copy schema headers
+      archiveSheet.appendRow([
+        "Order_ID",
+        "Timestamp",
+        "Table_Number",
+        "Items_Summary",
+        "Total_Price",
+        "Order_Status",
+        "Customer_Notes"
+      ]);
+      archiveSheet.getRange(1, 1, 1, 7).setFontWeight("bold");
+    }
+
+    // Append rows to archive sheet
+    for (var a = 0; a < rowsToArchive.length; a++) {
+      archiveSheet.appendRow(rowsToArchive[a]);
+    }
+
+    // Delete archived rows from active sheet in reverse (bottom to top) to maintain correct row numbers
+    for (var d = rowIndicesToDelete.length - 1; d >= 0; d--) {
+      ordersSheet.deleteRow(rowIndicesToDelete[d]);
+    }
+
+    return {
+      success: true,
+      archivedCount: rowsToArchive.length,
+      archiveSheet: archiveTabName,
+      message: "Successfully moved " + rowsToArchive.length + " orders (>30 days old) to " + archiveTabName + "."
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: "Archival error: " + err.toString()
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+

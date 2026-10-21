@@ -9,6 +9,9 @@
   <link rel="icon" type="image/svg+xml" href="AU-dark-icon.svg">
   <!-- Lucide Vector Icons Library -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Client-side PDF & QR Code Engine (Thermal Invoicing & Quick-Pay) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -56,9 +59,9 @@
         </div>
 
         <div class="form-group" style="text-align: left;">
-          <label class="form-label" for="login-pin">4-Digit Security PIN</label>
+          <label class="form-label" for="login-pin">Security PIN / 8-Char Access Token</label>
           <div style="position:relative; display:flex; align-items:center;">
-            <input type="password" id="login-pin" class="form-input" placeholder="••••" maxlength="6" inputmode="numeric" required style="padding-right:42px;">
+            <input type="password" id="login-pin" class="form-input" placeholder="4-digit PIN or 8-char token" maxlength="16" inputmode="text" required style="padding-right:42px;">
             <button type="button" id="btn-toggle-pin-visibility" style="position:absolute; right:12px; background:none; border:none; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center;" title="Show/Hide PIN">
               <i data-lucide="eye" style="width:16px;height:16px;"></i>
             </button>
@@ -127,6 +130,10 @@
             <button class="cat-chip active" id="view-tab-orders" style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
               <i data-lucide="chef-hat" style="width:16px;height:16px;"></i>
               <span>Kitchen Tickets</span>
+            </button>
+            <button class="cat-chip" id="view-tab-history" style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
+              <i data-lucide="history" style="width:16px;height:16px;"></i>
+              <span>Order History &amp; Ledger</span>
             </button>
             <button class="cat-chip" id="view-tab-menu" style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
               <i data-lucide="utensils" style="width:16px;height:16px;"></i>
@@ -236,6 +243,118 @@
           </div>
         </div>
 
+        <!-- VIEW 3: Historical Order Ledger & Daily Reconciliation -->
+        <div id="section-history-view" style="display: none;">
+          <!-- Top Reconciliation Summary Metric Cards -->
+          <div class="history-metrics-grid">
+            <div class="history-metric-card">
+              <div class="history-metric-icon" style="background:#ECFDF5; color:#059669;">
+                <i data-lucide="indian-rupee" style="width:20px;height:20px;"></i>
+              </div>
+              <div class="history-metric-content">
+                <span class="history-metric-label">Total Daily Revenue</span>
+                <span class="history-metric-val" id="metric-total-revenue">₹0.00</span>
+              </div>
+            </div>
+
+            <div class="history-metric-card">
+              <div class="history-metric-icon" style="background:#EFF6FF; color:#2563EB;">
+                <i data-lucide="trending-up" style="width:20px;height:20px;"></i>
+              </div>
+              <div class="history-metric-content">
+                <span class="history-metric-label">Average Order Value (AOV)</span>
+                <span class="history-metric-val" id="metric-aov">₹0.00</span>
+              </div>
+            </div>
+
+            <div class="history-metric-card">
+              <div class="history-metric-icon" style="background:#F0FDF4; color:#16A34A;">
+                <i data-lucide="check-check" style="width:20px;height:20px;"></i>
+              </div>
+              <div class="history-metric-content">
+                <span class="history-metric-label">Orders Served</span>
+                <span class="history-metric-val" id="metric-orders-served">0</span>
+              </div>
+            </div>
+
+            <div class="history-metric-card">
+              <div class="history-metric-icon" style="background:#FFF1F2; color:#E11D48;">
+                <i data-lucide="x-circle" style="width:20px;height:20px;"></i>
+              </div>
+              <div class="history-metric-content">
+                <span class="history-metric-label">Cancelled / Void Orders</span>
+                <span class="history-metric-val" id="metric-orders-cancelled">0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- History Filter & Reconciliation Toolbar -->
+          <div class="history-toolbar">
+            <div class="history-filters-left">
+              <!-- Date Range Pills -->
+              <div class="date-range-pills" id="history-date-pills">
+                <button type="button" class="date-pill active" data-range="today">Today</button>
+                <button type="button" class="date-pill" data-range="yesterday">Yesterday</button>
+                <button type="button" class="date-pill" data-range="last7">Last 7 Days</button>
+                <button type="button" class="date-pill" data-range="month">This Month</button>
+                <button type="button" class="date-pill" data-range="custom">Custom Date</button>
+              </div>
+
+              <!-- Custom Date Pickers (hidden by default unless custom is clicked) -->
+              <div id="custom-date-container" style="display:none; align-items:center; gap:8px;">
+                <input type="date" id="history-start-date" class="form-input" style="padding:6px 10px; font-size:0.82rem; width:135px;">
+                <span style="color:var(--text-muted); font-size:0.8rem;">to</span>
+                <input type="date" id="history-end-date" class="form-input" style="padding:6px 10px; font-size:0.82rem; width:135px;">
+              </div>
+
+              <!-- Payment & Order Status Dropdown -->
+              <select id="history-status-filter" class="form-select" style="padding:7px 12px; font-size:0.82rem; width:auto; min-width:140px;">
+                <option value="all">All Statuses</option>
+                <option value="completed">Completed Orders</option>
+                <option value="pending">Pending / Live</option>
+                <option value="cancelled">Cancelled Orders</option>
+                <option value="refunded">Refunded Orders</option>
+              </select>
+            </div>
+
+            <div class="history-filters-right">
+              <!-- Live Search Box -->
+              <div style="position:relative; min-width:220px; flex:1;">
+                <input type="text" id="history-search-input" class="form-input" placeholder="Search Order ID, Table, Dish..." style="padding:8px 12px 8px 34px; font-size:0.84rem;">
+                <i data-lucide="search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--text-dim); pointer-events:none;"></i>
+              </div>
+
+              <!-- One-Click Export to CSV -->
+              <button type="button" class="btn-primary" id="btn-export-csv" style="display:inline-flex; align-items:center; gap:6px; padding:8px 14px; font-size:0.84rem; background:var(--brand-navy); white-space:nowrap;" title="Export Excel-ready CSV for daily reconciliation">
+                <i data-lucide="download" style="width:15px;height:15px;"></i>
+                <span>Export CSV</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Historical Order Ledger Table -->
+          <div class="admin-card" style="margin-bottom:0;">
+            <div class="data-table-wrap">
+              <table class="data-table" id="history-table">
+                <thead>
+                  <tr>
+                    <th style="width: 13%;">Order ID</th>
+                    <th style="width: 15%;">Timestamp</th>
+                    <th style="width: 9%;">Table</th>
+                    <th style="width: 33%;">Itemized Summary</th>
+                    <th style="width: 12%;">Grand Total</th>
+                    <th style="width: 11%;">Status</th>
+                    <th style="width: 16%; text-align: right;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="history-tbody">
+                  <!-- Dynamically populated rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
       </section>
 
     </div>
@@ -331,17 +450,26 @@
         <button class="btn-close-modal" id="btn-close-bill-modal">&times;</button>
       </div>
 
-      <!-- Bill Controls: Mode Switcher & Adjustments -->
+      <!-- Bill Controls: Mode Switcher, Paper Format & Adjustments -->
       <div class="bill-modal-toolbar">
-        <div class="bill-type-tabs">
-          <button type="button" class="bill-type-btn active" id="btn-bill-type-customer">
-            <i data-lucide="file-text" style="width:14px;height:14px;"></i>
-            <span>Customer Invoice</span>
-          </button>
-          <button type="button" class="bill-type-btn" id="btn-bill-type-kot">
-            <i data-lucide="chef-hat" style="width:14px;height:14px;"></i>
-            <span>Kitchen KOT</span>
-          </button>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; border-bottom:1px solid var(--border-subtle); padding-bottom:10px;">
+          <div class="bill-type-tabs" style="border-bottom:none; padding-bottom:0;">
+            <button type="button" class="bill-type-btn active" id="btn-bill-type-customer">
+              <i data-lucide="file-text" style="width:14px;height:14px;"></i>
+              <span>Customer Invoice</span>
+            </button>
+            <button type="button" class="bill-type-btn" id="btn-bill-type-kot">
+              <i data-lucide="chef-hat" style="width:14px;height:14px;"></i>
+              <span>Kitchen KOT</span>
+            </button>
+          </div>
+
+          <!-- Paper Roll Format Selector (58mm vs 80mm) -->
+          <div class="bill-paper-selector" style="display:flex; align-items:center; gap:6px;">
+            <span style="font-size:0.75rem; font-weight:600; color:var(--text-muted);">Paper Roll:</span>
+            <button type="button" class="btn-paper-toggle active" id="btn-paper-58mm" data-width="58mm">58mm (Default)</button>
+            <button type="button" class="btn-paper-toggle" id="btn-paper-80mm" data-width="80mm">80mm (Wide)</button>
+          </div>
         </div>
 
         <div class="bill-options-row">
@@ -355,11 +483,11 @@
             </select>
           </div>
 
-          <div class="form-group" style="margin-bottom:0; width:100px;">
-            <label class="form-label" style="font-size:0.74rem;">Tax / GST</label>
+          <div class="form-group" style="margin-bottom:0; width:110px;">
+            <label class="form-label" style="font-size:0.74rem;">Taxes (GST)</label>
             <select id="bill-tax-rate" class="form-select" style="padding:6px 10px; font-size:0.82rem;">
               <option value="0">0% (None)</option>
-              <option value="5" selected>5% GST</option>
+              <option value="5" selected>5% (CGST+SGST)</option>
               <option value="12">12% GST</option>
               <option value="18">18% GST</option>
             </select>
@@ -374,27 +502,83 @@
 
       <!-- Live Receipt Thermal Preview -->
       <div class="bill-preview-container">
-        <div id="bill-preview-card" class="bill-thermal-card">
+        <div id="bill-preview-card" class="bill-thermal-card paper-58mm">
           <!-- Dynamically populated thermal receipt -->
         </div>
       </div>
 
-      <!-- Modal Footer with Actions -->
-      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-top:16px;">
-        <button type="button" class="btn-secondary" id="btn-bill-whatsapp" style="display:flex; align-items:center; gap:6px;">
-          <svg style="width:15px;height:15px;fill:#25D366;" viewBox="0 0 24 24"><path d="M17.472 14.382c-.301-.15-1.78-.879-2.056-.98-.276-.1-.477-.15-.678.15-.2.301-.778.98-.954 1.18-.175.2-.351.226-.652.075-.301-.15-1.272-.469-2.423-1.496-.896-.799-1.501-1.787-1.677-2.088-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.175.2-.301.301-.501.1-.2.05-.376-.025-.526-.075-.15-.678-1.635-.93-2.24-.244-.589-.493-.509-.678-.519-.175-.01-.376-.01-.577-.01-.2 0-.527.075-.803.376s-1.054 1.029-1.054 2.509 1.079 2.909 1.23 3.109c.15.2 2.124 3.243 5.145 4.549.719.311 1.28.497 1.718.636.722.23 1.378.197 1.898.12.579-.086 1.78-.727 2.031-1.429.251-.702.251-1.304.176-1.429-.076-.126-.276-.201-.577-.352z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.891.524 3.662 1.435 5.179L2 22l4.981-1.399A9.957 9.957 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18.053c-1.63 0-3.14-.476-4.417-1.298l-.317-.202-3.238.91.928-3.125-.213-.332A8.04 8.04 0 0 1 3.947 12C3.947 7.559 7.559 3.947 12 3.947c4.441 0 8.053 3.612 8.053 8.053 0 4.441-3.612 8.053-8.053 8.053z"/></svg>
-          <span>Share WhatsApp</span>
-        </button>
-        <div style="display:flex; gap:8px;">
-          <button type="button" class="btn-secondary" id="btn-cancel-bill-modal">Close</button>
+      <!-- Modal Footer with Multi-Action Printing, PDF & WhatsApp -->
+      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-top:16px;">
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button type="button" class="btn-secondary" id="btn-bill-whatsapp" style="display:flex; align-items:center; gap:6px;">
+            <svg style="width:15px;height:15px;fill:#25D366;" viewBox="0 0 24 24"><path d="M17.472 14.382c-.301-.15-1.78-.879-2.056-.98-.276-.1-.477-.15-.678.15-.2.301-.778.98-.954 1.18-.175.2-.351.226-.652.075-.301-.15-1.272-.469-2.423-1.496-.896-.799-1.501-1.787-1.677-2.088-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.175.2-.301.301-.501.1-.2.05-.376-.025-.526-.075-.15-.678-1.635-.93-2.24-.244-.589-.493-.509-.678-.519-.175-.01-.376-.01-.577-.01-.2 0-.527.075-.803.376s-1.054 1.029-1.054 2.509 1.079 2.909 1.23 3.109c.15.2 2.124 3.243 5.145 4.549.719.311 1.28.497 1.718.636.722.23 1.378.197 1.898.12.579-.086 1.78-.727 2.031-1.429.251-.702.251-1.304.176-1.429-.076-.126-.276-.201-.577-.352z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.891.524 3.662 1.435 5.179L2 22l4.981-1.399A9.957 9.957 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18.053c-1.63 0-3.14-.476-4.417-1.298l-.317-.202-3.238.91.928-3.125-.213-.332A8.04 8.04 0 0 1 3.947 12C3.947 7.559 7.559 3.947 12 3.947c4.441 0 8.053 3.612 8.053 8.053 0 4.441-3.612 8.053-8.053 8.053z"/></svg>
+            <span>WhatsApp</span>
+          </button>
+          <button type="button" class="btn-secondary" id="btn-bill-download-pdf" style="display:flex; align-items:center; gap:6px;" title="Download Branded PDF Tax Invoice">
+            <i data-lucide="file-down" style="width:15px;height:15px;color:var(--primary);"></i>
+            <span>PDF Invoice</span>
+          </button>
+        </div>
+
+        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+          <button type="button" class="btn-secondary" id="btn-bill-bluetooth" style="display:flex; align-items:center; gap:5px;" title="Stream raw ESC/POS commands via Web Bluetooth">
+            <i data-lucide="bluetooth" style="width:14px;height:14px;color:#3B82F6;"></i>
+            <span>Bluetooth</span>
+          </button>
+          <button type="button" class="btn-secondary" id="btn-bill-usb" style="display:flex; align-items:center; gap:5px;" title="Stream raw ESC/POS commands via WebUSB">
+            <i data-lucide="usb" style="width:14px;height:14px;color:#8B5CF6;"></i>
+            <span>USB</span>
+          </button>
           <button type="button" class="btn-primary" id="btn-trigger-print" style="display:flex; align-items:center; gap:6px; background:var(--accent-emerald);">
-            <i data-lucide="printer" style="width:16px;height:16px;"></i>
+            <i data-lucide="printer" style="width:15px;height:15px;"></i>
             <span>Print Receipt</span>
           </button>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- Customer WhatsApp DPDP Consent Dialog Modal -->
+  <div class="modal-backdrop" id="whatsapp-consent-modal" role="dialog" aria-modal="true">
+    <div class="modal-popup" style="max-width: 420px; text-align: left;">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <svg style="width:20px;height:20px;fill:#25D366;" viewBox="0 0 24 24"><path d="M17.472 14.382c-.301-.15-1.78-.879-2.056-.98-.276-.1-.477-.15-.678.15-.2.301-.778.98-.954 1.18-.175.2-.351.226-.652.075-.301-.15-1.272-.469-2.423-1.496-.896-.799-1.501-1.787-1.677-2.088-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.175.2-.301.301-.501.1-.2.05-.376-.025-.526-.075-.15-.678-1.635-.93-2.24-.244-.589-.493-.509-.678-.519-.175-.01-.376-.01-.577-.01-.2 0-.527.075-.803.376s-1.054 1.029-1.054 2.509 1.079 2.909 1.23 3.109c.15.2 2.124 3.243 5.145 4.549.719.311 1.28.497 1.718.636.722.23 1.378.197 1.898.12.579-.086 1.78-.727 2.031-1.429.251-.702.251-1.304.176-1.429-.076-.126-.276-.201-.577-.352z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.891.524 3.662 1.435 5.179L2 22l4.981-1.399A9.957 9.957 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18.053c-1.63 0-3.14-.476-4.417-1.298l-.317-.202-3.238.91.928-3.125-.213-.332A8.04 8.04 0 0 1 3.947 12C3.947 7.559 7.559 3.947 12 3.947c4.441 0 8.053 3.612 8.053 8.053 0 4.441-3.612 8.053-8.053 8.053z"/></svg>
+          <h2 class="modal-title" style="font-size:1.15rem;">Send WhatsApp Invoice</h2>
+        </div>
+        <button class="btn-close-modal" id="btn-close-wa-consent">&times;</button>
+      </div>
+
+      <form id="wa-consent-form" onsubmit="return false;" style="margin-top:12px;">
+        <div class="form-group">
+          <label class="form-label" for="wa-customer-phone">Customer Phone Number *</label>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="background:var(--bg-subtle); border:1px solid var(--border-subtle); padding:8px 12px; border-radius:var(--radius-sm); font-size:0.86rem; font-weight:600; color:var(--text-muted);">+91</span>
+            <input type="tel" id="wa-customer-phone" class="form-input" placeholder="9876543210" maxlength="12" required style="flex:1;">
+          </div>
+        </div>
+
+        <!-- Explicit DPDP Consent Compliance Tag -->
+        <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:var(--radius-sm); padding:10px 12px; margin-bottom:16px;">
+          <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer; font-size:0.78rem; color:#166534; line-height:1.4;">
+            <input type="checkbox" id="chk-dpdp-consent" checked style="margin-top:2px; accent-color:#16A34A; cursor:pointer;">
+            <span><strong>DPDP Consent Tag:</strong> Customer explicitly consented to receive their digital tax invoice and dining receipt via WhatsApp.</span>
+          </label>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:8px;">
+          <button type="button" class="btn-secondary" id="btn-cancel-wa-consent">Cancel</button>
+          <button type="submit" class="btn-primary" id="btn-confirm-wa-send" style="background:#25D366; display:flex; align-items:center; gap:6px;">
+            <i data-lucide="send" style="width:15px;height:15px;"></i>
+            <span>Dispatch WhatsApp</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Dedicated Isolated Iframe for Zero-Margin Thermal Printing -->
+  <iframe id="isolated-print-frame" style="position:fixed; right:100vw; bottom:100vh; width:0; height:0; border:0;" aria-hidden="true"></iframe>
 
   <!-- Change PIN Modal -->
   <div class="modal-backdrop" id="change-pin-modal" role="dialog" aria-modal="true">

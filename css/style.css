@@ -1555,16 +1555,30 @@ button, input, select, textarea {
   letter-spacing: 0.03em;
 }
 
-.status-badge.active {
+.status-badge.active,
+.status-badge.completed {
   background: var(--accent-emerald-light);
   color: var(--accent-emerald);
   border: 1px solid var(--accent-emerald-border);
 }
 
-.status-badge.suspended {
+.status-badge.pending {
+  background: #FEF3C7;
+  color: #B45309;
+  border: 1px solid #FDE68A;
+}
+
+.status-badge.suspended,
+.status-badge.cancelled {
   background: var(--accent-rose-light);
   color: var(--accent-rose);
   border: 1px solid var(--accent-rose-border);
+}
+
+.status-badge.refunded {
+  background: #F3E8FF;
+  color: #7E22CE;
+  border: 1px solid #E9D5FF;
 }
 
 /* Table sync progress indicator */
@@ -2005,11 +2019,35 @@ body > main {
   align-items: flex-end;
 }
 
+/* Paper Roll Selector Buttons */
+.btn-paper-toggle {
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.74rem;
+  font-weight: 600;
+  border: 1px solid var(--border-subtle);
+  background: #FFFFFF;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-paper-toggle:hover {
+  background: #F1F5F9;
+  color: var(--brand-navy);
+}
+
+.btn-paper-toggle.active {
+  background: var(--brand-navy);
+  color: #FFFFFF;
+  border-color: var(--brand-navy);
+}
+
 /* Scrollable Preview Area */
 .bill-preview-container {
   overflow-y: auto;
   max-height: 52vh;
-  padding: 10px 4px;
+  padding: 14px 6px;
   display: flex;
   justify-content: center;
   background: #F8FAFC;
@@ -2017,19 +2055,63 @@ body > main {
   border-radius: var(--radius-sm);
 }
 
-/* Thermal Paper Card Simulation (On-Screen) */
+/* Thermal Paper Card Simulation (58mm vs 80mm POS Roll Formats) */
 .bill-thermal-card {
-  width: 100%;
-  max-width: 380px;
   background: #FFFFFF;
   border: 1px dashed #CBD5E1;
   border-radius: 4px;
-  padding: 22px 18px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
   font-family: 'SF Mono', 'Courier New', Courier, Menlo, monospace;
+  color: #0F172A;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+/* 58mm Default Roll Paper Simulation (~48mm printable width) */
+.bill-thermal-card.paper-58mm {
+  width: 270px;
+  max-width: 100%;
+  padding: 16px 12px;
+  font-size: 10.5px;
+  line-height: 1.35;
+}
+
+/* 80mm Wide Roll Paper Simulation (~72mm printable width) */
+.bill-thermal-card.paper-80mm {
+  width: 380px;
+  max-width: 100%;
+  padding: 22px 18px;
   font-size: 11.5px;
   line-height: 1.4;
-  color: #0F172A;
+}
+
+.receipt-qr-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 10px 0 6px;
+}
+
+.receipt-qr-code {
+  width: 90px;
+  height: 90px;
+  padding: 4px;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.receipt-qr-caption {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #334155;
+  margin-top: 4px;
+  text-transform: uppercase;
 }
 
 /* Thermal Receipt Internal Elements */
@@ -2168,12 +2250,144 @@ body > main {
 }
 
 /* =========================================================================
-   STRICT PRINT-SPECIFIC CSS RULES (@media print)
+   HISTORICAL ORDER LEDGER & RECONCILIATION UI STYLES
+   ========================================================================= */
+.history-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 992px) {
+  .history-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 540px) {
+  .history-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.history-metric-card {
+  background: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: var(--shadow-xs);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.history-metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.history-metric-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.history-metric-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.history-metric-label {
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.history-metric-val {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--brand-navy);
+  letter-spacing: -0.01em;
+}
+
+.history-toolbar {
+  background: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.history-filters-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.history-filters-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  max-width: 440px;
+  justify-content: flex-end;
+}
+
+.date-range-pills {
+  display: flex;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  padding: 3px;
+  gap: 2px;
+}
+
+.date-pill {
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.date-pill:hover {
+  color: var(--brand-navy);
+}
+
+.date-pill.active {
+  background: #FFFFFF;
+  color: var(--brand-navy);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* =========================================================================
+   STRICT THERMAL PRINT-SPECIFIC CSS RULES (@media print)
+   Zero Page Margins (@page { margin: 0; }) for Continuous POS Paper
    ========================================================================= */
 @media print {
   @page {
-    size: 80mm auto;
-    margin: 2mm 3mm;
+    margin: 0 !important;
+    size: auto;
   }
 
   /* Reset body and html for printer */
@@ -2214,10 +2428,8 @@ body > main {
   }
 
   #printable-receipt {
-    width: 72mm !important;
-    max-width: 78mm !important;
     margin: 0 auto !important;
-    padding: 2mm 3mm !important;
+    padding: 0 2mm !important;
     background: #FFFFFF !important;
     color: #000000 !important;
     font-family: 'Courier New', Courier, 'Lucida Console', Monaco, monospace !important;
@@ -2225,6 +2437,20 @@ body > main {
     line-height: 1.35 !important;
     box-shadow: none !important;
     border: none !important;
+  }
+
+  /* 58mm Paper Roll Output */
+  #printable-receipt.paper-58mm {
+    width: 48mm !important;
+    max-width: 54mm !important;
+    font-size: 10px !important;
+  }
+
+  /* 80mm Paper Roll Output */
+  #printable-receipt.paper-80mm {
+    width: 72mm !important;
+    max-width: 78mm !important;
+    font-size: 11.5px !important;
   }
 
   #printable-receipt .receipt-divider {
