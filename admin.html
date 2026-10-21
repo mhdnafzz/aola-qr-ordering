@@ -6,13 +6,16 @@
   <title>AOLA - Agency Master Admin</title>
   <meta name="description" content="Central multi-tenant administration portal for AOLA QR SaaS agency.">
   <link rel="stylesheet" href="css/style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="AU.svg">
 </head>
 <body>
 
   <!-- Quick Portal Switcher & Navigation Header -->
   <header class="portal-nav-bar" id="portal-bar">
-    <div style="font-weight:700;color:var(--primary);">🛡️ Agency Master Console</div>
+    <div style="display:flex;align-items:center;gap:10px;font-weight:700;color:var(--primary);">
+      <img src="AU.svg" alt="AOLA Logo" class="portal-brand-logo">
+      <span>Agency Master Console</span>
+    </div>
     <nav class="portal-nav-links">
       <a href="./" class="portal-nav-link">📱 Customer Menu</a>
       <a href="./owner.html" class="portal-nav-link">👨‍🍳 Kitchen</a>
@@ -23,7 +26,7 @@
   <!-- Admin Master PIN Login Overlay -->
   <div class="modal-backdrop open" id="admin-login-overlay" role="dialog" aria-modal="true">
     <div class="modal-popup" style="max-width: 380px; text-align: center;">
-      <div style="font-size: 2.5rem; margin-bottom: 10px;">🛡️</div>
+      <img src="AU.svg" alt="AOLA Logo" class="auth-modal-logo">
       <h2 style="font-size: 1.4rem; margin-bottom: 6px;">Agency Master Admin</h2>
       <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 20px;">
         Enter master agency PIN to manage client sheets, onboarding, and access control.
@@ -56,6 +59,7 @@
     <header class="owner-header">
       <div>
         <div style="display: flex; align-items: center; gap: 10px;">
+          <img src="AU.svg" alt="AOLA Logo" style="height:34px;width:auto;border-radius:8px;background:#fff;padding:2px 6px;">
           <h1 style="font-size: 1.6rem;">AOLA Multi-Tenant Console</h1>
           <span class="status-badge active" style="font-size: 0.72rem;">Master View</span>
         </div>
@@ -299,7 +303,7 @@
     <div class="aola-footer-container">
       <div class="aola-footer-brand">
         <a href="https://wa.me/919847054970?text=Hi%20AOLA%20Team,%20I%20saw%20your%20QR%20Ordering%20system%20and%20want%20this%20for%20my%20restaurant" target="_blank" rel="noopener noreferrer" class="aola-brand-pill" title="Get AOLA Smart QR Ordering for your restaurant">
-          <span class="aola-bolt">⚡</span>
+          <img src="AU.svg" alt="AOLA" class="aola-pill-logo">
           <span>Powered by <strong class="aola-brand-name">AOLA</strong> — Smart QR Ordering</span>
           <span class="aola-brand-tag">Get for your restaurant &rarr;</span>
         </a>

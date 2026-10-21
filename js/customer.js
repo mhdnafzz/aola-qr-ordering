@@ -181,7 +181,7 @@
       if (state.shopData.logoUrl) {
         el.brandLogoContainer.innerHTML = `<img src="${escapeHtml(state.shopData.logoUrl)}" alt="${escapeHtml(state.shopData.name)} logo">`;
       } else {
-        el.brandLogoContainer.innerHTML = `<div style="font-size:2rem;">🍽️</div>`;
+        el.brandLogoContainer.innerHTML = `<img src="AU.svg" alt="AOLA Logo" style="width:100%;height:100%;object-fit:contain;background:#fff;padding:4px;border-radius:inherit;">`;
       }
 
       // Render Categories & Menu Feed
