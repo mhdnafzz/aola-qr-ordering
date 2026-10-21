@@ -3,61 +3,75 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AOLA - Kitchen & Owner Dashboard</title>
+  <title>AOLA - Kitchen &amp; Owner Dashboard</title>
   <meta name="description" content="Real-time live kitchen display system and ticket manager for restaurant owners.">
   <link rel="stylesheet" href="css/style.css">
-  <link rel="icon" type="image/svg+xml" href="AU-icon.svg">
+  <link rel="icon" type="image/svg+xml" href="AU-dark-icon.svg">
+  <!-- Lucide Vector Icons Library -->
+  <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
 
   <!-- Quick Portal Switcher & Navigation Header -->
   <header class="portal-nav-bar" id="portal-bar">
-    <div style="display:flex;align-items:center;gap:10px;font-weight:700;color:#fff;">
-      <img src="AU.svg" alt="AOLA Logo" class="portal-brand-logo">
+    <div class="portal-brand-wrap">
+      <img src="AU-dark.svg" alt="AOLA Logo" class="portal-brand-logo">
       <span>Kitchen Ticket Display</span>
     </div>
     <nav class="portal-nav-links">
-      <a href="./" class="portal-nav-link" id="nav-link-menu">📱 Customer Menu</a>
-      <a href="./owner.html" class="portal-nav-link active">👨‍🍳 Kitchen</a>
-      <a href="./admin.html" class="portal-nav-link">🛡️ Admin</a>
+      <a href="./" class="portal-nav-link" id="nav-link-menu">
+        <i data-lucide="smartphone"></i>
+        <span>Customer Menu</span>
+      </a>
+      <a href="./owner.html" class="portal-nav-link active">
+        <i data-lucide="chef-hat"></i>
+        <span>Kitchen</span>
+      </a>
+      <a href="./hq.html" class="portal-nav-link">
+        <i data-lucide="shield-check"></i>
+        <span>Admin HQ</span>
+      </a>
     </nav>
   </header>
 
   <!-- Login Overlay (Required Auth with Shop ID + PIN) -->
   <div class="modal-backdrop open" id="login-overlay" role="dialog" aria-modal="true">
-    <div class="modal-popup" style="max-width: 400px; text-align: center;">
-      <img src="AU.svg" alt="AOLA Logo" class="auth-modal-logo">
-      <h2 style="font-size: 1.4rem; margin-bottom: 6px;">Kitchen Login</h2>
-      <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 22px;">
+    <div class="modal-popup" style="max-width: 420px; text-align: center;">
+      <img src="AU-dark.svg" alt="AOLA Logo" class="auth-modal-logo" style="height:44px;margin-bottom:14px;">
+      <h2 style="font-size: 1.35rem; font-weight: 700; color: var(--brand-navy); margin-bottom: 6px;">Kitchen Login</h2>
+      <p style="color: var(--text-muted); font-size: 0.86rem; margin-bottom: 20px;">
         Enter your Restaurant ID and 4-digit security PIN to access live kitchen orders.
       </p>
 
       <form id="owner-login-form" onsubmit="return false;">
         <div class="form-group" style="text-align: left;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <label class="form-label" for="login-shop-id" style="margin-bottom:0;">Shop ID</label>
+            <label class="form-label" for="login-shop-id" style="margin-bottom:0;">Restaurant ID</label>
             <div style="display:flex; gap:6px;">
-              <button type="button" class="btn-secondary" style="padding:2px 8px;font-size:0.7rem;" onclick="document.getElementById('login-shop-id').value='bismillah';">bismillah</button>
-              <button type="button" class="btn-secondary" style="padding:2px 8px;font-size:0.7rem;" onclick="document.getElementById('login-shop-id').value='kfc';">kfc</button>
+              <button type="button" class="btn-secondary" style="padding:2px 8px;font-size:0.72rem;" onclick="document.getElementById('login-shop-id').value='bismillah';">bismillah</button>
+              <button type="button" class="btn-secondary" style="padding:2px 8px;font-size:0.72rem;" onclick="document.getElementById('login-shop-id').value='kfc';">kfc</button>
             </div>
           </div>
           <input type="text" id="login-shop-id" class="form-input" value="bismillah" placeholder="e.g. bismillah" required>
         </div>
 
         <div class="form-group" style="text-align: left;">
-          <label class="form-label" for="login-pin">4-Digit Owner PIN</label>
+          <label class="form-label" for="login-pin">4-Digit Security PIN</label>
           <div style="position:relative; display:flex; align-items:center;">
-            <input type="password" id="login-pin" class="form-input" placeholder="••••" maxlength="6" inputmode="numeric" required style="padding-right:40px;">
-            <button type="button" id="btn-toggle-pin-visibility" style="position:absolute; right:10px; background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.1rem;" title="Show/Hide PIN">👁️</button>
+            <input type="password" id="login-pin" class="form-input" placeholder="••••" maxlength="6" inputmode="numeric" required style="padding-right:42px;">
+            <button type="button" id="btn-toggle-pin-visibility" style="position:absolute; right:12px; background:none; border:none; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center;" title="Show/Hide PIN">
+              <i data-lucide="eye" style="width:16px;height:16px;"></i>
+            </button>
           </div>
         </div>
 
-        <button type="submit" class="btn-primary" id="btn-login-submit" style="margin-top: 8px;">
+        <button type="submit" class="btn-primary" id="btn-login-submit" style="margin-top: 10px;">
+          <i data-lucide="unlock" style="width:17px;height:17px;"></i>
           <span>Unlock Kitchen Display</span>
         </button>
 
-        <div style="margin-top:14px; font-size:0.75rem; color:var(--text-dim); text-align:center;">
-          Having trouble? <a href="javascript:void(0)" onclick="localStorage.removeItem('AOLA_BACKEND_URL'); sessionStorage.clear(); location.reload();" style="color:var(--primary); text-decoration:underline;">Reset Local Cache & Reload</a>
+        <div style="margin-top:16px; font-size:0.76rem; color:var(--text-muted); text-align:center;">
+          Need a fresh start? <a href="javascript:void(0)" onclick="localStorage.removeItem('AOLA_BACKEND_URL'); sessionStorage.clear(); location.reload();" style="color:var(--primary); font-weight:600; text-decoration:underline;">Reset Local Cache &amp; Reload</a>
         </div>
       </form>
     </div>
@@ -69,108 +83,157 @@
     <!-- Top Header Bar -->
     <header class="owner-header">
       <div>
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
-          <h1 id="owner-shop-name" style="font-size: 1.6rem;">Kitchen Display</h1>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px; flex-wrap: wrap;">
+          <h1 id="owner-shop-name" style="font-size: 1.55rem; font-weight: 700; color: var(--brand-navy);">Kitchen Display</h1>
           <span class="live-indicator" id="poll-indicator">Live Sync (15s)</span>
         </div>
-        <div style="font-size: 0.85rem; color: var(--text-muted);">
+        <div style="font-size: 0.84rem; color: var(--text-muted);">
           Logged in as: <strong id="owner-shop-tag" style="color: var(--primary);">@shop</strong> &bull;
           <span id="last-sync-time">Last updated: Just now</span>
         </div>
       </div>
 
-      <div style="display: flex; gap: 10px; align-items: center;">
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
         <button class="btn-secondary" id="btn-manual-refresh" title="Refresh orders now">
-          🔄 Refresh
+          <i data-lucide="refresh-cw" style="width:15px;height:15px;"></i>
+          <span>Refresh</span>
         </button>
         <button class="btn-secondary" id="btn-open-change-pin" title="Change Security PIN">
-          🔑 Change PIN
+          <i data-lucide="key-round" style="width:15px;height:15px;"></i>
+          <span>Change PIN</span>
         </button>
         <button class="btn-danger" id="btn-logout" title="Log out of dashboard">
-          Logout
+          <i data-lucide="log-out" style="width:15px;height:15px;"></i>
+          <span>Logout</span>
         </button>
       </div>
     </header>
 
-    <!-- View Switcher (Tickets vs Menu Catalog) -->
-    <div style="display: flex; gap: 10px; margin-bottom: 22px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
-      <div style="display: flex; gap: 8px;">
-        <button class="cat-chip active" id="view-tab-orders" style="padding: 8px 18px; font-size: 0.92rem; font-weight: 600;">
-          👨‍🍳 Kitchen Tickets
-        </button>
-        <button class="cat-chip" id="view-tab-menu" style="padding: 8px 18px; font-size: 0.92rem; font-weight: 600;">
-          📋 Menu Manager (<span id="count-menu-items">0</span>)
-        </button>
-      </div>
+    <!-- Visual Split-Screen Layout -->
+    <div class="kds-split-layout">
+      
+      <!-- Left Sidebar: Controls, Metrics & Filters -->
+      <aside class="kds-sidebar">
+        <!-- View Switcher -->
+        <div>
+          <div style="font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px;">
+            Navigation Views
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <button class="cat-chip active" id="view-tab-orders" style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
+              <i data-lucide="chef-hat" style="width:16px;height:16px;"></i>
+              <span>Kitchen Tickets</span>
+            </button>
+            <button class="cat-chip" id="view-tab-menu" style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
+              <i data-lucide="utensils" style="width:16px;height:16px;"></i>
+              <span>Menu Manager (<span id="count-menu-items">0</span>)</span>
+            </button>
+          </div>
+        </div>
 
-      <div id="menu-view-actions" style="display: none; gap: 8px;">
-        <button class="btn-secondary" id="btn-refresh-menu" style="padding: 7px 14px; font-size: 0.85rem;" title="Refresh menu from Google Sheet">
-          🔄 Sync Menu
-        </button>
-        <button class="btn-primary" id="btn-open-add-dish" style="width: auto; padding: 7px 16px; font-size: 0.88rem;">
-          + Add New Dish
-        </button>
-      </div>
-    </div>
+        <!-- Ticket Filter Quick Stats -->
+        <div id="sidebar-order-filters">
+          <div style="font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px;">
+            Ticket Filters
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <button class="cat-chip active" id="tab-pending" style="width: 100%; justify-content: space-between; padding: 10px 14px;">
+              <span style="display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="clock-3" style="width:15px;height:15px;"></i>
+                <span>Pending Orders</span>
+              </span>
+              <span id="count-pending" style="background:var(--primary); color:#fff; padding:2px 8px; border-radius:9999px; font-size:0.75rem; font-weight:700;">0</span>
+            </button>
+            <button class="cat-chip" id="tab-completed" style="width: 100%; justify-content: space-between; padding: 10px 14px;">
+              <span style="display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="check-circle-2" style="width:15px;height:15px;"></i>
+                <span>Completed</span>
+              </span>
+              <span id="count-completed" style="background:var(--bg-subtle); color:var(--text-muted); padding:2px 8px; border-radius:9999px; font-size:0.75rem; font-weight:700;">0</span>
+            </button>
+          </div>
+        </div>
 
-    <!-- VIEW 1: Live Kitchen Tickets -->
-    <div id="section-orders-view">
-      <!-- Filter Tabs (Pending vs All/Completed) -->
-      <nav style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 14px;">
-        <div style="display: flex; gap: 8px;">
-          <button class="cat-chip active" id="tab-pending">
-            Pending Orders (<span id="count-pending">0</span>)
+        <!-- Audio Alert Preference -->
+        <div style="background: var(--bg-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 12px 14px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <i data-lucide="volume-2" style="width:18px;height:18px;color:var(--primary);"></i>
+            <div style="flex: 1;">
+              <label for="chk-audio" style="font-size: 0.84rem; font-weight: 600; color: var(--brand-navy); cursor: pointer; display: block;">
+                Order Audio Chime
+              </label>
+              <span style="font-size: 0.74rem; color: var(--text-muted);">Play chime on new order</span>
+            </div>
+            <input type="checkbox" id="chk-audio" checked style="accent-color: var(--primary); width:16px; height:16px; cursor: pointer;">
+          </div>
+        </div>
+
+        <!-- Menu View Specific Actions -->
+        <div id="menu-view-actions" style="display: none; flex-direction: column; gap: 8px;">
+          <div style="font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 2px;">
+            Menu Actions
+          </div>
+          <button class="btn-primary" id="btn-open-add-dish" style="width: 100%; font-size: 0.86rem; padding: 10px 14px;">
+            <i data-lucide="plus" style="width:16px;height:16px;"></i>
+            <span>Add New Dish</span>
           </button>
-          <button class="cat-chip" id="tab-completed">
-            Completed History (<span id="count-completed">0</span>)
+          <button class="btn-secondary" id="btn-refresh-menu" style="width: 100%; font-size: 0.84rem; padding: 8px 14px;" title="Refresh menu from Google Sheet">
+            <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>
+            <span>Sync Google Sheet</span>
           </button>
         </div>
 
-        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-muted);">
-          <input type="checkbox" id="chk-audio" checked style="accent-color: var(--primary); cursor: pointer;">
-          <label for="chk-audio" style="cursor: pointer;">Sound alert on new order</label>
-        </div>
-      </nav>
+      </aside>
 
-      <!-- Live Ticket Grid -->
-      <section class="ticket-grid" id="ticket-grid">
-        <!-- Dynamically filled with order cards -->
+      <!-- Central Content Panel: Orders / Menu Manager -->
+      <section class="kds-content">
+        
+        <!-- VIEW 1: Live Kitchen Tickets -->
+        <div id="section-orders-view">
+          <!-- Live Ticket Grid -->
+          <section class="ticket-grid" id="ticket-grid">
+            <!-- Dynamically filled with order cards -->
+          </section>
+        </div>
+
+        <!-- VIEW 2: Restaurant Menu Manager -->
+        <div id="section-menu-view" style="display: none;">
+          <!-- Search & Category Filters -->
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 20px; flex-wrap: wrap;">
+            <div style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;" id="owner-menu-cats">
+              <!-- Dynamically populated category chips -->
+            </div>
+
+            <div style="position: relative; min-width: 240px; flex: 1; max-width: 320px;">
+              <input type="text" id="owner-menu-search" class="form-input" placeholder="Search menu dishes..." style="padding: 8px 14px 8px 36px; font-size: 0.86rem;">
+              <i data-lucide="search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--text-dim); pointer-events:none;"></i>
+            </div>
+          </div>
+
+          <!-- Menu Items Table -->
+          <div class="admin-card" style="margin-bottom: 0;">
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th style="width: 35%;">Dish Details</th>
+                    <th style="width: 15%;">Category</th>
+                    <th style="width: 12%;">Type</th>
+                    <th style="width: 12%;">Price</th>
+                    <th style="width: 12%;">Availability</th>
+                    <th style="width: 14%; text-align: right;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="owner-menu-tbody">
+                  <!-- Dynamically populated dish rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
       </section>
-    </div>
 
-    <!-- VIEW 2: Restaurant Menu Manager -->
-    <div id="section-menu-view" style="display: none;">
-      <!-- Search & Category Filters -->
-      <div style="display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 20px; flex-wrap: wrap;">
-        <div style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;" id="owner-menu-cats">
-          <!-- Dynamically populated category chips -->
-        </div>
-
-        <div style="position: relative; min-width: 240px;">
-          <input type="text" id="owner-menu-search" class="form-input" placeholder="🔍 Search menu dishes..." style="padding: 8px 14px; font-size: 0.85rem;">
-        </div>
-      </div>
-
-      <!-- Menu Items Table -->
-      <div class="card" style="padding: 0; overflow: hidden; border: 1px solid var(--border-subtle);">
-        <div style="overflow-x: auto;">
-          <table class="data-table" style="width: 100%; border-collapse: collapse;">
-            <thead>
-              <tr>
-                <th style="width: 35%;">Dish Details</th>
-                <th style="width: 15%;">Category</th>
-                <th style="width: 12%;">Type</th>
-                <th style="width: 12%;">Price</th>
-                <th style="width: 12%;">Availability</th>
-                <th style="width: 14%; text-align: right;">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="owner-menu-tbody">
-              <!-- Dynamically populated dish rows -->
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
 
   </main>
@@ -214,28 +277,29 @@
 
         <div class="form-group">
           <label class="form-label" for="dish-form-desc">Description (Optional)</label>
-          <textarea id="dish-form-desc" class="form-input" rows="2" placeholder="Ingredients, taste, spice level..." style="resize: vertical;"></textarea>
+          <textarea id="dish-form-desc" class="form-textarea" rows="2" placeholder="Ingredients, taste, spice level..."></textarea>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px;">
           <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label">Dietary Preference</label>
-            <select id="dish-form-is-veg" class="form-input">
-              <option value="false">🔴 Non-Vegetarian</option>
-              <option value="true">🟢 Vegetarian</option>
+            <select id="dish-form-is-veg" class="form-select">
+              <option value="false">Non-Vegetarian</option>
+              <option value="true">Vegetarian</option>
             </select>
           </div>
 
           <div class="form-group" style="margin-bottom: 0;">
             <label class="form-label">Stock Status</label>
-            <select id="dish-form-in-stock" class="form-input">
-              <option value="true">✅ In Stock (Available)</option>
-              <option value="false">❌ Out of Stock (86)</option>
+            <select id="dish-form-in-stock" class="form-select">
+              <option value="true">In Stock (Available)</option>
+              <option value="false">Out of Stock (86)</option>
             </select>
           </div>
         </div>
 
         <button type="submit" class="btn-primary" id="btn-save-dish-submit">
+          <i data-lucide="check" style="width:16px;height:16px;"></i>
           <span>Save Dish</span>
         </button>
       </form>
@@ -267,7 +331,8 @@
         </div>
 
         <button type="submit" class="btn-primary" id="btn-submit-change-pin" style="margin-top: 14px;">
-          Update PIN
+          <i data-lucide="check" style="width:16px;height:16px;"></i>
+          <span>Update PIN</span>
         </button>
       </form>
     </div>
@@ -278,14 +343,14 @@
     <div class="aola-footer-container">
       <div class="aola-footer-brand">
         <a href="https://wa.me/919847054970?text=Hi%20AOLA%20Team,%20I%20saw%20your%20QR%20Ordering%20system%20and%20want%20this%20for%20my%20restaurant" target="_blank" rel="noopener noreferrer" class="aola-brand-pill" title="Get AOLA Smart QR Ordering for your restaurant">
-          <img src="AU-icon.svg" alt="AOLA" class="aola-pill-logo">
+          <img src="AU-dark-icon.svg" alt="AOLA" class="aola-pill-logo">
           <span>Powered by <strong class="aola-brand-name">AOLA</strong> — Smart QR Ordering</span>
           <span class="aola-brand-tag">Get for your restaurant &rarr;</span>
         </a>
       </div>
       <div class="aola-footer-contacts">
         <a href="mailto:mh.nasif012@gmail.com" class="aola-contact-badge" title="Email Agency Support">
-          <svg class="aola-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>
+          <i data-lucide="mail" class="aola-icon" style="width:15px;height:15px;"></i>
           <span>mh.nasif012@gmail.com</span>
         </a>
         <a href="https://wa.me/919847054970" target="_blank" rel="noopener noreferrer" class="aola-contact-badge aola-whatsapp-badge" title="Chat on WhatsApp">
@@ -310,5 +375,11 @@
   <script src="js/config.js"></script>
   <script src="js/api.js"></script>
   <script src="js/owner.js"></script>
+  <script>
+    // Self-initialize Lucide Icons
+    if (window.lucide) {
+      lucide.createIcons();
+    }
+  </script>
 </body>
 </html>

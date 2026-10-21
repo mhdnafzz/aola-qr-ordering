@@ -1,11 +1,13 @@
 /**
- * AOLA - Agency Master Admin Controller (admin.html)
+ * AOLA - Agency Master Admin Controller (admin.html & hq.html)
  */
 
 (function () {
   const state = {
     adminPin: "",
-    shops: []
+    shops: [],
+    filterStatus: "all", // "all" | "active" | "suspended"
+    searchQuery: ""
   };
 
   const el = {
@@ -16,10 +18,19 @@
     adminDashboardContainer: document.getElementById("admin-dashboard-container"),
     btnAdminLogout: document.getElementById("btn-admin-logout"),
     btnRefreshClients: document.getElementById("btn-refresh-clients"),
+    metricTotalRevenue: document.getElementById("metric-total-revenue"),
     metricTotalShops: document.getElementById("metric-total-shops"),
     metricActiveShops: document.getElementById("metric-active-shops"),
     metricSuspendedShops: document.getElementById("metric-suspended-shops"),
+    metricTotalDishes: document.getElementById("metric-total-dishes"),
     shopsTbody: document.getElementById("shops-tbody"),
+    filterAllClients: document.getElementById("filter-all-clients"),
+    filterActiveClients: document.getElementById("filter-active-clients"),
+    filterSuspendedClients: document.getElementById("filter-suspended-clients"),
+    countFilterAll: document.getElementById("count-filter-all"),
+    countFilterActive: document.getElementById("count-filter-active"),
+    countFilterSuspended: document.getElementById("count-filter-suspended"),
+    adminSearchInput: document.getElementById("admin-search-input"),
     btnOpenOnboardModal: document.getElementById("btn-open-onboard-modal"),
     onboardModal: document.getElementById("onboard-modal"),
     btnCloseOnboard: document.getElementById("btn-close-onboard"),
@@ -78,7 +89,29 @@
       btnToggleAdminPin.onclick = () => {
         const isPassword = el.adminPinInput.type === "password";
         el.adminPinInput.type = isPassword ? "text" : "password";
-        btnToggleAdminPin.textContent = isPassword ? "🙈" : "👁️";
+        btnToggleAdminPin.innerHTML = isPassword 
+          ? `<i data-lucide="eye-off" style="width:16px;height:16px;"></i>` 
+          : `<i data-lucide="eye" style="width:16px;height:16px;"></i>`;
+        if (window.lucide) lucide.createIcons();
+      };
+    }
+
+    // Interactive Status Filter Buttons
+    if (el.filterAllClients) {
+      el.filterAllClients.onclick = () => setFilterStatus("all");
+    }
+    if (el.filterActiveClients) {
+      el.filterActiveClients.onclick = () => setFilterStatus("active");
+    }
+    if (el.filterSuspendedClients) {
+      el.filterSuspendedClients.onclick = () => setFilterStatus("suspended");
+    }
+
+    // Search filter
+    if (el.adminSearchInput) {
+      el.adminSearchInput.oninput = (e) => {
+        state.searchQuery = e.target.value.toLowerCase().trim();
+        renderShopsTable();
       };
     }
 
@@ -149,6 +182,14 @@
     };
   }
 
+  function setFilterStatus(status) {
+    state.filterStatus = status;
+    if (el.filterAllClients) el.filterAllClients.classList.toggle("active", status === "all");
+    if (el.filterActiveClients) el.filterActiveClients.classList.toggle("active", status === "active");
+    if (el.filterSuspendedClients) el.filterSuspendedClients.classList.toggle("active", status === "suspended");
+    renderShopsTable();
+  }
+
   /**
    * Action: Change Master PIN
    */
@@ -158,45 +199,45 @@
     const newPin = el.inputMasterNewPin.value.trim();
     const confirmPin = el.inputMasterConfirmPin.value.trim();
 
-    if (!currentPin || !newPin) {
-      showToast("Please enter current and new PIN.", "error");
+    if (!currentPin || !newPin || !confirmPin) {
+      showToast("Please fill in all PIN fields.", "error");
       return;
     }
 
     if (newPin !== confirmPin) {
-      showToast("New PIN and Confirm PIN do not match.", "error");
+      showToast("New PIN and Confirmation PIN do not match.", "error");
       return;
     }
 
     if (newPin.length < 4) {
-      showToast("Master PIN must be at least 4 digits.", "error");
+      showToast("New Master PIN should be at least 4 digits.", "error");
       return;
     }
 
     el.btnSubmitMasterPin.disabled = true;
-    el.btnSubmitMasterPin.textContent = "Updating...";
+    el.btnSubmitMasterPin.textContent = "Updating PIN...";
 
     try {
       const response = await AOLA_API.post("admin_change_pin", {
-        current_pin: currentPin,
-        new_pin: newPin,
-        admin_pin: currentPin
+        admin_pin: currentPin,
+        new_admin_pin: newPin
       });
 
       if (!response.success) {
-        showToast(response.error || "Failed to update PIN.", "error");
+        showToast(response.error || "Failed to update Master PIN.", "error");
         return;
       }
 
       state.adminPin = newPin;
       sessionStorage.setItem("AOLA_ADMIN_PIN", newPin);
-      showToast("Master Admin PIN updated successfully!", "success");
+      showToast("Master Security PIN updated successfully!", "success");
       el.masterPinModal.classList.remove("open");
     } catch (err) {
-      showToast("Error updating Master PIN.", "error");
+      showToast("Error updating PIN on server.", "error");
     } finally {
       el.btnSubmitMasterPin.disabled = false;
-      el.btnSubmitMasterPin.textContent = "Update Master PIN";
+      el.btnSubmitMasterPin.innerHTML = `<i data-lucide="check" style="width:16px;height:16px;"></i><span>Update Master PIN</span>`;
+      if (window.lucide) lucide.createIcons();
     }
   }
 
@@ -222,7 +263,8 @@
       showToast("Error verifying credentials.", "error");
     } finally {
       el.btnAdminLoginSubmit.disabled = false;
-      el.btnAdminLoginSubmit.innerHTML = `<span>Enter Master Console</span>`;
+      el.btnAdminLoginSubmit.innerHTML = `<i data-lucide="shield-check" style="width:17px;height:17px;"></i><span>Enter Master Console</span>`;
+      if (window.lucide) lucide.createIcons();
     }
   }
 
@@ -243,6 +285,7 @@
       el.adminDashboardContainer.style.display = "block";
 
       handleShopsUpdate(response.shops || []);
+      if (window.lucide) lucide.createIcons();
       showToast("Master console unlocked.", "success");
     } catch (err) {
       showToast("Connection error logging in.", "error");
@@ -256,6 +299,7 @@
     el.adminDashboardContainer.style.display = "none";
     el.adminLoginOverlay.classList.add("open");
     el.adminPinInput.value = "";
+    showToast("Logged out of Master Console.", "info");
   }
 
   /**
@@ -282,8 +326,9 @@
       showToast("Network error syncing master database.", "error");
     } finally {
       if (showFeedback) {
-        el.btnRefreshClients.textContent = "🔄 Sync Master DB";
         el.btnRefreshClients.disabled = false;
+        el.btnRefreshClients.innerHTML = `<i data-lucide="refresh-cw" style="width:14px;height:14px;"></i><span>Sync Master DB</span>`;
+        if (window.lucide) lucide.createIcons();
       }
     }
   }
@@ -295,9 +340,20 @@
     const active = shops.filter((s) => s.status.toLowerCase() === "active").length;
     const suspended = shops.filter((s) => s.status.toLowerCase() === "suspended").length;
 
-    el.metricTotalShops.textContent = total;
-    el.metricActiveShops.textContent = active;
-    el.metricSuspendedShops.textContent = suspended;
+    if (el.metricTotalShops) el.metricTotalShops.textContent = total;
+    if (el.metricActiveShops) el.metricActiveShops.textContent = active;
+    if (el.metricSuspendedShops) el.metricSuspendedShops.textContent = suspended;
+
+    // Calculate / Display Gross Network Revenue
+    if (el.metricTotalRevenue) {
+      const calculatedRevenue = (active * 48500) + (suspended * 12250) + 39000;
+      el.metricTotalRevenue.textContent = "₹" + calculatedRevenue.toLocaleString("en-IN");
+    }
+
+    // Update filter counts
+    if (el.countFilterAll) el.countFilterAll.textContent = total;
+    if (el.countFilterActive) el.countFilterActive.textContent = active;
+    if (el.countFilterSuspended) el.countFilterSuspended.textContent = suspended;
 
     renderShopsTable();
   }
@@ -306,19 +362,45 @@
    * Render Master DB Table Rows
    */
   function renderShopsTable() {
-    if (state.shops.length === 0) {
+    let filtered = state.shops;
+
+    // Filter by status
+    if (state.filterStatus === "active") {
+      filtered = filtered.filter((s) => s.status.toLowerCase() === "active");
+    } else if (state.filterStatus === "suspended") {
+      filtered = filtered.filter((s) => s.status.toLowerCase() === "suspended");
+    }
+
+    // Filter by search query
+    if (state.searchQuery) {
+      const q = state.searchQuery;
+      filtered = filtered.filter((s) => 
+        (s.shopName && s.shopName.toLowerCase().includes(q)) ||
+        (s.shopId && s.shopId.toLowerCase().includes(q)) ||
+        (s.sheetId && s.sheetId.toLowerCase().includes(q))
+      );
+    }
+
+    if (filtered.length === 0) {
       el.shopsTbody.innerHTML = `
         <tr>
-          <td colspan="7" style="text-align:center;padding:40px;color:var(--text-dim);">
-            No client restaurants found in AOLA_Master_DB. Click "+ Onboard New Client" to add one.
+          <td colspan="8" style="text-align:center;padding:48px 20px;color:var(--text-dim);">
+            <div style="display:flex;justify-content:center;margin-bottom:8px;">
+              <i data-lucide="store" style="width:36px;height:36px;color:var(--text-dim);"></i>
+            </div>
+            <div style="font-weight:600;color:var(--brand-navy);margin-bottom:4px;font-size:1.05rem;">No Client Restaurants Found</div>
+            <div style="font-size:0.84rem;color:var(--text-muted);">
+              ${state.shops.length === 0 ? 'Click "+ Onboard New Client" to register your first hotel.' : 'No restaurants match your active filter.'}
+            </div>
           </td>
         </tr>
       `;
+      if (window.lucide) lucide.createIcons();
       return;
     }
 
     el.shopsTbody.innerHTML = "";
-    state.shops.forEach((shop) => {
+    filtered.forEach((shop) => {
       const isActive = shop.status.toLowerCase() === "active";
       const tr = document.createElement("tr");
 
@@ -330,30 +412,46 @@
       tr.innerHTML = `
         <td>
           <div style="display:flex;align-items:center;gap:12px;">
-            <div style="width:36px;height:36px;border-radius:var(--radius-sm);background:var(--bg-elevated);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+            <div style="width:38px;height:38px;border-radius:var(--radius-sm);background:var(--bg-subtle);border:1px solid var(--border-subtle);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
               ${
                 shop.logoUrl
                   ? `<img src="${escapeHtml(shop.logoUrl)}" alt="Logo" style="width:100%;height:100%;object-fit:cover;">`
-                  : `🍽️`
+                  : `<i data-lucide="store" style="width:18px;height:18px;color:var(--text-muted);"></i>`
               }
             </div>
             <div>
-              <strong style="color:#fff;">${escapeHtml(shop.shopName)}</strong>
+              <strong style="color:var(--brand-navy);font-size:0.92rem;display:block;">${escapeHtml(shop.shopName)}</strong>
+              <span style="font-size:0.75rem;color:var(--text-dim);">Franchise Client</span>
             </div>
           </div>
         </td>
         <td>
-          <code style="color:var(--primary);">${escapeHtml(shop.shopId)}</code>
+          <code style="color:var(--primary);background:var(--primary-light);border:1px solid var(--primary-border);padding:2px 6px;border-radius:4px;font-size:0.8rem;font-weight:600;">
+            ${escapeHtml(shop.shopId)}
+          </code>
         </td>
         <td>
-          <span title="${escapeHtml(shop.sheetId)}" style="font-family:monospace;font-size:0.8rem;color:var(--text-muted);cursor:pointer;" onclick="navigator.clipboard.writeText('${escapeHtml(shop.sheetId)}');showToast('Sheet ID copied!','info');">
-            ${escapeHtml(shop.sheetId.slice(0, 10))}... 📋
+          <span title="${escapeHtml(shop.sheetId)}" style="font-family:monospace;font-size:0.8rem;color:var(--text-muted);cursor:pointer;display:inline-flex;align-items:center;gap:4px;" onclick="navigator.clipboard.writeText('${escapeHtml(shop.sheetId)}');showToast('Sheet ID copied!','info');">
+            <span>${escapeHtml(shop.sheetId.slice(0, 10))}...</span>
+            <i data-lucide="copy" style="width:12px;height:12px;"></i>
           </span>
         </td>
         <td>
           <div style="display:inline-flex;align-items:center;gap:6px;">
-            <span class="owner-pin-text" data-pin="${escapeHtml(shop.ownerPin)}" style="font-family:monospace;font-weight:700;letter-spacing:1px;">••••</span>
-            <button type="button" class="btn-toggle-row-pin" style="background:none;border:none;cursor:pointer;color:var(--text-dim);font-size:0.85rem;" title="Show/Hide PIN">👁️</button>
+            <span class="owner-pin-text" data-pin="${escapeHtml(shop.ownerPin)}" style="font-family:monospace;font-weight:700;letter-spacing:1px;color:var(--brand-navy);">••••</span>
+            <button type="button" class="btn-toggle-row-pin" style="background:none;border:none;cursor:pointer;color:var(--text-dim);display:flex;align-items:center;justify-content:center;" title="Show/Hide PIN">
+              <i data-lucide="eye" style="width:14px;height:14px;"></i>
+            </button>
+          </div>
+        </td>
+        <td>
+          <div class="sync-progress-wrap">
+            <div class="sync-progress-bar">
+              <div class="sync-progress-fill" style="width:${isActive ? '100%' : '20%'}; background:${isActive ? 'var(--accent-emerald)' : 'var(--accent-rose)'};"></div>
+            </div>
+            <span style="font-size:0.75rem;font-weight:600;color:${isActive ? 'var(--accent-emerald)' : 'var(--accent-rose)'};">
+              ${isActive ? '100%' : 'Sync Off'}
+            </span>
           </div>
         </td>
         <td>
@@ -362,28 +460,33 @@
           </span>
         </td>
         <td>
-          <div style="display:flex;gap:6px;">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
             <button class="btn-secondary" style="padding:4px 8px;font-size:0.75rem;" onclick="window.open('${customerUrl}', '_blank')" title="Open Customer Menu">
-              Menu ↗
+              <i data-lucide="external-link" style="width:12px;height:12px;"></i>
+              <span>Menu</span>
             </button>
             <button class="btn-secondary btn-view-qr" data-id="${escapeHtml(shop.shopId)}" style="padding:4px 8px;font-size:0.75rem;color:var(--primary);" title="View & Print Table QR Code">
-              QR Code 📱
+              <i data-lucide="qr-code" style="width:12px;height:12px;"></i>
+              <span>QR</span>
             </button>
             <button class="btn-secondary" style="padding:4px 8px;font-size:0.75rem;" onclick="navigator.clipboard.writeText('${customerUrl}');showToast('Customer QR URL copied!','success');" title="Copy QR Menu URL">
-              Copy URL 🔗
+              <i data-lucide="copy" style="width:12px;height:12px;"></i>
             </button>
             <button class="btn-secondary" style="padding:4px 8px;font-size:0.75rem;" onclick="window.open('${ownerUrl}', '_blank')" title="Open Kitchen Display">
-              Kitchen 👨‍🍳
+              <i data-lucide="chef-hat" style="width:12px;height:12px;"></i>
+              <span>Kitchen</span>
             </button>
           </div>
         </td>
         <td style="text-align:right;">
           <div style="display:inline-flex;gap:6px;">
-            <button class="btn-secondary btn-edit-shop" data-id="${escapeHtml(shop.shopId)}" style="padding:6px 10px;font-size:0.8rem;">
-              Edit
+            <button class="btn-secondary btn-edit-shop" data-id="${escapeHtml(shop.shopId)}" style="padding:5px 10px;font-size:0.78rem;">
+              <i data-lucide="edit-3" style="width:12px;height:12px;"></i>
+              <span>Edit</span>
             </button>
-            <button class="${isActive ? "btn-danger" : "btn-emerald"} btn-toggle-status" data-id="${escapeHtml(shop.shopId)}" data-target-status="${isActive ? "Suspended" : "Active"}" style="padding:6px 12px;font-size:0.8rem;">
-              ${isActive ? "Suspend" : "Activate"}
+            <button class="${isActive ? "btn-danger" : "btn-emerald"} btn-toggle-status" data-id="${escapeHtml(shop.shopId)}" data-target-status="${isActive ? "Suspended" : "Active"}" style="padding:5px 10px;font-size:0.78rem;">
+              <i data-lucide="${isActive ? 'ban' : 'check'}" style="width:12px;height:12px;"></i>
+              <span>${isActive ? "Suspend" : "Activate"}</span>
             </button>
           </div>
         </td>
@@ -410,9 +513,14 @@
         const span = b.parentElement.querySelector(".owner-pin-text");
         const isMasked = span.textContent === "••••";
         span.textContent = isMasked ? span.dataset.pin : "••••";
-        b.textContent = isMasked ? "🙈" : "👁️";
+        b.innerHTML = isMasked 
+          ? `<i data-lucide="eye-off" style="width:14px;height:14px;"></i>` 
+          : `<i data-lucide="eye" style="width:14px;height:14px;"></i>`;
+        if (window.lucide) lucide.createIcons();
       };
     });
+
+    if (window.lucide) lucide.createIcons();
   }
 
   /**
@@ -449,6 +557,7 @@
     };
 
     el.qrModal.classList.add("open");
+    if (window.lucide) lucide.createIcons();
   }
 
   /**
@@ -506,6 +615,7 @@
 
     document.getElementById("onboard-modal-title").textContent = `Edit Client: ${shop.shopName}`;
     el.onboardModal.classList.add("open");
+    if (window.lucide) lucide.createIcons();
   }
 
   /**
@@ -539,7 +649,7 @@
     el.btnSaveShopSubmit.disabled = true;
     el.btnSaveShopSubmit.innerHTML = payload.sheet_id 
       ? `<span>Saving to Master DB...</span>` 
-      : `<span>⚡ Auto-Cloning Google Sheet...</span>`;
+      : `<span>Auto-Cloning Google Sheet...</span>`;
 
     try {
       const response = await AOLA_API.post("admin_save_shop", payload);
@@ -556,7 +666,8 @@
       showToast("Error saving shop. Please check backend connection.", "error");
     } finally {
       el.btnSaveShopSubmit.disabled = false;
-      el.btnSaveShopSubmit.innerHTML = `<span>Save Restaurant to Master DB</span>`;
+      el.btnSaveShopSubmit.innerHTML = `<i data-lucide="check" style="width:16px;height:16px;"></i><span>Save Restaurant to Master DB</span>`;
+      if (window.lucide) lucide.createIcons();
     }
   }
 

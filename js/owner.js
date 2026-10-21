@@ -125,7 +125,10 @@
       el.btnTogglePinVisibility.onclick = () => {
         const isPassword = el.loginPin.type === "password";
         el.loginPin.type = isPassword ? "text" : "password";
-        el.btnTogglePinVisibility.textContent = isPassword ? "🙈" : "👁️";
+        el.btnTogglePinVisibility.innerHTML = isPassword
+          ? `<i data-lucide="eye-off" style="width:16px;height:16px;"></i>`
+          : `<i data-lucide="eye" style="width:16px;height:16px;"></i>`;
+        if (window.lucide) lucide.createIcons();
       };
     }
 
@@ -276,7 +279,8 @@
       showToast("Unexpected error logging in. Please retry.", "error");
     } finally {
       el.btnLoginSubmit.disabled = false;
-      el.btnLoginSubmit.innerHTML = `<span>Unlock Kitchen Display</span>`;
+      el.btnLoginSubmit.innerHTML = `<i data-lucide="unlock" style="width:17px;height:17px;"></i><span>Unlock Kitchen Display</span>`;
+      if (window.lucide) lucide.createIcons();
     }
   }
 
@@ -306,6 +310,7 @@
       // Background sync menu items
       fetchOwnerMenu(false);
 
+      if (window.lucide) lucide.createIcons();
       showToast("Connected to live kitchen feed.", "success");
     } catch (err) {
       showToast("Connection error logging in. Please check backend configuration.", "error");
@@ -373,7 +378,8 @@
     } finally {
       if (isManual) {
         el.btnManualRefresh.disabled = false;
-        el.btnManualRefresh.textContent = "🔄 Refresh";
+        el.btnManualRefresh.innerHTML = `<i data-lucide="refresh-cw" style="width:15px;height:15px;"></i><span>Refresh</span>`;
+        if (window.lucide) lucide.createIcons();
       }
     }
   }
@@ -517,14 +523,17 @@
 
     if (filtered.length === 0) {
       el.ticketGrid.innerHTML = `
-        <div class="empty-state" style="grid-column: 1 / -1;">
-          <div class="empty-state-icon">✅</div>
-          <h3>No ${state.activeTab} orders right now</h3>
-          <p style="font-size:0.88rem;color:var(--text-muted);margin-top:6px;">
+        <div class="empty-state" style="grid-column: 1 / -1; background:#FFFFFF; border:1px solid var(--border-subtle); border-radius:var(--radius-md);">
+          <div class="empty-state-icon" style="color:var(--accent-emerald);">
+            <i data-lucide="check-check" style="width:40px;height:40px;"></i>
+          </div>
+          <h3 style="color:var(--brand-navy); font-size:1.1rem;">No ${state.activeTab} orders right now</h3>
+          <p style="font-size:0.86rem;color:var(--text-muted);margin-top:6px;">
             ${state.activeTab === "pending" ? "All clear! New QR orders will appear here automatically." : "No completed orders recorded yet."}
           </p>
         </div>
       `;
+      if (window.lucide) lucide.createIcons();
       return;
     }
 
@@ -541,14 +550,20 @@
         <div class="ticket-header">
           <div>
             <span class="ticket-table-badge">TABLE ${escapeHtml(ord.tableNumber)}</span>
-            <div style="font-size:0.75rem; color:var(--text-dim); margin-top:4px;">ID: ${escapeHtml(ord.orderId)}</div>
+            <div style="font-size:0.75rem; color:var(--text-dim); margin-top:4px; font-family:monospace; font-weight:600;">ID: ${escapeHtml(ord.orderId)}</div>
           </div>
-          <span class="ticket-time">⏱️ ${escapeHtml(formatTicketTime(ord.timestamp))}</span>
+          <span class="ticket-time">
+            <i data-lucide="clock" style="width:13px;height:13px;"></i>
+            <span>${escapeHtml(formatTicketTime(ord.timestamp))}</span>
+          </span>
         </div>
 
         <div class="ticket-dish-section">
           <div class="ticket-rush-meta">
-            <span class="ticket-total-items-badge">🍽️ ${totalQty} ${totalQty === 1 ? "Item" : "Items"} (${dishList.length} ${dishList.length === 1 ? "dish" : "dishes"})</span>
+            <span class="ticket-total-items-badge">
+              <i data-lucide="shopping-bag" style="width:13px;height:13px;"></i>
+              <span>${totalQty} ${totalQty === 1 ? "Item" : "Items"} (${dishList.length} ${dishList.length === 1 ? "dish" : "dishes"})</span>
+            </span>
             ${isPending ? `<span class="ticket-rush-hint">Tap item when plated</span>` : ""}
           </div>
 
@@ -570,7 +585,7 @@
           ${ord.customerNotes ? `
             <div class="ticket-notes-callout">
               <div class="ticket-notes-header">
-                <span class="ticket-notes-icon">📝</span>
+                <i data-lucide="message-square" style="width:14px;height:14px;"></i>
                 <span>Special Instructions:</span>
               </div>
               <div class="ticket-notes-content">${escapeHtml(ord.customerNotes)}</div>
@@ -580,15 +595,21 @@
 
         <div class="ticket-footer">
           <div class="ticket-price">${formatCurrency(ord.totalPrice)}</div>
-          ${
-            isPending
-              ? `
-                <button class="btn-emerald btn-complete-order" data-id="${escapeHtml(ord.orderId)}">
-                  ✓ Mark Complete
-                </button>
-              `
-              : `<span class="status-badge" style="background:rgba(16,185,129,0.15);color:var(--accent-emerald);">Completed</span>`
-          }
+          <div style="display:flex; gap:8px;">
+            <button class="btn-secondary btn-print-ticket" data-id="${escapeHtml(ord.orderId)}" title="Print Ticket" style="padding:7px 11px;">
+              <i data-lucide="printer" style="width:15px;height:15px;"></i>
+            </button>
+            ${
+              isPending
+                ? `
+                  <button class="btn-emerald btn-complete-order" data-id="${escapeHtml(ord.orderId)}">
+                    <i data-lucide="check-circle-2" style="width:15px;height:15px;"></i>
+                    <span>Mark Complete</span>
+                  </button>
+                `
+                : `<span class="status-badge active"><i data-lucide="check" style="width:13px;height:13px;"></i> Completed</span>`
+            }
+          </div>
         </div>
       `;
 
@@ -598,6 +619,12 @@
     el.ticketGrid.querySelectorAll(".btn-complete-order").forEach((b) => {
       b.onclick = () => completeOrder(b.dataset.id, b);
     });
+
+    el.ticketGrid.querySelectorAll(".btn-print-ticket").forEach((b) => {
+      b.onclick = () => window.print();
+    });
+
+    if (window.lucide) lucide.createIcons();
   }
 
   /**
@@ -697,7 +724,8 @@
     } finally {
       if (isManual && el.btnRefreshMenu) {
         el.btnRefreshMenu.disabled = false;
-        el.btnRefreshMenu.textContent = "🔄 Sync Menu";
+        el.btnRefreshMenu.innerHTML = `<i data-lucide="refresh-cw" style="width:14px;height:14px;"></i><span>Sync Google Sheet</span>`;
+        if (window.lucide) lucide.createIcons();
       }
     }
   }
@@ -730,6 +758,7 @@
         renderOwnerMenu();
       };
     });
+    if (window.lucide) lucide.createIcons();
   }
 
   /**
@@ -762,27 +791,28 @@
     if (filtered.length === 0) {
       el.ownerMenuTbody.innerHTML = `
         <tr>
-          <td colspan="6" style="text-align: center; padding: 40px 20px; color: var(--text-dim);">
-            <div style="font-size: 2rem; margin-bottom: 8px;">🍽️</div>
-            <div style="font-weight: 600; color: #fff; margin-bottom: 4px;">No Dishes Found</div>
-            <div style="font-size: 0.85rem;">
+          <td colspan="6" style="text-align: center; padding: 48px 20px; color: var(--text-dim);">
+            <div style="margin-bottom: 8px; color:var(--text-dim); display:flex; justify-content:center;"><i data-lucide="utensils" style="width:36px;height:36px;"></i></div>
+            <div style="font-weight: 600; color: var(--brand-navy); margin-bottom: 4px; font-size:1.05rem;">No Dishes Found</div>
+            <div style="font-size: 0.85rem; color:var(--text-muted);">
               ${state.menu.length === 0 ? "Your menu has no items yet. Click '+ Add New Dish' to create your first item." : "No dishes match your active search or category filter."}
             </div>
           </td>
         </tr>
       `;
+      if (window.lucide) lucide.createIcons();
       return;
     }
 
     el.ownerMenuTbody.innerHTML = filtered
       .map((item) => {
         const vegBadge = item.isVeg
-          ? `<span class="diet-tag-veg">🟢 Veg</span>`
-          : `<span class="diet-tag-nonveg">🔴 Non-Veg</span>`;
+          ? `<span class="diet-tag-veg"><span class="diet-icon"><span class="diet-dot"></span></span> Veg</span>`
+          : `<span class="diet-tag-nonveg"><span class="diet-icon"><span class="diet-dot"></span></span> Non-Veg</span>`;
 
         const stockButton = item.inStock
-          ? `<button class="btn-stock-toggle in-stock" data-id="${escapeHtml(item.id)}" data-stock="true" title="Click to 86 / Mark Out of Stock">✅ In Stock</button>`
-          : `<button class="btn-stock-toggle out-of-stock" data-id="${escapeHtml(item.id)}" data-stock="false" title="Click to mark Available">❌ Out of Stock</button>`;
+          ? `<button class="btn-stock-toggle in-stock" data-id="${escapeHtml(item.id)}" data-stock="true" title="Click to Mark Out of Stock"><i data-lucide="check" style="width:13px;height:13px;"></i> In Stock</button>`
+          : `<button class="btn-stock-toggle out-of-stock" data-id="${escapeHtml(item.id)}" data-stock="false" title="Click to Mark Available"><i data-lucide="x" style="width:13px;height:13px;"></i> Out of Stock</button>`;
 
         const descText = item.description
           ? `<div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 3px; max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.description)}</div>`
@@ -791,7 +821,7 @@
         return `
           <tr>
             <td>
-              <div style="font-weight: 700; color: #fff; font-size: 0.96rem;">${escapeHtml(item.name)}</div>
+              <div style="font-weight: 600; color: var(--brand-navy); font-size: 0.94rem;">${escapeHtml(item.name)}</div>
               ${descText}
               <div style="font-size: 0.72rem; color: var(--text-dim); margin-top: 2px;">ID: <code>${escapeHtml(item.id)}</code></div>
             </td>
@@ -799,17 +829,17 @@
               <span class="category-badge">${escapeHtml(item.category)}</span>
             </td>
             <td>${vegBadge}</td>
-            <td style="font-weight: 700; color: var(--primary); font-size: 1rem;">
+            <td style="font-weight: 700; color: var(--brand-navy); font-size: 0.95rem;">
               ${state.currency}${item.price.toFixed(0)}
             </td>
             <td>${stockButton}</td>
             <td style="text-align: right;">
               <div style="display: inline-flex; gap: 6px;">
-                <button class="btn-secondary btn-edit-dish" data-id="${escapeHtml(item.id)}" style="padding: 5px 10px; font-size: 0.82rem;" title="Edit Dish Details">
-                  ✏️ Edit
+                <button class="btn-secondary btn-edit-dish" data-id="${escapeHtml(item.id)}" style="padding: 5px 10px; font-size: 0.8rem;" title="Edit Dish Details">
+                  <i data-lucide="edit-3" style="width:13px;height:13px;"></i> <span>Edit</span>
                 </button>
-                <button class="btn-danger btn-delete-dish" data-id="${escapeHtml(item.id)}" style="padding: 5px 10px; font-size: 0.82rem;" title="Delete Dish">
-                  🗑️
+                <button class="btn-danger btn-delete-dish" data-id="${escapeHtml(item.id)}" style="padding: 5px 8px; font-size: 0.8rem;" title="Delete Dish">
+                  <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
                 </button>
               </div>
             </td>
@@ -840,6 +870,8 @@
         deleteDish(btn.dataset.id);
       };
     });
+
+    if (window.lucide) lucide.createIcons();
   }
 
   /**

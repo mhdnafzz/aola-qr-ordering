@@ -6,11 +6,11 @@
   <title>AOLA QR Menu - Order Online</title>
   <meta name="description" content="Instant contactless dining and QR code ordering system. Zero apps required.">
   <link rel="stylesheet" href="css/style.css">
-  <link rel="icon" type="image/svg+xml" href="AU-icon.svg">
+  <link rel="icon" type="image/svg+xml" href="AU-dark-icon.svg">
+  <!-- Lucide Icons Library -->
+  <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
-
-
 
   <!-- Main Mobile App Frame -->
   <main class="app-container" id="app">
@@ -18,26 +18,46 @@
     <!-- Hero / Restaurant Branding -->
     <header class="brand-hero" id="brand-hero">
       <div class="brand-logo-wrap" id="brand-logo-container">
-        <img src="AU-icon.svg" alt="AOLA Logo" style="width:100%;height:100%;object-fit:contain;padding:12px;">
+        <img src="AU-dark-icon.svg" alt="Restaurant Logo" style="width:100%;height:100%;object-fit:contain;padding:8px;">
       </div>
-      <h1 class="brand-title" id="restaurant-name">Loading Menu...</h1>
+      <h1 class="brand-title" id="restaurant-name">Bismillah Biryani &amp; Grill</h1>
       <div class="brand-meta">
         <span class="table-pill" id="table-badge" title="Click to set or change your table number">
           <span class="table-pulse-dot"></span>
-          <span id="table-label">Table ...</span>
+          <i data-lucide="map-pin" style="width:13px;height:13px;color:var(--primary);"></i>
+          <span id="table-label">Table 4</span>
         </span>
-        <span class="shop-tag" id="shop-id-tag"></span>
+        <span class="shop-tag" id="shop-id-tag">@bismillah</span>
       </div>
     </header>
 
-    <!-- Sticky Category Navigation Bar -->
+    <!-- Sticky Capsule Category Navigation Bar -->
     <nav class="category-bar-sticky" id="category-bar" aria-label="Menu Categories">
-      <button class="cat-chip active" data-category="all">All Items</button>
+      <button class="cat-chip active" data-category="all">
+        <i data-lucide="layout-grid" style="width:14px;height:14px;"></i>
+        <span>All Items</span>
+      </button>
+      <button class="cat-chip" data-category="Biryani">
+        <span>Biryani</span>
+      </button>
+      <button class="cat-chip" data-category="Starters">
+        <span>Starters</span>
+      </button>
+      <button class="cat-chip" data-category="Breads">
+        <span>Breads</span>
+      </button>
+      <button class="cat-chip" data-category="Curries">
+        <span>Curries</span>
+      </button>
+      <button class="cat-chip" data-category="Desserts">
+        <span>Desserts</span>
+      </button>
     </nav>
 
     <!-- Menu Items Feed -->
     <section class="menu-feed" id="menu-feed" aria-label="Menu Items">
       <!-- Loading Skeletons -->
+      <div class="skeleton skeleton-card"></div>
       <div class="skeleton skeleton-card"></div>
       <div class="skeleton skeleton-card"></div>
       <div class="skeleton skeleton-card"></div>
@@ -50,11 +70,8 @@
         <span class="cart-bar-total" id="cart-bar-total">₹0</span>
       </div>
       <button class="btn-view-cart" id="btn-open-cart">
-        View Order
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-          <polyline points="12 5 19 12 12 19"></polyline>
-        </svg>
+        <span>View Order</span>
+        <i data-lucide="arrow-right"></i>
       </button>
     </aside>
 
@@ -62,7 +79,10 @@
     <div class="modal-backdrop" id="cart-modal" role="dialog" aria-modal="true" aria-labelledby="modal-cart-title">
       <div class="modal-sheet">
         <div class="modal-header">
-          <h2 class="modal-title" id="modal-cart-title">Your Order Summary</h2>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="shopping-bag" style="width:20px;height:20px;color:var(--primary);"></i>
+            <h2 class="modal-title" id="modal-cart-title">Your Order Summary</h2>
+          </div>
           <button class="btn-close-modal" id="btn-close-cart" aria-label="Close cart">&times;</button>
         </div>
 
@@ -78,8 +98,8 @@
             <span id="summary-subtotal">₹0</span>
           </div>
           <div class="summary-row">
-            <span>Service & Taxes (Included)</span>
-            <span>₹0</span>
+            <span>Taxes &amp; Service Fee</span>
+            <span style="color:var(--primary);font-weight:600;">Included</span>
           </div>
           <div class="summary-row total">
             <span>Total Payable</span>
@@ -97,23 +117,20 @@
 
           <!-- Table Number Confirmation -->
           <div class="form-group">
-            <label class="form-label" for="order-table-input">Table Number</label>
+            <label class="form-label" for="order-table-input">Dining Table Number *</label>
             <input type="number" id="order-table-input" class="form-input" placeholder="e.g. 4" min="1" max="99" required>
           </div>
 
           <!-- Kitchen Cooking Notes -->
           <div class="form-group">
-            <label class="form-label" for="order-notes-input">Special Instructions (Optional)</label>
+            <label class="form-label" for="order-notes-input">Cooking Instructions (Optional)</label>
             <textarea id="order-notes-input" class="form-textarea" placeholder="e.g. Less spicy, extra sauce, allergy info..."></textarea>
           </div>
 
           <!-- Submit Order Button -->
           <button type="submit" class="btn-primary" id="btn-submit-order">
             <span>Send Order to Kitchen</span>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M22 2L11 13"></path>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-            </svg>
+            <i data-lucide="send" style="width:18px;height:18px;"></i>
           </button>
         </form>
       </div>
@@ -123,32 +140,36 @@
     <div class="modal-backdrop" id="success-modal" role="dialog" aria-modal="true">
       <div class="modal-sheet" style="text-align: center; max-height: 90vh;">
         <div class="success-icon-wrap">
-          ✓
+          <i data-lucide="check" style="width:32px;height:32px;stroke-width:2.5;"></i>
         </div>
-        <h2 style="font-size: 1.5rem; margin-bottom: 8px;">Order Placed!</h2>
-        <p style="color: var(--text-muted); font-size: 0.95rem;">
+        <h2 style="font-size: 1.4rem; font-weight: 700; color: var(--brand-navy); margin-bottom: 6px;">Order Placed!</h2>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 12px;">
           Your order has been sent directly to the kitchen display.
         </p>
 
         <div class="order-badge-pill" id="success-order-id">ORD-0000</div>
 
-        <div style="background: var(--bg-card); border-radius: var(--radius-md); padding: 16px; margin: 20px 0; text-align: left;">
-          <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-            <span style="color:var(--text-muted);">Table Number:</span>
-            <strong id="success-table-num" style="color:var(--primary);">--</strong>
+        <div style="background: var(--bg-subtle); border-radius: var(--radius-md); border: 1px solid var(--border-subtle); padding: 16px; margin: 20px 0; text-align: left;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+            <span style="color:var(--text-muted); font-size:0.86rem;">Table Number:</span>
+            <strong id="success-table-num" style="color:var(--brand-navy); font-weight:700;">--</strong>
           </div>
-          <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-            <span style="color:var(--text-muted);">Total Amount:</span>
-            <strong id="success-total-amt">₹0</strong>
+          <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+            <span style="color:var(--text-muted); font-size:0.86rem;">Total Amount:</span>
+            <strong id="success-total-amt" style="color:var(--primary); font-weight:800; font-size:1.05rem;">₹0</strong>
           </div>
-          <div style="display:flex; justify-content:space-between;">
-            <span style="color:var(--text-muted);">Status:</span>
-            <span class="status-badge active">Pending Kitchen</span>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:var(--text-muted); font-size:0.86rem;">Status:</span>
+            <span class="status-badge active">
+              <span class="table-pulse-dot" style="width:6px;height:6px;"></span>
+              Pending Kitchen
+            </span>
           </div>
         </div>
 
-        <button class="btn-secondary" id="btn-order-more" style="width:100%;">
-          Order More Items
+        <button class="btn-secondary" id="btn-order-more" style="width:100%; padding:12px; font-weight:600;">
+          <i data-lucide="plus-circle" style="width:16px;height:16px;"></i>
+          <span>Order More Items</span>
         </button>
       </div>
     </div>
@@ -160,14 +181,14 @@
     <div class="aola-footer-container">
       <div class="aola-footer-brand">
         <a href="https://wa.me/919847054970?text=Hi%20AOLA%20Team,%20I%20saw%20your%20QR%20Ordering%20system%20and%20want%20this%20for%20my%20restaurant" target="_blank" rel="noopener noreferrer" class="aola-brand-pill" title="Get AOLA Smart QR Ordering for your restaurant">
-          <img src="AU-icon.svg" alt="AOLA" class="aola-pill-logo">
+          <img src="AU-dark-icon.svg" alt="AOLA" class="aola-pill-logo">
           <span>Powered by <strong class="aola-brand-name">AOLA</strong> — Smart QR Ordering</span>
           <span class="aola-brand-tag">Get for your restaurant &rarr;</span>
         </a>
       </div>
       <div class="aola-footer-contacts">
         <a href="mailto:mh.nasif012@gmail.com" class="aola-contact-badge" title="Email Agency Support">
-          <svg class="aola-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>
+          <i data-lucide="mail" class="aola-icon" style="width:15px;height:15px;"></i>
           <span>mh.nasif012@gmail.com</span>
         </a>
         <a href="https://wa.me/919847054970" target="_blank" rel="noopener noreferrer" class="aola-contact-badge aola-whatsapp-badge" title="Chat on WhatsApp">
@@ -192,5 +213,11 @@
   <script src="js/config.js"></script>
   <script src="js/api.js"></script>
   <script src="js/customer.js"></script>
+  <script>
+    // Self-initialize Lucide Icons
+    if (window.lucide) {
+      lucide.createIcons();
+    }
+  </script>
 </body>
 </html>

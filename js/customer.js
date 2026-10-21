@@ -159,12 +159,23 @@
             return null;
           }
 
+          let isVeg = true;
+          if (item.isVeg === false || String(item.isVeg).toLowerCase() === "false") {
+            isVeg = false;
+          } else if (item.isVeg === true || String(item.isVeg).toLowerCase() === "true") {
+            isVeg = true;
+          } else {
+            isVeg = !/chicken|mutton|fish|beef|pork|egg|meat|prawn|kebab|tikka/i.test(name);
+          }
+
           return {
             id: item.id || `dish_${idx}`,
             name: name,
             price: price,
             inStock: inStock,
-            category: category
+            category: category,
+            isVeg: isVeg,
+            description: item.description || ""
           };
         })
         .filter(Boolean);
@@ -181,12 +192,13 @@
       if (state.shopData.logoUrl) {
         el.brandLogoContainer.innerHTML = `<img src="${escapeHtml(state.shopData.logoUrl)}" alt="${escapeHtml(state.shopData.name)} logo">`;
       } else {
-        el.brandLogoContainer.innerHTML = `<img src="AU-icon.svg" alt="AOLA Logo" style="width:100%;height:100%;object-fit:contain;padding:12px;">`;
+        el.brandLogoContainer.innerHTML = `<img src="AU-dark-icon.svg" alt="AOLA Logo" style="width:100%;height:100%;object-fit:contain;padding:8px;">`;
       }
 
       // Render Categories & Menu Feed
       renderCategories();
       renderMenuFeed();
+      if (window.lucide) lucide.createIcons();
     } catch (err) {
       renderErrorNotice("Failed to connect to menu server. Please check your network connection.");
     }
@@ -205,7 +217,11 @@
     categories.forEach((cat) => {
       const btn = document.createElement("button");
       btn.className = `cat-chip ${state.selectedCategory === cat ? "active" : ""}`;
-      btn.textContent = cat === "all" ? "All Items" : cat;
+      if (cat === "all") {
+        btn.innerHTML = `<i data-lucide="layout-grid" style="width:14px;height:14px;"></i><span>All Items</span>`;
+      } else {
+        btn.innerHTML = `<span>${escapeHtml(cat)}</span>`;
+      }
       btn.onclick = () => {
         state.selectedCategory = cat;
         renderCategories();
@@ -213,6 +229,7 @@
       };
       el.categoryBar.appendChild(btn);
     });
+    if (window.lucide) lucide.createIcons();
   }
 
   /**
@@ -227,11 +244,12 @@
     if (filtered.length === 0) {
       el.menuFeed.innerHTML = `
         <div class="empty-state">
-          <div class="empty-state-icon">🍽️</div>
-          <h3>No items in this category</h3>
-          <p style="font-size:0.85rem;margin-top:6px;">Please choose another category from the bar above.</p>
+          <div class="empty-state-icon"><i data-lucide="utensils" style="width:36px;height:36px;"></i></div>
+          <h3 style="color:var(--brand-navy);font-size:1.05rem;">No items in this category</h3>
+          <p style="font-size:0.85rem;margin-top:6px;color:var(--text-muted);">Please choose another category from the capsule navigation above.</p>
         </div>
       `;
+      if (window.lucide) lucide.createIcons();
       return;
     }
 
@@ -241,14 +259,21 @@
       card.className = `dish-card ${!item.inStock ? "out-of-stock" : ""}`;
 
       const cartQty = state.cart[item.id] ? state.cart[item.id].qty : 0;
+      const dietBadge = item.isVeg
+        ? `<span class="diet-tag-veg" title="Vegetarian"><span class="diet-icon"><span class="diet-dot"></span></span> Veg</span>`
+        : `<span class="diet-tag-nonveg" title="Non-Vegetarian"><span class="diet-icon"><span class="diet-dot"></span></span> Non-Veg</span>`;
 
       card.innerHTML = `
         <div class="dish-info">
-          <div class="dish-category">${escapeHtml(item.category || "Main")}</div>
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+            ${dietBadge}
+            <span class="dish-category">${escapeHtml(item.category || "Main")}</span>
+          </div>
           <h3 class="dish-name">
             ${escapeHtml(item.name)}
             ${!item.inStock ? '<span class="dish-tag oos">Sold Out</span>' : ""}
           </h3>
+          ${item.description ? `<p class="dish-desc">${escapeHtml(item.description)}</p>` : ""}
           <div class="dish-price">${formatCurrency(item.price)}</div>
         </div>
         <div class="dish-action">
@@ -258,14 +283,15 @@
               : cartQty > 0
               ? `
                 <div class="qty-stepper">
-                  <button class="qty-btn btn-dec" data-id="${item.id}" aria-label="Decrease quantity">-</button>
+                  <button class="qty-btn btn-dec" data-id="${item.id}" aria-label="Decrease quantity">&minus;</button>
                   <span class="qty-count">${cartQty}</span>
-                  <button class="qty-btn btn-inc" data-id="${item.id}" aria-label="Increase quantity">+</button>
+                  <button class="qty-btn btn-inc" data-id="${item.id}" aria-label="Increase quantity">&plus;</button>
                 </div>
               `
               : `
                 <button class="btn-add btn-initial-add" data-id="${item.id}">
-                  + Add
+                  <i data-lucide="plus" style="width:14px;height:14px;"></i>
+                  <span>Add</span>
                 </button>
               `
           }
@@ -285,6 +311,8 @@
     el.menuFeed.querySelectorAll(".btn-dec").forEach((b) => {
       b.onclick = () => decrementCart(b.dataset.id);
     });
+
+    if (window.lucide) lucide.createIcons();
   }
 
   /**
@@ -445,11 +473,9 @@
       el.btnSubmitOrder.disabled = false;
       el.btnSubmitOrder.innerHTML = `
         <span>Send Order to Kitchen</span>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M22 2L11 13"></path>
-          <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-        </svg>
+        <i data-lucide="send" style="width:18px;height:18px;"></i>
       `;
+      if (window.lucide) lucide.createIcons();
     }
   }
 
@@ -458,6 +484,7 @@
    */
   function openCartModal() {
     el.cartModal.classList.add("open");
+    if (window.lucide) lucide.createIcons();
   }
 
   function closeCartModal() {
@@ -469,6 +496,7 @@
     el.successTableNum.textContent = `Table ${tableNum}`;
     el.successTotalAmt.textContent = formatCurrency(totalAmt);
     el.successModal.classList.add("open");
+    if (window.lucide) lucide.createIcons();
   }
 
   function closeSuccessModal() {
@@ -478,7 +506,9 @@
   function renderSuspendedNotice(message) {
     el.menuFeed.innerHTML = `
       <div class="empty-state" style="padding: 60px 20px;">
-        <div class="empty-state-icon" style="color:var(--accent-rose); opacity:1;">⚠️</div>
+        <div class="empty-state-icon" style="color:var(--accent-rose); opacity:1;">
+          <i data-lucide="alert-octagon" style="width:44px;height:44px;"></i>
+        </div>
         <h2 style="color:var(--accent-rose); margin-bottom: 8px;">Service Temporarily Inactive</h2>
         <p style="color:var(--text-muted); font-size:0.95rem; max-width:320px; margin:0 auto;">
           ${escapeHtml(message || "This restaurant's ordering system is currently offline.")}
@@ -486,17 +516,24 @@
       </div>
     `;
     el.restaurantName.textContent = "Offline";
+    if (window.lucide) lucide.createIcons();
   }
 
   function renderErrorNotice(message) {
     el.menuFeed.innerHTML = `
       <div class="empty-state">
-        <div class="empty-state-icon">⚠️</div>
-        <h3>Unable to load menu</h3>
+        <div class="empty-state-icon" style="color:var(--accent-rose);">
+          <i data-lucide="wifi-off" style="width:40px;height:40px;"></i>
+        </div>
+        <h3 style="color:var(--brand-navy);">Unable to load menu</h3>
         <p style="color:var(--text-muted);margin:8px 0 16px;">${escapeHtml(message)}</p>
-        <button class="btn-secondary" onclick="location.reload()">Retry</button>
+        <button class="btn-secondary" onclick="location.reload()" style="display:inline-flex;align-items:center;gap:6px;">
+          <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>
+          <span>Retry</span>
+        </button>
       </div>
     `;
+    if (window.lucide) lucide.createIcons();
   }
 
   /**
