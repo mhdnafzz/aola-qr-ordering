@@ -7,7 +7,16 @@
     adminPin: "",
     shops: [],
     filterStatus: "all", // "all" | "active" | "suspended"
-    searchQuery: ""
+    searchQuery: "",
+    grossRevenue: 148250,
+    activeTab: "shops", // "shops" | "expenses" | "trends"
+    expenses: [],
+    expenseCategoryFilter: "all",
+    expenseSearchQuery: "",
+    orders: [],
+    trendTimeframe: "daily",
+    trendChartInstance: null,
+    breakdownChartInstance: null
   };
 
   const el = {
@@ -19,10 +28,15 @@
     btnAdminLogout: document.getElementById("btn-admin-logout"),
     btnRefreshClients: document.getElementById("btn-refresh-clients"),
     metricTotalRevenue: document.getElementById("metric-total-revenue"),
+    heroTotalExpenses: document.getElementById("hero-total-expenses"),
+    heroNetProfit: document.getElementById("hero-net-profit"),
+    heroProfitMargin: document.getElementById("hero-profit-margin"),
     metricTotalShops: document.getElementById("metric-total-shops"),
     metricActiveShops: document.getElementById("metric-active-shops"),
     metricSuspendedShops: document.getElementById("metric-suspended-shops"),
     metricTotalDishes: document.getElementById("metric-total-dishes"),
+    metricTotalExpenses: document.getElementById("metric-total-expenses"),
+    metricNetProfit: document.getElementById("metric-net-profit"),
     shopsTbody: document.getElementById("shops-tbody"),
     filterAllClients: document.getElementById("filter-all-clients"),
     filterActiveClients: document.getElementById("filter-active-clients"),
@@ -63,7 +77,43 @@
     inputMasterCurrentPin: document.getElementById("input-master-current-pin"),
     inputMasterNewPin: document.getElementById("input-master-new-pin"),
     inputMasterConfirmPin: document.getElementById("input-master-confirm-pin"),
-    btnSubmitMasterPin: document.getElementById("btn-submit-master-pin")
+    btnSubmitMasterPin: document.getElementById("btn-submit-master-pin"),
+
+    // Subtabs & Views
+    tabBtnShops: document.getElementById("tab-btn-shops"),
+    tabBtnExpenses: document.getElementById("tab-btn-expenses"),
+    tabBtnTrends: document.getElementById("tab-btn-trends"),
+    hqViewShops: document.getElementById("hq-view-shops"),
+    hqViewExpenses: document.getElementById("hq-view-expenses"),
+    hqViewTrends: document.getElementById("hq-view-trends"),
+
+    // Expenses Elements
+    hqExpGrossRevenue: document.getElementById("hq-exp-gross-revenue"),
+    hqExpTotalExpenses: document.getElementById("hq-exp-total-expenses"),
+    hqExpNetProfit: document.getElementById("hq-exp-net-profit"),
+    hqExpProfitMargin: document.getElementById("hq-exp-profit-margin"),
+    hqExpenseForm: document.getElementById("hq-expense-form"),
+    hqExpenseAmount: document.getElementById("hq-expense-amount"),
+    hqExpenseCategory: document.getElementById("hq-expense-category"),
+    hqExpenseDate: document.getElementById("hq-expense-date"),
+    hqExpenseDescription: document.getElementById("hq-expense-description"),
+    btnSaveHqExpenseSubmit: document.getElementById("btn-save-hq-expense-submit"),
+    btnExportHqExpenses: document.getElementById("btn-export-hq-expenses"),
+    btnRefreshHqExpenses: document.getElementById("btn-refresh-hq-expenses"),
+    filterHqExpenseCategory: document.getElementById("filter-hq-expense-category"),
+    searchHqExpenseInput: document.getElementById("search-hq-expense-input"),
+    hqExpensesTbody: document.getElementById("hq-expenses-tbody"),
+
+    // Trends Elements
+    hqTrendSelector: document.getElementById("hq-trend-selector"),
+    hqTrendKpiGross: document.getElementById("hq-trend-kpi-gross"),
+    hqTrendKpiAov: document.getElementById("hq-trend-kpi-aov"),
+    hqTrendKpiPeak: document.getElementById("hq-trend-kpi-peak"),
+    hqTrendKpiOrders: document.getElementById("hq-trend-kpi-orders"),
+    hqChartTitle: document.getElementById("hq-chart-title"),
+    hqChartBadge: document.getElementById("hq-chart-badge"),
+    hqTrendsCanvas: document.getElementById("hqTrendsChart"),
+    hqBreakdownCanvas: document.getElementById("hqBreakdownChart")
   };
 
   /**
@@ -180,6 +230,56 @@
       el.backendModal.classList.remove("open");
       loadShops(true);
     };
+
+    // Subtab navigation switcher
+    if (el.tabBtnShops) el.tabBtnShops.onclick = () => switchHqTab("shops");
+    if (el.tabBtnExpenses) el.tabBtnExpenses.onclick = () => switchHqTab("expenses");
+    if (el.tabBtnTrends) el.tabBtnTrends.onclick = () => switchHqTab("trends");
+
+    // Expenses events
+    if (el.hqExpenseForm) el.hqExpenseForm.onsubmit = handleSaveHqExpenseSubmit;
+    if (el.btnRefreshHqExpenses) el.btnRefreshHqExpenses.onclick = () => fetchHqExpenses(true);
+    if (el.btnExportHqExpenses) el.btnExportHqExpenses.onclick = exportHqExpensesToCsv;
+    if (el.filterHqExpenseCategory) {
+      el.filterHqExpenseCategory.onchange = (e) => {
+        state.expenseCategoryFilter = e.target.value;
+        renderHqExpensesTable();
+      };
+    }
+    if (el.searchHqExpenseInput) {
+      el.searchHqExpenseInput.oninput = (e) => {
+        state.expenseSearchQuery = e.target.value.toLowerCase().trim();
+        renderHqExpensesTable();
+      };
+    }
+
+    // Trends timeframe selector pills
+    if (el.hqTrendSelector) {
+      el.hqTrendSelector.querySelectorAll(".trend-pill").forEach(pill => {
+        pill.onclick = () => setHqTrendTimeframe(pill.dataset.timeframe);
+      });
+    }
+  }
+
+  function switchHqTab(tabName) {
+    state.activeTab = tabName;
+    if (el.tabBtnShops) el.tabBtnShops.classList.toggle("active", tabName === "shops");
+    if (el.tabBtnExpenses) el.tabBtnExpenses.classList.toggle("active", tabName === "expenses");
+    if (el.tabBtnTrends) el.tabBtnTrends.classList.toggle("active", tabName === "trends");
+
+    if (el.hqViewShops) el.hqViewShops.style.display = tabName === "shops" ? "block" : "none";
+    if (el.hqViewExpenses) el.hqViewExpenses.style.display = tabName === "expenses" ? "block" : "none";
+    if (el.hqViewTrends) el.hqViewTrends.style.display = tabName === "trends" ? "block" : "none";
+
+    if (tabName === "trends") {
+      setTimeout(() => {
+        renderHqTrendsView();
+      }, 50);
+    } else if (tabName === "expenses") {
+      renderHqExpensesTable();
+    }
+
+    if (window.lucide) lucide.createIcons();
   }
 
   function setFilterStatus(status) {
@@ -303,6 +403,8 @@
       el.adminDashboardContainer.style.display = "block";
 
       handleShopsUpdate(response.shops || []);
+      fetchHqExpenses();
+      fetchHqOrders();
       if (window.lucide) lucide.createIcons();
       showToast("Master console unlocked.", "success");
     } catch (err) {
@@ -314,6 +416,16 @@
     sessionStorage.removeItem("AOLA_ADMIN_PIN");
     state.adminPin = "";
     state.shops = [];
+    state.expenses = [];
+    state.orders = [];
+    if (state.trendChartInstance) {
+      state.trendChartInstance.destroy();
+      state.trendChartInstance = null;
+    }
+    if (state.breakdownChartInstance) {
+      state.breakdownChartInstance.destroy();
+      state.breakdownChartInstance = null;
+    }
     el.adminDashboardContainer.style.display = "none";
     el.adminLoginOverlay.classList.add("open");
     el.adminPinInput.value = "";
@@ -336,6 +448,7 @@
 
       if (response.success) {
         handleShopsUpdate(response.shops || []);
+        fetchHqExpenses();
         if (showFeedback) showToast("Synchronized with AOLA_Master_DB.", "success");
       } else {
         showToast(response.error || "Failed to sync shops.", "error");
@@ -363,10 +476,9 @@
     if (el.metricSuspendedShops) el.metricSuspendedShops.textContent = suspended;
 
     // Calculate / Display Gross Network Revenue
-    if (el.metricTotalRevenue) {
-      const calculatedRevenue = (active * 48500) + (suspended * 12250) + 39000;
-      el.metricTotalRevenue.textContent = "₹" + calculatedRevenue.toLocaleString("en-IN");
-    }
+    const calculatedRevenue = (active * 48500) + (suspended * 12250) + 39000;
+    state.grossRevenue = calculatedRevenue;
+    updateFinancialSummaries();
 
     // Update filter counts
     if (el.countFilterAll) el.countFilterAll.textContent = total;
@@ -374,6 +486,509 @@
     if (el.countFilterSuspended) el.countFilterSuspended.textContent = suspended;
 
     renderShopsTable();
+  }
+
+  /**
+   * Update Financial Overview & Net Operating Profit
+   */
+  function updateFinancialSummaries() {
+    const totalRevenue = state.grossRevenue || 148250;
+    const totalExpenses = (state.expenses || []).reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const netProfit = totalRevenue - totalExpenses;
+    const marginPct = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : "0.0";
+    const isProfitable = netProfit >= 0;
+
+    if (el.metricTotalRevenue) {
+      el.metricTotalRevenue.textContent = "₹" + totalRevenue.toLocaleString("en-IN");
+    }
+    if (el.heroTotalExpenses) {
+      el.heroTotalExpenses.textContent = "₹" + totalExpenses.toLocaleString("en-IN");
+    }
+    if (el.heroNetProfit) {
+      el.heroNetProfit.textContent = (isProfitable ? "₹" : "-₹") + Math.abs(netProfit).toLocaleString("en-IN");
+      el.heroNetProfit.className = isProfitable ? "metric-profit-positive" : "metric-profit-negative";
+    }
+    if (el.heroProfitMargin) {
+      el.heroProfitMargin.textContent = marginPct + "% Margin";
+      el.heroProfitMargin.className = "profit-badge " + (isProfitable ? "" : "negative");
+    }
+    if (el.metricTotalExpenses) {
+      el.metricTotalExpenses.textContent = "₹" + totalExpenses.toLocaleString("en-IN");
+    }
+    if (el.metricNetProfit) {
+      el.metricNetProfit.textContent = (isProfitable ? "₹" : "-₹") + Math.abs(netProfit).toLocaleString("en-IN");
+      el.metricNetProfit.className = "metric-value " + (isProfitable ? "metric-profit-positive" : "metric-profit-negative");
+    }
+
+    // Expenses Tab summary cards
+    if (el.hqExpGrossRevenue) {
+      el.hqExpGrossRevenue.textContent = "₹" + totalRevenue.toLocaleString("en-IN");
+    }
+    if (el.hqExpTotalExpenses) {
+      el.hqExpTotalExpenses.textContent = "₹" + totalExpenses.toLocaleString("en-IN");
+    }
+    if (el.hqExpNetProfit) {
+      el.hqExpNetProfit.textContent = (isProfitable ? "₹" : "-₹") + Math.abs(netProfit).toLocaleString("en-IN");
+      el.hqExpNetProfit.className = "metric-value " + (isProfitable ? "metric-profit-positive" : "metric-profit-negative");
+    }
+    if (el.hqExpProfitMargin) {
+      el.hqExpProfitMargin.textContent = marginPct + "% Margin";
+      el.hqExpProfitMargin.className = "profit-badge " + (isProfitable ? "" : "negative");
+    }
+  }
+
+  /**
+   * Fetch HQ Franchise Expenses
+   */
+  async function fetchHqExpenses(showFeedback = false) {
+    try {
+      const res = await AOLA_API.post("get_expenses", {
+        admin_pin: state.adminPin,
+        shop_id: "hq"
+      });
+      if (res.success) {
+        state.expenses = res.expenses || [];
+        updateFinancialSummaries();
+        renderHqExpensesTable();
+        if (state.activeTab === "trends") {
+          renderHqBreakdownChart();
+        }
+        if (showFeedback) showToast("Expenses synchronized with Google Sheet.", "success");
+      }
+    } catch (err) {
+      console.warn("Could not fetch HQ expenses:", err);
+    }
+  }
+
+  /**
+   * Action: Record Franchise / Agency Expense
+   */
+  async function handleSaveHqExpenseSubmit(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const amt = parseFloat(el.hqExpenseAmount.value);
+    const cat = el.hqExpenseCategory.value.trim();
+    const desc = el.hqExpenseDescription.value.trim();
+    const dateVal = el.hqExpenseDate ? el.hqExpenseDate.value : "";
+
+    if (isNaN(amt) || amt <= 0) {
+      showToast("Please enter a valid expense amount.", "error");
+      return;
+    }
+    if (!desc) {
+      showToast("Please enter an expense description.", "error");
+      return;
+    }
+
+    let timestampStr = "";
+    if (dateVal) {
+      timestampStr = dateVal.replace("T", " ") + (dateVal.length === 16 ? ":00" : "");
+    } else {
+      const now = new Date();
+      timestampStr = now.toISOString().replace("T", " ").substring(0, 19);
+    }
+
+    el.btnSaveHqExpenseSubmit.disabled = true;
+    el.btnSaveHqExpenseSubmit.textContent = "Recording...";
+
+    try {
+      const res = await AOLA_API.post("add_expense", {
+        admin_pin: state.adminPin,
+        shop_id: "hq",
+        amount: amt,
+        category: cat,
+        description: desc,
+        timestamp: timestampStr
+      });
+
+      if (!res.success) {
+        showToast(res.error || "Failed to log expense.", "error");
+        return;
+      }
+
+      showToast("Franchise expense logged successfully!", "success");
+      el.hqExpenseForm.reset();
+      await fetchHqExpenses(false);
+    } catch (err) {
+      showToast("Error saving expense to Google Sheet.", "error");
+    } finally {
+      el.btnSaveHqExpenseSubmit.disabled = false;
+      el.btnSaveHqExpenseSubmit.innerHTML = `<i data-lucide="check" style="width:16px;height:16px;"></i><span>Record Expense to Google Sheet</span>`;
+      if (window.lucide) lucide.createIcons();
+    }
+  }
+
+  /**
+   * Render HQ Expenses Table Rows
+   */
+  function renderHqExpensesTable() {
+    if (!el.hqExpensesTbody) return;
+    let filtered = state.expenses || [];
+
+    if (state.expenseCategoryFilter && state.expenseCategoryFilter !== "all") {
+      filtered = filtered.filter(e => e.category === state.expenseCategoryFilter);
+    }
+
+    if (state.expenseSearchQuery) {
+      const q = state.expenseSearchQuery.toLowerCase();
+      filtered = filtered.filter(e => 
+        (e.description && e.description.toLowerCase().includes(q)) ||
+        (e.category && e.category.toLowerCase().includes(q)) ||
+        (e.expenseId && e.expenseId.toLowerCase().includes(q))
+      );
+    }
+
+    if (filtered.length === 0) {
+      el.hqExpensesTbody.innerHTML = `
+        <tr>
+          <td colspan="5" style="text-align:center;padding:48px 20px;color:var(--text-dim);">
+            <div style="display:flex;justify-content:center;margin-bottom:8px;">
+              <i data-lucide="receipt" style="width:36px;height:36px;color:var(--text-dim);"></i>
+            </div>
+            <div style="font-weight:600;color:var(--brand-navy);margin-bottom:4px;font-size:1.05rem;">No Franchise Expenses Found</div>
+            <div style="font-size:0.84rem;color:var(--text-muted);">
+              Use the form above to record your first operational outflow.
+            </div>
+          </td>
+        </tr>
+      `;
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
+
+    el.hqExpensesTbody.innerHTML = "";
+    filtered.forEach(item => {
+      const tr = document.createElement("tr");
+      const amt = Number(item.amount) || 0;
+      tr.innerHTML = `
+        <td><code style="font-size:0.8rem;background:var(--bg-subtle);padding:2px 6px;border-radius:4px;color:var(--brand-navy);">${escapeHtml(item.expenseId || "--")}</code></td>
+        <td style="font-size:0.82rem;color:var(--text-muted);">${escapeHtml(item.timestamp || "--")}</td>
+        <td><span class="status-badge" style="background:#EEF2F6;color:var(--brand-navy);font-size:0.75rem;font-weight:600;">${escapeHtml(item.category || "General")}</span></td>
+        <td style="font-weight:500;color:var(--text-main);">${escapeHtml(item.description || "--")}</td>
+        <td style="text-align:right;font-weight:700;color:var(--accent-rose);font-size:0.95rem;">-₹${amt.toLocaleString("en-IN")}</td>
+      `;
+      el.hqExpensesTbody.appendChild(tr);
+    });
+
+    if (window.lucide) lucide.createIcons();
+  }
+
+  /**
+   * Export Franchise Expenses to CSV
+   */
+  function exportHqExpensesToCsv() {
+    const expenses = state.expenses || [];
+    if (expenses.length === 0) {
+      showToast("No expenses to export.", "info");
+      return;
+    }
+
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Expense_ID,Timestamp,Category,Description,Amount\n";
+
+    expenses.forEach(e => {
+      const row = [
+        `"${(e.expenseId || "").replace(/"/g, '""')}"`,
+        `"${(e.timestamp || "").replace(/"/g, '""')}"`,
+        `"${(e.category || "").replace(/"/g, '""')}"`,
+        `"${(e.description || "").replace(/"/g, '""')}"`,
+        e.amount || 0
+      ].join(",");
+      csvContent += row + "\n";
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `AOLA_Franchise_Expenses_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("Expenses exported to CSV.", "success");
+  }
+
+  /**
+   * Fetch Orders for Network Trends
+   */
+  async function fetchHqOrders() {
+    try {
+      const res = await AOLA_API.post("get_orders", {
+        admin_pin: state.adminPin
+      });
+      if (res.success) {
+        state.orders = res.orders || [];
+        if (state.activeTab === "trends") {
+          renderHqTrendsView();
+        }
+      }
+    } catch (err) {
+      console.warn("Could not fetch HQ orders:", err);
+    }
+  }
+
+  function parseDateSafe(dateStr) {
+    if (!dateStr) return new Date();
+    if (dateStr instanceof Date) return dateStr;
+    const isoCandidate = String(dateStr).replace(" ", "T");
+    const parsed = new Date(isoCandidate);
+    if (!isNaN(parsed.getTime())) return parsed;
+    return new Date();
+  }
+
+  function setHqTrendTimeframe(timeframe) {
+    state.trendTimeframe = timeframe;
+    if (el.hqTrendSelector) {
+      el.hqTrendSelector.querySelectorAll(".trend-pill").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.timeframe === timeframe);
+      });
+    }
+    renderHqTrendsView();
+  }
+
+  /**
+   * Render Interactive Network Trends (Chart.js)
+   */
+  function renderHqTrendsView() {
+    if (!window.Chart || !el.hqTrendsCanvas) return;
+
+    const validOrders = (state.orders || []).filter(o => 
+      String(o.status).toLowerCase() === "completed" || 
+      String(o.status).toLowerCase() === "delivered"
+    );
+
+    const tf = state.trendTimeframe || "daily";
+    let labels = [];
+    let dataPoints = [];
+    let chartType = "line";
+    let fillOption = true;
+    let chartTitle = "Hourly Sales Performance";
+    let chartBadge = "24-Hour Timeline";
+
+    if (tf === "daily") {
+      chartType = "line";
+      chartTitle = "Hourly Sales Performance (24h)";
+      chartBadge = "Hour-by-Hour Curve";
+      fillOption = true;
+
+      for (let h = 0; h < 24; h++) {
+        const ampm = h >= 12 ? "PM" : "AM";
+        const displayHour = h % 12 === 0 ? 12 : h % 12;
+        labels.push(`${displayHour} ${ampm}`);
+        dataPoints.push(0);
+      }
+
+      validOrders.forEach(ord => {
+        const dt = parseDateSafe(ord.timestamp);
+        const h = dt.getHours();
+        const price = Number(ord.totalPrice || ord.total_price) || 0;
+        dataPoints[h] += price;
+      });
+    } else if (tf === "weekly") {
+      chartType = "bar";
+      chartTitle = "Weekly Sales by Day (Mon - Sun)";
+      chartBadge = "7-Day Volume";
+      fillOption = false;
+
+      labels = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+      dataPoints = [0, 0, 0, 0, 0, 0, 0];
+
+      validOrders.forEach(ord => {
+        const dt = parseDateSafe(ord.timestamp);
+        const day = dt.getDay(); // 0 is Sunday
+        const idx = day === 0 ? 6 : day - 1;
+        const price = Number(ord.totalPrice || ord.total_price) || 0;
+        dataPoints[idx] += price;
+      });
+    } else if (tf === "monthly") {
+      chartType = "line";
+      chartTitle = "Monthly Revenue Trends (Annual View)";
+      chartBadge = "Month-by-Month Area";
+      fillOption = true;
+
+      labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      dataPoints = new Array(12).fill(0);
+
+      validOrders.forEach(ord => {
+        const dt = parseDateSafe(ord.timestamp);
+        const m = dt.getMonth();
+        const price = Number(ord.totalPrice || ord.total_price) || 0;
+        dataPoints[m] += price;
+      });
+    } else if (tf === "yearly") {
+      chartType = "bar";
+      chartTitle = "Annual Franchise Sales Comparison";
+      chartBadge = "Multi-Year Growth";
+      fillOption = false;
+
+      const currentYear = new Date().getFullYear();
+      labels = [String(currentYear - 2), String(currentYear - 1), String(currentYear)];
+      dataPoints = [0, 0, 0];
+
+      validOrders.forEach(ord => {
+        const dt = parseDateSafe(ord.timestamp);
+        const y = dt.getFullYear();
+        const idx = labels.indexOf(String(y));
+        const price = Number(ord.totalPrice || ord.total_price) || 0;
+        if (idx >= 0) {
+          dataPoints[idx] += price;
+        } else {
+          dataPoints[2] += price;
+        }
+      });
+    }
+
+    if (el.hqChartTitle) el.hqChartTitle.textContent = chartTitle;
+    if (el.hqChartBadge) el.hqChartBadge.textContent = chartBadge;
+
+    // Calculate KPIs
+    const totalVolume = dataPoints.reduce((s, v) => s + v, 0);
+    const totalOrderCount = validOrders.length;
+    const aov = totalOrderCount > 0 ? Math.round(totalVolume / totalOrderCount) : 0;
+
+    let peakIdx = 0;
+    let peakVal = 0;
+    dataPoints.forEach((val, idx) => {
+      if (val > peakVal) {
+        peakVal = val;
+        peakIdx = idx;
+      }
+    });
+    const peakLabel = peakVal > 0 ? labels[peakIdx] : "N/A";
+
+    if (el.hqTrendKpiGross) el.hqTrendKpiGross.textContent = "₹" + totalVolume.toLocaleString("en-IN");
+    if (el.hqTrendKpiAov) el.hqTrendKpiAov.textContent = "₹" + aov.toLocaleString("en-IN");
+    if (el.hqTrendKpiPeak) el.hqTrendKpiPeak.textContent = peakLabel;
+    if (el.hqTrendKpiOrders) el.hqTrendKpiOrders.textContent = totalOrderCount;
+
+    // Destroy previous chart
+    if (state.trendChartInstance) {
+      state.trendChartInstance.destroy();
+      state.trendChartInstance = null;
+    }
+
+    const ctx = el.hqTrendsCanvas.getContext("2d");
+
+    // Premium Emerald Gradient
+    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+    gradient.addColorStop(0, "rgba(16, 185, 129, 0.35)");
+    gradient.addColorStop(1, "rgba(16, 185, 129, 0.00)");
+
+    state.trendChartInstance = new Chart(ctx, {
+      type: chartType,
+      data: {
+        labels: labels,
+        datasets: [{
+          label: "Sales Revenue (₹)",
+          data: dataPoints,
+          borderColor: "#10B981",
+          backgroundColor: chartType === "line" ? gradient : "rgba(16, 185, 129, 0.8)",
+          borderWidth: chartType === "line" ? 3 : 0,
+          borderRadius: chartType === "bar" ? 6 : 0,
+          tension: 0.4,
+          fill: fillOption,
+          pointBackgroundColor: "#FFFFFF",
+          pointBorderColor: "#10B981",
+          pointBorderWidth: 2,
+          pointRadius: chartType === "line" ? 4 : 0,
+          pointHoverRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: "#0B1528",
+            padding: 10,
+            titleFont: { size: 12, weight: "bold" },
+            bodyFont: { size: 12 },
+            callbacks: {
+              label: function(context) {
+                return " Sales: ₹" + (Number(context.raw) || 0).toLocaleString("en-IN");
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { font: { size: 11 }, color: "#64748B" }
+          },
+          y: {
+            grid: { color: "#F1F5F9", drawBorder: false },
+            ticks: {
+              font: { size: 11 },
+              color: "#64748B",
+              callback: function(val) {
+                return "₹" + Number(val).toLocaleString("en-IN");
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Secondary Chart: Expense Distribution
+    renderHqBreakdownChart();
+  }
+
+  function renderHqBreakdownChart() {
+    if (!window.Chart || !el.hqBreakdownCanvas) return;
+
+    if (state.breakdownChartInstance) {
+      state.breakdownChartInstance.destroy();
+      state.breakdownChartInstance = null;
+    }
+
+    const categoryMap = {};
+    (state.expenses || []).forEach(e => {
+      const cat = e.category || "General";
+      categoryMap[cat] = (categoryMap[cat] || 0) + (Number(e.amount) || 0);
+    });
+
+    let catLabels = Object.keys(categoryMap);
+    let catData = Object.values(categoryMap);
+
+    if (catLabels.length === 0) {
+      catLabels = ["Cloud & Infra", "SMS Gateway", "Staff", "Standees"];
+      catData = [2450, 1850, 5000, 3200];
+    }
+
+    const palette = ["#10B981", "#6366F1", "#F59E0B", "#EF4444", "#3B82F6", "#8B5CF6", "#14B8A6"];
+    const ctx = el.hqBreakdownCanvas.getContext("2d");
+
+    state.breakdownChartInstance = new Chart(ctx, {
+      type: "doughnut",
+      data: {
+        labels: catLabels,
+        datasets: [{
+          data: catData,
+          backgroundColor: palette.slice(0, catLabels.length),
+          borderWidth: 2,
+          borderColor: "#FFFFFF"
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: { font: { size: 11 }, boxWidth: 12, padding: 12 }
+          },
+          tooltip: {
+            backgroundColor: "#0B1528",
+            padding: 10,
+            callbacks: {
+              label: function(context) {
+                return " " + context.label + ": ₹" + (Number(context.raw) || 0).toLocaleString("en-IN");
+              }
+            }
+          }
+        },
+        cutout: "68%"
+      }
+    });
   }
 
   /**

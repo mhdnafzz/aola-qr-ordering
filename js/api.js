@@ -264,7 +264,7 @@ const MockProvider = {
     orders: [
       {
         orderId: "ORD-9421",
-        timestamp: "2026-10-20 07:15:00",
+        timestamp: "2026-10-22 13:45:00",
         tableNumber: "3",
         items: "2x Special Chicken Dum Biryani (₹480), 1x Chicken Tikka Kebab (₹190)",
         totalPrice: 670,
@@ -273,7 +273,7 @@ const MockProvider = {
       },
       {
         orderId: "ORD-8812",
-        timestamp: "2026-10-20 07:05:00",
+        timestamp: "2026-10-22 13:20:00",
         tableNumber: "5",
         items: "1x Paneer Butter Masala (₹180), 3x Butter Garlic Naan (₹135)",
         totalPrice: 315,
@@ -282,14 +282,121 @@ const MockProvider = {
       },
       {
         orderId: "ORD-7619",
-        timestamp: "2026-10-20 06:40:00",
+        timestamp: "2026-10-22 12:30:00",
         tableNumber: "1",
         items: "1x Mutton Hyderabadi Biryani (₹320)",
         totalPrice: 320,
         status: "Completed",
         customerNotes: ""
+      },
+      {
+        orderId: "ORD-7610",
+        timestamp: "2026-10-22 11:15:00",
+        tableNumber: "4",
+        items: "2x Special Chicken Dum Biryani (₹480), 2x Royal Mango Lassi (₹150)",
+        totalPrice: 630,
+        status: "Completed",
+        customerNotes: ""
+      },
+      {
+        orderId: "ORD-7592",
+        timestamp: "2026-10-22 09:40:00",
+        tableNumber: "2",
+        items: "1x Butter Garlic Naan (₹45), 1x Paneer Butter Masala (₹180)",
+        totalPrice: 225,
+        status: "Completed",
+        customerNotes: ""
+      },
+      {
+        orderId: "ORD-7550",
+        timestamp: "2026-10-21 20:30:00",
+        tableNumber: "6",
+        items: "3x Special Chicken Dum Biryani (₹720), 2x Chicken Tikka Kebab (₹380)",
+        totalPrice: 1100,
+        status: "Completed",
+        customerNotes: "Dine-in family"
+      },
+      {
+        orderId: "ORD-7541",
+        timestamp: "2026-10-21 19:15:00",
+        tableNumber: "2",
+        items: "2x Mutton Seekh Kebab (₹460), 2x Butter Garlic Naan (₹90)",
+        totalPrice: 550,
+        status: "Completed",
+        customerNotes: ""
+      },
+      {
+        orderId: "ORD-7520",
+        timestamp: "2026-10-21 14:10:00",
+        tableNumber: "3",
+        items: "1x Mutton Hyderabadi Biryani (₹320), 1x Royal Mango Lassi (₹75)",
+        totalPrice: 395,
+        status: "Deleted",
+        customerNotes: "Customer cancelled order | [VOIDED: Long wait time]"
+      },
+      {
+        orderId: "ORD-7480",
+        timestamp: "2026-10-20 20:00:00",
+        tableNumber: "1",
+        items: "4x Special Chicken Dum Biryani (₹960), 4x Gulab Jamun (₹120)",
+        totalPrice: 1080,
+        status: "Completed",
+        customerNotes: ""
+      },
+      {
+        orderId: "ORD-7412",
+        timestamp: "2026-10-19 13:30:00",
+        tableNumber: "5",
+        items: "2x Paneer Butter Masala (₹360), 4x Butter Garlic Naan (₹180)",
+        totalPrice: 540,
+        status: "Completed",
+        customerNotes: ""
+      },
+      {
+        orderId: "ORD-7350",
+        timestamp: "2026-10-18 20:45:00",
+        tableNumber: "7",
+        items: "3x Mutton Hyderabadi Biryani (₹960)",
+        totalPrice: 960,
+        status: "Completed",
+        customerNotes: ""
+      },
+      {
+        orderId: "ORD-7290",
+        timestamp: "2026-10-17 19:20:00",
+        tableNumber: "2",
+        items: "2x Special Chicken Dum Biryani (₹480), 2x Gulab Jamun (₹60)",
+        totalPrice: 540,
+        status: "Completed",
+        customerNotes: ""
+      },
+      {
+        orderId: "ORD-6810",
+        timestamp: "2026-09-25 19:30:00",
+        tableNumber: "3",
+        items: "3x Special Chicken Dum Biryani (₹720)",
+        totalPrice: 720,
+        status: "Completed",
+        customerNotes: ""
+      },
+      {
+        orderId: "ORD-6520",
+        timestamp: "2026-08-15 20:10:00",
+        tableNumber: "4",
+        items: "4x Mutton Hyderabadi Biryani (₹1280)",
+        totalPrice: 1280,
+        status: "Completed",
+        customerNotes: ""
       }
     ],
+    expenses: {
+      bismillah: [
+        { expenseId: "EXP-801", timestamp: "2026-10-22 09:30:00", category: "Inventory", description: "Fresh Vegetables, Onions & Herbs", amount: 1250 },
+        { expenseId: "EXP-802", timestamp: "2026-10-22 11:15:00", category: "Staff", description: "Kitchen Staff Daily Advance", amount: 800 },
+        { expenseId: "EXP-803", timestamp: "2026-10-21 16:00:00", category: "Utilities", description: "LPG Commercial Gas Refill", amount: 1950 },
+        { expenseId: "EXP-804", timestamp: "2026-10-20 14:20:00", category: "Packaging", description: "Biryani Handi & Takeaway Boxes (200 pcs)", amount: 1400 }
+      ]
+    },
     rateLimits: {}
   },
 
@@ -418,16 +525,16 @@ const MockProvider = {
         };
 
         if (action === "get_orders") {
-          const shop = this.db.shops.find(s => s.shopId === cleanShop);
-          if (!shop) return resolve({ success: false, error: "Shop not found" });
-          if (shop.status === "Suspended") return resolve({ success: false, error: "Account suspended" });
-          if (!validateOwnerPin(shop, params.pin)) {
+          const masterPin = localStorage.getItem("AOLA_CUSTOM_ADMIN_PIN") || "998877";
+          const isAdmin = (params.admin_pin === masterPin || params.admin_pin === "998877");
+          const shop = this.db.shops.find(s => s.shopId === cleanShop) || this.db.shops[0];
+          if (!isAdmin && (!shop || !validateOwnerPin(shop, params.pin))) {
             return resolve({ success: false, error: "Invalid PIN code. (Default demo PIN is 1234 or 8888)" });
           }
 
           return resolve({
             success: true,
-            shopName: shop.shopName,
+            shopName: shop ? shop.shopName : "AOLA Network",
             orders: this.db.orders
           });
         }
@@ -518,6 +625,110 @@ const MockProvider = {
             return resolve({ success: true, message: "Order marked as Completed." });
           }
           return resolve({ success: false, error: "Order not found." });
+        }
+
+        if (action === "delete_order" || action === "void_order") {
+          const shop = this.db.shops.find(s => s.shopId === cleanShop);
+          if (!shop || !validateOwnerPin(shop, params.pin)) {
+            return resolve({ success: false, error: "Unauthorized PIN." });
+          }
+
+          const ord = this.db.orders.find(o => o.orderId === params.order_id);
+          if (ord) {
+            ord.status = "Deleted";
+            if (params.reason) {
+              ord.customerNotes = (ord.customerNotes ? ord.customerNotes + " | " : "") + "[VOIDED: " + params.reason + "]";
+            }
+            return resolve({
+              success: true,
+              order_id: params.order_id,
+              status: "Deleted",
+              message: `Order #${params.order_id} marked as Deleted/Voided.`
+            });
+          }
+          return resolve({ success: false, error: "Order not found." });
+        }
+
+        if (action === "add_expense") {
+          const masterPin = localStorage.getItem("AOLA_CUSTOM_ADMIN_PIN") || "998877";
+          const isAdmin = (params.admin_pin === masterPin || params.admin_pin === "998877");
+          const targetScope = (params.shop_id || params.shop || (isAdmin ? "hq" : "bismillah")).toLowerCase();
+          const shop = this.db.shops.find(s => s.shopId === targetScope);
+          if (!isAdmin && (!shop || !validateOwnerPin(shop, params.pin))) {
+            return resolve({ success: false, error: "Unauthorized: Invalid PIN." });
+          }
+
+          const amt = parseFloat(params.amount);
+          if (isNaN(amt) || amt <= 0) {
+            return resolve({ success: false, error: "Expense amount must be a positive number." });
+          }
+
+          if (!this.db.expenses) this.db.expenses = {};
+          if (!this.db.expenses[targetScope]) this.db.expenses[targetScope] = [];
+
+          const now = new Date();
+          const expenseObj = {
+            expenseId: params.expense_id || ("EXP-" + Date.now().toString().slice(-6)),
+            timestamp: params.timestamp || now.toISOString().replace("T", " ").substring(0, 19),
+            category: params.category || "General",
+            description: params.description || "",
+            amount: amt
+          };
+
+          this.db.expenses[targetScope].unshift(expenseObj);
+
+          try {
+            localStorage.setItem("AOLA_EXPENSES_" + targetScope, JSON.stringify(this.db.expenses[targetScope]));
+          } catch (e) {}
+
+          return resolve({
+            success: true,
+            message: "Expense logged successfully!",
+            expense: expenseObj
+          });
+        }
+
+        if (action === "get_expenses") {
+          const masterPin = localStorage.getItem("AOLA_CUSTOM_ADMIN_PIN") || "998877";
+          const isAdmin = (params.admin_pin === masterPin || params.admin_pin === "998877");
+          const targetScope = (params.shop_id || params.shop || (isAdmin ? "hq" : "bismillah")).toLowerCase();
+          const shop = this.db.shops.find(s => s.shopId === targetScope);
+          if (!isAdmin && (!shop || !validateOwnerPin(shop, params.pin))) {
+            return resolve({ success: false, error: "Unauthorized: Invalid PIN." });
+          }
+
+          if (!this.db.expenses) this.db.expenses = {};
+          try {
+            const saved = localStorage.getItem("AOLA_EXPENSES_" + targetScope);
+            if (saved) this.db.expenses[targetScope] = JSON.parse(saved);
+          } catch (e) {}
+
+          if (!this.db.expenses[targetScope]) {
+            if (targetScope === "hq") {
+              this.db.expenses.hq = [
+                { expenseId: "EXP-HQ-101", timestamp: "2026-10-22 08:30:00", category: "Cloud & Infrastructure", description: "Google Cloud Platform & Domain Gateway", amount: 2450 },
+                { expenseId: "EXP-HQ-102", timestamp: "2026-10-21 15:45:00", category: "SMS & WhatsApp Gateway", description: "Twilio & WhatsApp Order Notification Credits", amount: 1850 },
+                { expenseId: "EXP-HQ-103", timestamp: "2026-10-20 11:00:00", category: "Staff Payouts", description: "Franchise Onboarding Field Agent Payout", amount: 5000 },
+                { expenseId: "EXP-HQ-104", timestamp: "2026-10-18 16:30:00", category: "Hardware & POS Standees", description: "Laser-Engraved Wooden QR Table Stands (50 units)", amount: 3200 }
+              ];
+            } else {
+              this.db.expenses[targetScope] = [
+                { expenseId: "EXP-801", timestamp: "2026-10-22 09:30:00", category: "Inventory", description: "Fresh Vegetables, Onions & Herbs", amount: 1250 },
+                { expenseId: "EXP-802", timestamp: "2026-10-22 11:15:00", category: "Staff", description: "Kitchen Staff Daily Advance", amount: 800 },
+                { expenseId: "EXP-803", timestamp: "2026-10-21 16:00:00", category: "Utilities", description: "LPG Commercial Gas Refill", amount: 1950 },
+                { expenseId: "EXP-804", timestamp: "2026-10-20 14:20:00", category: "Packaging", description: "Biryani Handi & Takeaway Boxes (200 pcs)", amount: 1400 }
+              ];
+            }
+          }
+
+          const expenses = this.db.expenses[targetScope] || [];
+          const totalExpenses = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+
+          return resolve({
+            success: true,
+            expenses: expenses,
+            total_expenses: totalExpenses
+          });
         }
 
         if (action === "owner_get_settings") {

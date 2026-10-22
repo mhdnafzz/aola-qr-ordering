@@ -8,8 +8,14 @@
     shopId: "",
     pin: "",
     orders: [],
+    expenses: [],
+    totalExpenses: 0,
     activeTab: "pending", // "pending" | "completed"
-    currentView: "orders", // "orders" | "history" | "menu"
+    currentView: "orders", // "orders" | "history" | "menu" | "expenses" | "trends"
+    historySubtab: "all", // "all" | "completed" | "voided"
+    trendTimeframe: "daily", // "daily" | "weekly" | "monthly" | "yearly"
+    trendsChartInstance: null,
+    breakdownChartInstance: null,
     menu: [],
     currency: "₹",
     menuFilterCategory: "all",
@@ -57,12 +63,17 @@
     viewTabOrders: document.getElementById("view-tab-orders"),
     viewTabHistory: document.getElementById("view-tab-history"),
     viewTabMenu: document.getElementById("view-tab-menu"),
+    viewTabExpenses: document.getElementById("view-tab-expenses"),
+    viewTabTrends: document.getElementById("view-tab-trends"),
+    countExpensesBadge: document.getElementById("count-expenses-badge"),
     menuViewActions: document.getElementById("menu-view-actions"),
     btnRefreshMenu: document.getElementById("btn-refresh-menu"),
     btnOpenAddDish: document.getElementById("btn-open-add-dish"),
     sectionOrdersView: document.getElementById("section-orders-view"),
     sectionHistoryView: document.getElementById("section-history-view"),
     sectionMenuView: document.getElementById("section-menu-view"),
+    sectionExpensesView: document.getElementById("section-expenses-view"),
+    sectionTrendsView: document.getElementById("section-trends-view"),
     countMenuItems: document.getElementById("count-menu-items"),
 
     // Kitchen Tickets View
@@ -76,9 +87,19 @@
 
     // Historical Reconciliation View & Metrics
     metricTotalRevenue: document.getElementById("metric-total-revenue"),
+    metricHistoryExpenses: document.getElementById("metric-history-expenses"),
+    metricHistoryNetProfit: document.getElementById("metric-history-net-profit"),
+    badgeHistoryProfit: document.getElementById("badge-history-profit"),
     metricAov: document.getElementById("metric-aov"),
     metricOrdersServed: document.getElementById("metric-orders-served"),
     metricOrdersCancelled: document.getElementById("metric-orders-cancelled"),
+    btnSubtabAllOrders: document.getElementById("btn-subtab-all-orders"),
+    btnSubtabCompletedOrders: document.getElementById("btn-subtab-completed-orders"),
+    btnSubtabVoidedOrders: document.getElementById("btn-subtab-voided-orders"),
+    subtabCountAll: document.getElementById("subtab-count-all"),
+    subtabCountCompleted: document.getElementById("subtab-count-completed"),
+    subtabCountVoided: document.getElementById("subtab-count-voided"),
+    voidedAuditBanner: document.getElementById("voided-audit-banner"),
     historyDatePills: document.getElementById("history-date-pills"),
     customDateContainer: document.getElementById("custom-date-container"),
     historyStartDate: document.getElementById("history-start-date"),
@@ -87,6 +108,39 @@
     historySearchInput: document.getElementById("history-search-input"),
     btnExportCsv: document.getElementById("btn-export-csv"),
     historyTbody: document.getElementById("history-tbody"),
+
+    // Daily Expenses View Elements
+    metricExpRevenue: document.getElementById("metric-exp-revenue"),
+    metricExpTotal: document.getElementById("metric-exp-total"),
+    metricExpNetProfit: document.getElementById("metric-exp-net-profit"),
+    metricExpCount: document.getElementById("metric-exp-count"),
+    badgeNetProfit: document.getElementById("badge-net-profit"),
+    ownerExpenseForm: document.getElementById("owner-expense-form"),
+    expenseCategory: document.getElementById("expense-category"),
+    expenseAmount: document.getElementById("expense-amount"),
+    expenseDesc: document.getElementById("expense-desc"),
+    expenseDate: document.getElementById("expense-date"),
+    btnSubmitExpense: document.getElementById("btn-submit-expense"),
+    btnRefreshExpenses: document.getElementById("btn-refresh-expenses"),
+    btnExportExpensesCsv: document.getElementById("btn-export-expenses-csv"),
+    filterExpenseCategory: document.getElementById("filter-expense-category"),
+    expenseSearchInput: document.getElementById("expense-search-input"),
+    expensesTbody: document.getElementById("expenses-tbody"),
+
+    // Sales Trends View Elements (Chart.js)
+    btnTrendDaily: document.getElementById("btn-trend-daily"),
+    btnTrendWeekly: document.getElementById("btn-trend-weekly"),
+    btnTrendMonthly: document.getElementById("btn-trend-monthly"),
+    btnTrendYearly: document.getElementById("btn-trend-yearly"),
+    trendMetricRevenue: document.getElementById("trend-metric-revenue"),
+    trendMetricPeak: document.getElementById("trend-metric-peak"),
+    trendMetricOrders: document.getElementById("trend-metric-orders"),
+    trendMetricAov: document.getElementById("trend-metric-aov"),
+    trendChartMainTitle: document.getElementById("trend-chart-main-title"),
+    trendChartMainSubtitle: document.getElementById("trend-chart-main-subtitle"),
+    trendChartTag: document.getElementById("trend-chart-tag"),
+    ownerTrendsChart: document.getElementById("ownerTrendsChart"),
+    ownerBreakdownChart: document.getElementById("ownerBreakdownChart"),
 
     // Menu Management View
     ownerMenuCats: document.getElementById("owner-menu-cats"),
@@ -1233,7 +1287,7 @@
       fetchOrders(true);
     };
 
-    // View Switcher (Tickets vs History vs Menu)
+    // View Switcher (Tickets vs History vs Menu vs Expenses vs Trends)
     if (el.viewTabOrders) {
       el.viewTabOrders.onclick = () => switchView("orders");
     }
@@ -1243,6 +1297,58 @@
     if (el.viewTabMenu) {
       el.viewTabMenu.onclick = () => switchView("menu");
     }
+    if (el.viewTabExpenses) {
+      el.viewTabExpenses.onclick = () => switchView("expenses");
+    }
+    if (el.viewTabTrends) {
+      el.viewTabTrends.onclick = () => switchView("trends");
+    }
+
+    // Order History Sub-tabs (All vs Completed vs Voided Audit Trail)
+    if (el.btnSubtabAllOrders) {
+      el.btnSubtabAllOrders.onclick = () => {
+        state.historySubtab = "all";
+        updateHistorySubtabUi();
+        renderHistoryView();
+      };
+    }
+    if (el.btnSubtabCompletedOrders) {
+      el.btnSubtabCompletedOrders.onclick = () => {
+        state.historySubtab = "completed";
+        updateHistorySubtabUi();
+        renderHistoryView();
+      };
+    }
+    if (el.btnSubtabVoidedOrders) {
+      el.btnSubtabVoidedOrders.onclick = () => {
+        state.historySubtab = "voided";
+        updateHistorySubtabUi();
+        renderHistoryView();
+      };
+    }
+
+    // Daily Expenses Form & Filter Events
+    if (el.ownerExpenseForm) {
+      el.ownerExpenseForm.onsubmit = handleSaveExpenseSubmit;
+    }
+    if (el.btnRefreshExpenses) {
+      el.btnRefreshExpenses.onclick = () => fetchExpenses(true);
+    }
+    if (el.btnExportExpensesCsv) {
+      el.btnExportExpensesCsv.onclick = exportExpensesToCsv;
+    }
+    if (el.filterExpenseCategory) {
+      el.filterExpenseCategory.onchange = renderExpensesView;
+    }
+    if (el.expenseSearchInput) {
+      el.expenseSearchInput.oninput = renderExpensesView;
+    }
+
+    // Sales Trends Timeframe Switcher
+    if (el.btnTrendDaily) el.btnTrendDaily.onclick = () => setTrendTimeframe("daily");
+    if (el.btnTrendWeekly) el.btnTrendWeekly.onclick = () => setTrendTimeframe("weekly");
+    if (el.btnTrendMonthly) el.btnTrendMonthly.onclick = () => setTrendTimeframe("monthly");
+    if (el.btnTrendYearly) el.btnTrendYearly.onclick = () => setTrendTimeframe("yearly");
 
     // Menu Actions
     if (el.btnRefreshMenu) {
@@ -1454,7 +1560,7 @@
   }
 
   /**
-   * View Switcher: Kitchen Tickets vs Order History vs Menu Manager
+   * View Switcher: Kitchen Tickets vs Order History vs Menu Manager vs Expenses vs Trends
    */
   function switchView(viewName) {
     state.currentView = viewName;
@@ -1462,10 +1568,14 @@
     if (el.viewTabOrders) el.viewTabOrders.classList.toggle("active", viewName === "orders");
     if (el.viewTabHistory) el.viewTabHistory.classList.toggle("active", viewName === "history");
     if (el.viewTabMenu) el.viewTabMenu.classList.toggle("active", viewName === "menu");
+    if (el.viewTabExpenses) el.viewTabExpenses.classList.toggle("active", viewName === "expenses");
+    if (el.viewTabTrends) el.viewTabTrends.classList.toggle("active", viewName === "trends");
 
     if (el.sectionOrdersView) el.sectionOrdersView.style.display = viewName === "orders" ? "block" : "none";
     if (el.sectionHistoryView) el.sectionHistoryView.style.display = viewName === "history" ? "block" : "none";
     if (el.sectionMenuView) el.sectionMenuView.style.display = viewName === "menu" ? "block" : "none";
+    if (el.sectionExpensesView) el.sectionExpensesView.style.display = viewName === "expenses" ? "block" : "none";
+    if (el.sectionTrendsView) el.sectionTrendsView.style.display = viewName === "trends" ? "block" : "none";
     if (el.menuViewActions) el.menuViewActions.style.display = viewName === "menu" ? "flex" : "none";
 
     const sidebarFilters = document.getElementById("sidebar-order-filters");
@@ -1480,8 +1590,24 @@
         renderOwnerMenu();
       }
     } else if (viewName === "history") {
+      updateHistorySubtabUi();
       renderHistoryView();
+    } else if (viewName === "expenses") {
+      if (state.expenses.length === 0) {
+        fetchExpenses(false);
+      } else {
+        renderExpensesView();
+      }
+    } else if (viewName === "trends") {
+      renderTrendsView();
     }
+  }
+
+  function updateHistorySubtabUi() {
+    if (el.btnSubtabAllOrders) el.btnSubtabAllOrders.classList.toggle("active", state.historySubtab === "all");
+    if (el.btnSubtabCompletedOrders) el.btnSubtabCompletedOrders.classList.toggle("active", state.historySubtab === "completed");
+    if (el.btnSubtabVoidedOrders) el.btnSubtabVoidedOrders.classList.toggle("active", state.historySubtab === "voided");
+    if (el.voidedAuditBanner) el.voidedAuditBanner.style.display = (state.historySubtab === "voided" || state.historyFilter.status === "deleted") ? "flex" : "none";
   }
 
   /**
@@ -1854,6 +1980,10 @@
             ${
               isPending
                 ? `
+                  <button class="btn-void-ticket" data-id="${escapeHtml(ord.orderId)}" title="Void / Cancel Order">
+                    <i data-lucide="trash-2" style="width:13px;height:13px;"></i>
+                    <span>Void</span>
+                  </button>
                   <button class="btn-emerald btn-complete-order" data-id="${escapeHtml(ord.orderId)}" style="padding:6px 12px; font-size:0.8rem;">
                     <i data-lucide="check-circle-2" style="width:14px;height:14px;"></i>
                     <span>Complete</span>
@@ -1866,6 +1996,10 @@
       `;
 
       el.ticketGrid.appendChild(card);
+    });
+
+    el.ticketGrid.querySelectorAll(".btn-void-ticket").forEach((b) => {
+      b.onclick = () => voidOrder(b.dataset.id, b);
     });
 
     el.ticketGrid.querySelectorAll(".btn-complete-order").forEach((b) => {
@@ -1881,6 +2015,62 @@
     });
 
     if (window.lucide) lucide.createIcons();
+  }
+
+  /**
+   * Action: Soft-Delete / Void Order (Audit Trail Protocol)
+   */
+  async function voidOrder(orderId, buttonEl) {
+    const reason = prompt(
+      `Void Order #${orderId}?\n\nThis order will NOT be deleted permanently. It will be moved to the Voided Orders audit trail.\n\nPlease enter cancellation reason:`,
+      "Customer requested cancellation"
+    );
+    if (reason === null) return; // user hit cancel
+
+    if (buttonEl) {
+      buttonEl.disabled = true;
+      buttonEl.textContent = "Voiding...";
+    }
+
+    try {
+      const response = await AOLA_API.post("delete_order", {
+        shop_id: state.shopId,
+        pin: state.pin,
+        order_id: orderId,
+        reason: reason.trim() || "Voided from Kitchen Console"
+      });
+
+      if (!response.success) {
+        showToast(response.error || "Failed to void order.", "error");
+        if (buttonEl) {
+          buttonEl.disabled = false;
+          buttonEl.innerHTML = `<i data-lucide="trash-2" style="width:13px;height:13px;"></i><span>Void</span>`;
+          if (window.lucide) lucide.createIcons();
+        }
+        return;
+      }
+
+      showToast(`Order #${orderId} moved to Voided Orders audit trail.`, "info");
+
+      const ord = state.orders.find((o) => String(o.orderId) === String(orderId));
+      if (ord) {
+        ord.status = "Deleted";
+        ord.customerNotes = (ord.customerNotes ? ord.customerNotes + " | " : "") + `[VOIDED: ${reason.trim() || "Kitchen action"}]`;
+      }
+
+      updateCounts();
+      renderTickets();
+      if (state.currentView === "history") {
+        renderHistoryView();
+      }
+    } catch (err) {
+      showToast("Error communicating with server.", "error");
+      if (buttonEl) {
+        buttonEl.disabled = false;
+        buttonEl.innerHTML = `<i data-lucide="trash-2" style="width:13px;height:13px;"></i><span>Void</span>`;
+        if (window.lucide) lucide.createIcons();
+      }
+    }
   }
 
   /**
@@ -2400,12 +2590,18 @@
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
 
     return state.orders.filter((order) => {
-      // 1. Status Filter
       const status = (order.status || "Pending").toLowerCase();
+
+      // 0. Sub-tab Filter (All vs Completed vs Voided Audit Trail)
+      if (state.historySubtab === "completed" && status !== "completed") return false;
+      if (state.historySubtab === "voided" && status !== "deleted" && status !== "voided") return false;
+
+      // 1. Status Dropdown Filter
       if (state.historyFilter.status !== "all") {
         const filterStatus = state.historyFilter.status.toLowerCase();
         if (filterStatus === "completed" && status !== "completed") return false;
         if (filterStatus === "pending" && status !== "pending" && status !== "new") return false;
+        if ((filterStatus === "deleted" || filterStatus === "voided") && status !== "deleted" && status !== "voided") return false;
         if (filterStatus === "cancelled" && status !== "cancelled") return false;
         if (filterStatus === "refunded" && status !== "refunded") return false;
       }
@@ -2462,19 +2658,46 @@
     let servedCount = 0;
     let cancelledCount = 0;
 
+    // Subtab counts
+    const allCount = state.orders.length;
+    const compCount = state.orders.filter(o => (o.status || "").toLowerCase() === "completed").length;
+    const voidCount = state.orders.filter(o => {
+      const s = (o.status || "").toLowerCase();
+      return s === "deleted" || s === "voided" || s === "cancelled";
+    }).length;
+
+    if (el.subtabCountAll) el.subtabCountAll.textContent = allCount;
+    if (el.subtabCountCompleted) el.subtabCountCompleted.textContent = compCount;
+    if (el.subtabCountVoided) el.subtabCountVoided.textContent = voidCount;
+
+    if (el.voidedAuditBanner) {
+      el.voidedAuditBanner.style.display = (state.historySubtab === "voided" || state.historyFilter.status === "deleted") ? "flex" : "none";
+    }
+
     filtered.forEach((o) => {
       const s = (o.status || "").toLowerCase();
       if (s === "completed") {
         totalRevenue += Number(o.totalPrice) || 0;
         servedCount++;
-      } else if (s === "cancelled") {
+      } else if (s === "cancelled" || s === "deleted" || s === "voided") {
         cancelledCount++;
       }
     });
 
     const aov = servedCount > 0 ? totalRevenue / servedCount : 0;
+    const totalOutflows = Number(state.totalExpenses) || 0;
+    const netProfit = totalRevenue - totalOutflows;
 
     if (el.metricTotalRevenue) el.metricTotalRevenue.textContent = `${state.currency}${totalRevenue.toFixed(2)}`;
+    if (el.metricHistoryExpenses) el.metricHistoryExpenses.textContent = `${state.currency}${totalOutflows.toFixed(2)}`;
+    if (el.metricHistoryNetProfit) {
+      el.metricHistoryNetProfit.textContent = `${netProfit >= 0 ? "+" : ""}${state.currency}${netProfit.toFixed(2)}`;
+      el.metricHistoryNetProfit.className = `history-metric-val ${netProfit >= 0 ? "metric-profit-positive" : "metric-profit-negative"}`;
+    }
+    if (el.badgeHistoryProfit) {
+      el.badgeHistoryProfit.textContent = netProfit >= 0 ? "Profitable" : "Operating Loss";
+      el.badgeHistoryProfit.className = `profit-badge ${netProfit >= 0 ? "positive" : "negative"}`;
+    }
     if (el.metricAov) el.metricAov.textContent = `${state.currency}${aov.toFixed(2)}`;
     if (el.metricOrdersServed) el.metricOrdersServed.textContent = servedCount;
     if (el.metricOrdersCancelled) el.metricOrdersCancelled.textContent = cancelledCount;
@@ -2499,7 +2722,7 @@
       const s = (order.status || "Pending").toLowerCase();
       let statusClass = "pending";
       if (s === "completed") statusClass = "completed";
-      else if (s === "cancelled") statusClass = "cancelled";
+      else if (s === "cancelled" || s === "deleted" || s === "voided") statusClass = "deleted";
       else if (s === "refunded") statusClass = "refunded";
 
       const dishList = parseOrderDishItems(order.items);
@@ -2536,7 +2759,7 @@
           </td>
           <td>
             <span class="status-badge ${statusClass}">
-              ${escapeHtml(order.status || "Pending")}
+              ${s === "deleted" || s === "voided" ? '<i data-lucide="shield-alert" style="width:12px;height:12px;"></i> Voided' : escapeHtml(order.status || "Pending")}
             </span>
           </td>
           <td style="font-size: 0.8rem; color: var(--text-muted); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
@@ -2636,6 +2859,558 @@
     URL.revokeObjectURL(url);
 
     showToast(`✅ Exported ${orders.length} orders to CSV successfully!`, "success");
+  }
+
+  // =========================================================================
+  // DAILY EXPENSES LEDGER MODULE (add_expense & get_expenses)
+  // =========================================================================
+
+  /**
+   * Fetch Expenses Ledger from Google Sheet / Backend
+   */
+  async function fetchExpenses(showFeedback = false) {
+    if (!state.shopId || !state.pin) return;
+
+    if (showFeedback && el.btnRefreshExpenses) {
+      el.btnRefreshExpenses.textContent = "Syncing...";
+      el.btnRefreshExpenses.disabled = true;
+    }
+
+    try {
+      const response = await AOLA_API.post("get_expenses", {
+        shop_id: state.shopId,
+        pin: state.pin
+      });
+
+      if (response.success) {
+        state.expenses = response.expenses || [];
+        state.totalExpenses = Number(response.total_expenses) || 0;
+        if (el.countExpensesBadge) {
+          el.countExpensesBadge.textContent = `${state.currency}${state.totalExpenses.toLocaleString("en-IN")}`;
+        }
+        renderExpensesView();
+        if (state.currentView === "history") {
+          renderHistoryView();
+        }
+        if (showFeedback) showToast("Expenses synced from Google Sheet.", "success");
+      } else {
+        if (showFeedback) showToast(response.error || "Failed to load expenses.", "error");
+      }
+    } catch (err) {
+      console.error("[Fetch Expenses Error]:", err);
+      if (showFeedback) showToast("Network error syncing expenses.", "error");
+    } finally {
+      if (showFeedback && el.btnRefreshExpenses) {
+        el.btnRefreshExpenses.disabled = false;
+        el.btnRefreshExpenses.innerHTML = `<i data-lucide="refresh-cw" style="width:14px;height:14px;"></i><span>Sync Expenses</span>`;
+        if (window.lucide) lucide.createIcons();
+      }
+    }
+  }
+
+  /**
+   * Action: Log New Daily Expense Outflow
+   */
+  async function handleSaveExpenseSubmit(e) {
+    if (e && e.preventDefault) e.preventDefault();
+
+    const category = el.expenseCategory ? el.expenseCategory.value : "General";
+    const amount = parseFloat(el.expenseAmount ? el.expenseAmount.value : 0);
+    const desc = el.expenseDesc ? el.expenseDesc.value.trim() : "";
+    const dateVal = el.expenseDate ? el.expenseDate.value : "";
+
+    if (!amount || amount <= 0) {
+      showToast("Please enter a valid expense amount.", "error");
+      return;
+    }
+    if (!desc) {
+      showToast("Please provide description or vendor details.", "error");
+      return;
+    }
+
+    if (el.btnSubmitExpense) {
+      el.btnSubmitExpense.disabled = true;
+      el.btnSubmitExpense.textContent = "Recording...";
+    }
+
+    let timestamp = "";
+    if (dateVal) {
+      const d = new Date(dateVal);
+      const now = new Date();
+      d.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+      timestamp = d.toISOString().replace("T", " ").substring(0, 19);
+    } else {
+      timestamp = new Date().toISOString().replace("T", " ").substring(0, 19);
+    }
+
+    try {
+      const response = await AOLA_API.post("add_expense", {
+        shop_id: state.shopId,
+        pin: state.pin,
+        category: category,
+        amount: amount,
+        description: desc,
+        timestamp: timestamp
+      });
+
+      if (!response.success) {
+        showToast(response.error || "Failed to log expense.", "error");
+        return;
+      }
+
+      showToast("Expense logged to Google Sheet!", "success");
+      if (el.ownerExpenseForm) el.ownerExpenseForm.reset();
+      if (el.expenseDate) el.expenseDate.valueAsDate = new Date();
+      fetchExpenses(false);
+    } catch (err) {
+      showToast("Error recording expense.", "error");
+    } finally {
+      if (el.btnSubmitExpense) {
+        el.btnSubmitExpense.disabled = false;
+        el.btnSubmitExpense.innerHTML = `<i data-lucide="check-circle" style="width:15px;height:15px;"></i><span>Log Expense</span>`;
+        if (window.lucide) lucide.createIcons();
+      }
+    }
+  }
+
+  /**
+   * Render Expenses View & Net Profit Calculations
+   */
+  function renderExpensesView() {
+    if (!el.expensesTbody) return;
+
+    // Financial calculations: Subtract total expenses from gross completed revenue to display Net Profit
+    const completedOrders = state.orders.filter(o => (o.status || "").toLowerCase() === "completed");
+    const grossRevenue = completedOrders.reduce((sum, o) => sum + (Number(o.totalPrice) || 0), 0);
+    const totalOutflow = state.expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const netProfit = grossRevenue - totalOutflow;
+
+    if (el.metricExpRevenue) el.metricExpRevenue.textContent = formatCurrency(grossRevenue);
+    if (el.metricExpTotal) el.metricExpTotal.textContent = formatCurrency(totalOutflow);
+    if (el.metricExpCount) el.metricExpCount.textContent = state.expenses.length;
+
+    if (el.metricExpNetProfit) {
+      el.metricExpNetProfit.textContent = `${netProfit >= 0 ? "+" : ""}${formatCurrency(netProfit)}`;
+      el.metricExpNetProfit.className = `history-metric-val ${netProfit >= 0 ? "metric-profit-positive" : "metric-profit-negative"}`;
+    }
+
+    if (el.badgeNetProfit) {
+      el.badgeNetProfit.textContent = netProfit >= 0 ? "Profitable Margin" : "Net Operating Loss";
+      el.badgeNetProfit.className = `profit-badge ${netProfit >= 0 ? "positive" : "negative"}`;
+    }
+
+    // Filter table rows
+    const catFilter = el.filterExpenseCategory ? el.filterExpenseCategory.value : "all";
+    const searchQuery = el.expenseSearchInput ? el.expenseSearchInput.value.toLowerCase().trim() : "";
+
+    const filtered = state.expenses.filter(exp => {
+      if (catFilter !== "all" && exp.category !== catFilter) return false;
+      if (searchQuery) {
+        const matchesDesc = (exp.description || "").toLowerCase().includes(searchQuery);
+        const matchesId = (exp.expenseId || "").toLowerCase().includes(searchQuery);
+        const matchesCat = (exp.category || "").toLowerCase().includes(searchQuery);
+        if (!matchesDesc && !matchesId && !matchesCat) return false;
+      }
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      el.expensesTbody.innerHTML = `
+        <tr>
+          <td colspan="5" style="text-align: center; padding: 44px 20px; color: var(--text-dim);">
+            <div style="margin-bottom: 8px; display:flex; justify-content:center;">
+              <i data-lucide="receipt-text" style="width:36px;height:36px;color:var(--text-dim);"></i>
+            </div>
+            <div style="font-weight:600; color:var(--brand-navy); font-size:1rem;">No Expense Entries Found</div>
+            <div style="font-size:0.84rem; color:var(--text-muted); margin-top:3px;">Log daily outflows using the form above to track net profits.</div>
+          </td>
+        </tr>
+      `;
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
+
+    el.expensesTbody.innerHTML = filtered.map(exp => {
+      const d = parseDateSafe(exp.timestamp);
+      const dateStr = d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+      const timeStr = d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+
+      return `
+        <tr>
+          <td style="font-family: monospace; font-weight: 700; color: var(--brand-navy);">
+            #${escapeHtml(exp.expenseId)}
+          </td>
+          <td>
+            <div style="font-size:0.84rem; font-weight:600; color:var(--brand-navy);">${dateStr}</div>
+            <div style="font-size:0.74rem; color:var(--text-dim);">${timeStr}</div>
+          </td>
+          <td>
+            <span class="status-badge" style="background:var(--bg-subtle); color:var(--brand-navy); border-color:var(--border-subtle); font-size:0.76rem;">
+              ${escapeHtml(exp.category || "General")}
+            </span>
+          </td>
+          <td style="max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.86rem; color: var(--text-main);" title="${escapeHtml(exp.description)}">
+            ${escapeHtml(exp.description || "-")}
+          </td>
+          <td style="text-align: right; font-weight: 700; color: var(--accent-rose); font-size: 0.95rem;">
+            -${formatCurrency(exp.amount)}
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    if (window.lucide) lucide.createIcons();
+  }
+
+  /**
+   * One-Click CSV Export for Expenses Ledger
+   */
+  function exportExpensesToCsv() {
+    if (!state.expenses || state.expenses.length === 0) {
+      showToast("No expenses available to export.", "info");
+      return;
+    }
+
+    const headers = ["Expense_ID", "Timestamp", "Category", "Description", "Amount_INR"];
+    const rows = state.expenses.map(e => [
+      `"${e.expenseId}"`,
+      `"${e.timestamp}"`,
+      `"${(e.category || '').replace(/"/g, '""')}"`,
+      `"${(e.description || '').replace(/"/g, '""')}"`,
+      Number(e.amount || 0).toFixed(2)
+    ]);
+
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(r => r.join(","))].join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const dateStamp = new Date().toISOString().split("T")[0];
+    link.setAttribute("href", url);
+    link.setAttribute("download", `AOLA_Expenses_${state.shopId || "outlet"}_${dateStamp}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showToast(`✅ Exported ${state.expenses.length} expenses to CSV!`, "success");
+  }
+
+  // =========================================================================
+  // INTERACTIVE SALES TRENDS & ANALYTICS MODULE (Chart.js Integration)
+  // =========================================================================
+
+  /**
+   * Robust Date Parser for Google Sheets timestamps and ISO strings
+   */
+  function parseDateSafe(ts) {
+    if (!ts) return new Date();
+    if (ts instanceof Date) return ts;
+    const str = String(ts).trim();
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) return d;
+
+    const matchYMD = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+    if (matchYMD) {
+      return new Date(
+        parseInt(matchYMD[1], 10),
+        parseInt(matchYMD[2], 10) - 1,
+        parseInt(matchYMD[3], 10),
+        parseInt(matchYMD[4] || 0, 10),
+        parseInt(matchYMD[5] || 0, 10),
+        parseInt(matchYMD[6] || 0, 10)
+      );
+    }
+
+    const matchDMY = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+    if (matchDMY) {
+      return new Date(
+        parseInt(matchDMY[3], 10),
+        parseInt(matchDMY[2], 10) - 1,
+        parseInt(matchDMY[1], 10),
+        parseInt(matchDMY[4] || 0, 10),
+        parseInt(matchDMY[5] || 0, 10),
+        parseInt(matchDMY[6] || 0, 10)
+      );
+    }
+
+    return new Date();
+  }
+
+  function setTrendTimeframe(tf) {
+    state.trendTimeframe = tf;
+    if (el.btnTrendDaily) el.btnTrendDaily.classList.toggle("active", tf === "daily");
+    if (el.btnTrendWeekly) el.btnTrendWeekly.classList.toggle("active", tf === "weekly");
+    if (el.btnTrendMonthly) el.btnTrendMonthly.classList.toggle("active", tf === "monthly");
+    if (el.btnTrendYearly) el.btnTrendYearly.classList.toggle("active", tf === "yearly");
+    renderTrendsView();
+  }
+
+  /**
+   * Parse completed orders and render Chart.js graphs
+   */
+  function renderTrendsView() {
+    if (typeof Chart === "undefined") {
+      console.warn("[AOLA Trends] Chart.js library is not loaded.");
+      return;
+    }
+
+    const completedOrders = state.orders.filter(o => {
+      const s = (o.status || "").toLowerCase();
+      return s === "completed";
+    });
+
+    const tf = state.trendTimeframe || "daily";
+
+    let labels = [];
+    let dataPoints = [];
+    let chartType = "line";
+    let chartTitle = "Hourly Sales Performance";
+    let chartSubtitle = "Visualizing sales hour-by-hour (00:00 to 23:00)";
+    let peakLabel = "-";
+    let maxVal = -1;
+
+    if (tf === "daily") {
+      chartType = "line";
+      chartTitle = "Daily Sales: Hour-by-Hour Curve";
+      chartSubtitle = "Tracking peak lunchtime and dinner rush transaction volumes";
+
+      labels = [
+        "12 AM", "1 AM", "2 AM", "3 AM", "4 AM", "5 AM",
+        "6 AM", "7 AM", "8 AM", "9 AM", "10 AM", "11 AM",
+        "12 PM", "1 PM", "2 PM", "3 PM", "4 PM", "5 PM",
+        "6 PM", "7 PM", "8 PM", "9 PM", "10 PM", "11 PM"
+      ];
+      dataPoints = new Array(24).fill(0);
+
+      completedOrders.forEach(ord => {
+        const d = parseDateSafe(ord.timestamp);
+        const hour = d.getHours();
+        if (hour >= 0 && hour < 24) {
+          dataPoints[hour] += Number(ord.totalPrice) || 0;
+        }
+      });
+    } else if (tf === "weekly") {
+      chartType = "bar";
+      chartTitle = "Weekly Sales: Day-by-Day Volume";
+      chartSubtitle = "Aggregating revenue across Monday through Sunday";
+
+      labels = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+      dataPoints = [0, 0, 0, 0, 0, 0, 0];
+
+      completedOrders.forEach(ord => {
+        const d = parseDateSafe(ord.timestamp);
+        const dayIdx = (d.getDay() + 6) % 7; // Convert to 0=Mon, 6=Sun
+        dataPoints[dayIdx] += Number(ord.totalPrice) || 0;
+      });
+    } else if (tf === "monthly") {
+      chartType = "line"; // Area chart
+      chartTitle = "Monthly Sales Growth (Jan - Dec)";
+      chartSubtitle = "Cumulative monthly revenue progression";
+
+      labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      dataPoints = new Array(12).fill(0);
+
+      completedOrders.forEach(ord => {
+        const d = parseDateSafe(ord.timestamp);
+        const month = d.getMonth();
+        if (month >= 0 && month < 12) {
+          dataPoints[month] += Number(ord.totalPrice) || 0;
+        }
+      });
+    } else if (tf === "yearly") {
+      chartType = "bar";
+      chartTitle = "Year-over-Year Revenue";
+      chartSubtitle = "Long-term franchise revenue trends";
+
+      const yearMap = {};
+      completedOrders.forEach(ord => {
+        const d = parseDateSafe(ord.timestamp);
+        const y = d.getFullYear() || 2026;
+        yearMap[y] = (yearMap[y] || 0) + (Number(ord.totalPrice) || 0);
+      });
+
+      const years = Object.keys(yearMap).sort();
+      if (years.length === 0) {
+        labels = ["2025", "2026"];
+        dataPoints = [0, 0];
+      } else {
+        labels = years;
+        dataPoints = years.map(y => yearMap[y]);
+      }
+    }
+
+    // Determine Peak Sales Window
+    dataPoints.forEach((val, idx) => {
+      if (val > maxVal && val > 0) {
+        maxVal = val;
+        peakLabel = `${labels[idx]} (${formatCurrency(val)})`;
+      }
+    });
+
+    const totalWindowRevenue = dataPoints.reduce((sum, v) => sum + v, 0);
+    const windowOrderCount = completedOrders.length;
+    const windowAov = windowOrderCount > 0 ? totalWindowRevenue / windowOrderCount : 0;
+
+    // Update KPI summary cards
+    if (el.trendMetricRevenue) el.trendMetricRevenue.textContent = formatCurrency(totalWindowRevenue);
+    if (el.trendMetricPeak) el.trendMetricPeak.textContent = peakLabel !== "-" ? peakLabel : "No Data Yet";
+    if (el.trendMetricOrders) el.trendMetricOrders.textContent = windowOrderCount;
+    if (el.trendMetricAov) el.trendMetricAov.textContent = formatCurrency(windowAov);
+
+    if (el.trendChartMainTitle) {
+      el.trendChartMainTitle.innerHTML = `<i data-lucide="${chartType === 'line' ? 'line-chart' : 'bar-chart-3'}" style="width:17px;height:17px;color:var(--accent-indigo);"></i><span>${chartTitle}</span>`;
+    }
+    if (el.trendChartMainSubtitle) {
+      el.trendChartMainSubtitle.textContent = chartSubtitle;
+    }
+
+    // Render Primary Sales Chart (Line with tension 0.4 or Bar)
+    if (el.ownerTrendsChart) {
+      const ctx = el.ownerTrendsChart.getContext("2d");
+      if (state.trendsChartInstance) {
+        state.trendsChartInstance.destroy();
+      }
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+      if (tf === "daily") {
+        gradient.addColorStop(0, "rgba(5, 150, 105, 0.35)");
+        gradient.addColorStop(1, "rgba(5, 150, 105, 0.0)");
+      } else {
+        gradient.addColorStop(0, "rgba(79, 70, 229, 0.35)");
+        gradient.addColorStop(1, "rgba(79, 70, 229, 0.0)");
+      }
+
+      const isLine = (chartType === "line");
+      const primaryColor = (tf === "daily") ? "#059669" : "#4F46E5";
+
+      state.trendsChartInstance = new Chart(ctx, {
+        type: chartType,
+        data: {
+          labels: labels,
+          datasets: [{
+            label: "Revenue (₹)",
+            data: dataPoints,
+            borderColor: primaryColor,
+            backgroundColor: isLine ? gradient : primaryColor,
+            borderWidth: isLine ? 2.5 : 0,
+            borderRadius: isLine ? 0 : 6,
+            fill: isLine,
+            tension: 0.4, // Smooth curve
+            pointBackgroundColor: primaryColor,
+            pointBorderColor: "#FFFFFF",
+            pointBorderWidth: 2,
+            pointRadius: isLine ? 4 : 0,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: "#0F172A",
+              titleFont: { family: "Inter", size: 12, weight: "bold" },
+              bodyFont: { family: "Inter", size: 12 },
+              padding: 12,
+              cornerRadius: 8,
+              callbacks: {
+                label: (context) => ` Revenue: ${formatCurrency(context.raw || 0)}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              border: { display: false },
+              ticks: {
+                font: { family: "Inter", size: 11 },
+                color: "#64748B"
+              }
+            },
+            y: {
+              grid: {
+                color: "rgba(226, 232, 240, 0.6)",
+                borderDash: [4, 4]
+              },
+              border: { display: false },
+              ticks: {
+                font: { family: "Inter", size: 11 },
+                color: "#64748B",
+                callback: (val) => "₹" + Number(val).toLocaleString("en-IN")
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Render Secondary Category Share Chart
+    if (el.ownerBreakdownChart) {
+      const bCtx = el.ownerBreakdownChart.getContext("2d");
+      if (state.breakdownChartInstance) {
+        state.breakdownChartInstance.destroy();
+      }
+
+      const catCount = {};
+      completedOrders.forEach(ord => {
+        const dishList = parseOrderDishItems(ord.items);
+        dishList.forEach(dish => {
+          const menuItem = state.menu.find(m => m.name.toLowerCase() === dish.name.toLowerCase());
+          const cat = menuItem ? menuItem.category : "Biryani / Main";
+          catCount[cat] = (catCount[cat] || 0) + (dish.qty || 1);
+        });
+      });
+
+      let bLabels = Object.keys(catCount);
+      let bValues = Object.values(catCount);
+
+      if (bLabels.length === 0) {
+        bLabels = ["Biryani", "Starters", "Curries", "Breads", "Beverages"];
+        bValues = [12, 8, 6, 9, 4];
+      }
+
+      const palette = ["#059669", "#4F46E5", "#D97706", "#E11D48", "#2563EB", "#8B5CF6", "#0D9488"];
+
+      state.breakdownChartInstance = new Chart(bCtx, {
+        type: "doughnut",
+        data: {
+          labels: bLabels,
+          datasets: [{
+            data: bValues,
+            backgroundColor: palette.slice(0, bLabels.length),
+            borderWidth: 2,
+            borderColor: "#FFFFFF"
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "68%",
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: {
+                font: { family: "Inter", size: 11 },
+                color: "#64748B",
+                usePointStyle: true,
+                padding: 12
+              }
+            },
+            tooltip: {
+              backgroundColor: "#0F172A",
+              padding: 10,
+              cornerRadius: 8,
+              callbacks: {
+                label: (ctx) => ` ${ctx.label}: ${ctx.raw} items ordered`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    if (window.lucide) lucide.createIcons();
   }
 
   // Expose global controller helpers

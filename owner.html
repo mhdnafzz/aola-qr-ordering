@@ -9,6 +9,8 @@
   <link rel="icon" type="image/svg+xml" href="AU-dark-icon.svg">
   <!-- Lucide Vector Icons Library -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Chart.js CDN for Interactive Sales Trends & Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- Client-side PDF & QR Code Engine (Thermal Invoicing & Quick-Pay) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -143,6 +145,14 @@
               <i data-lucide="utensils" style="width:16px;height:16px;"></i>
               <span>Menu Manager (<span id="count-menu-items">0</span>)</span>
             </button>
+            <button class="cat-chip" id="view-tab-expenses" style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
+              <i data-lucide="receipt-text" style="width:16px;height:16px;color:var(--accent-rose);"></i>
+              <span>Daily Expenses (<span id="count-expenses-badge">₹0</span>)</span>
+            </button>
+            <button class="cat-chip" id="view-tab-trends" style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
+              <i data-lucide="line-chart" style="width:16px;height:16px;color:var(--accent-indigo);"></i>
+              <span>Sales Trends &amp; Analytics</span>
+            </button>
             <button class="cat-chip" id="btn-sidebar-settings" style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
               <i data-lucide="store" style="width:16px;height:16px;"></i>
               <span>Store Profile</span>
@@ -254,14 +264,37 @@
         <!-- VIEW 3: Historical Order Ledger & Daily Reconciliation -->
         <div id="section-history-view" style="display: none;">
           <!-- Top Reconciliation Summary Metric Cards -->
-          <div class="history-metrics-grid">
+          <div class="history-metrics-grid" style="grid-template-columns: repeat(6, 1fr);">
             <div class="history-metric-card">
               <div class="history-metric-icon" style="background:#ECFDF5; color:#059669;">
                 <i data-lucide="indian-rupee" style="width:20px;height:20px;"></i>
               </div>
               <div class="history-metric-content">
-                <span class="history-metric-label">Total Daily Revenue</span>
+                <span class="history-metric-label">Total Revenue</span>
                 <span class="history-metric-val" id="metric-total-revenue">₹0.00</span>
+              </div>
+            </div>
+
+            <div class="history-metric-card">
+              <div class="history-metric-icon" style="background:#FFF1F2; color:#E11D48;">
+                <i data-lucide="arrow-up-right" style="width:20px;height:20px;"></i>
+              </div>
+              <div class="history-metric-content">
+                <span class="history-metric-label">Daily Outflows</span>
+                <span class="history-metric-val" style="color:var(--accent-rose);" id="metric-history-expenses">₹0.00</span>
+              </div>
+            </div>
+
+            <div class="history-metric-card">
+              <div class="history-metric-icon" style="background:#F0FDF4; color:#16A34A;" id="icon-history-net-profit">
+                <i data-lucide="wallet" style="width:20px;height:20px;"></i>
+              </div>
+              <div class="history-metric-content">
+                <div style="display:flex; align-items:center; gap:4px;">
+                  <span class="history-metric-label">Net Profit</span>
+                  <span class="profit-badge positive" id="badge-history-profit">Margin</span>
+                </div>
+                <span class="history-metric-val metric-profit-positive" id="metric-history-net-profit">₹0.00</span>
               </div>
             </div>
 
@@ -270,7 +303,7 @@
                 <i data-lucide="trending-up" style="width:20px;height:20px;"></i>
               </div>
               <div class="history-metric-content">
-                <span class="history-metric-label">Average Order Value (AOV)</span>
+                <span class="history-metric-label">Avg Order (AOV)</span>
                 <span class="history-metric-val" id="metric-aov">₹0.00</span>
               </div>
             </div>
@@ -287,12 +320,36 @@
 
             <div class="history-metric-card">
               <div class="history-metric-icon" style="background:#FFF1F2; color:#E11D48;">
-                <i data-lucide="x-circle" style="width:20px;height:20px;"></i>
+                <i data-lucide="shield-alert" style="width:20px;height:20px;"></i>
               </div>
               <div class="history-metric-content">
-                <span class="history-metric-label">Cancelled / Void Orders</span>
-                <span class="history-metric-val" id="metric-orders-cancelled">0</span>
+                <span class="history-metric-label">Voided Orders</span>
+                <span class="history-metric-val" style="color:var(--accent-rose);" id="metric-orders-cancelled">0</span>
               </div>
+            </div>
+          </div>
+
+          <!-- Order Category Sub-tabs (All vs Completed vs Voided Audit Trail) -->
+          <div class="history-subtabs">
+            <button type="button" class="history-subtab-btn active" id="btn-subtab-all-orders">
+              <i data-lucide="list-ordered" style="width:14px;height:14px;"></i>
+              <span>All Orders (<span id="subtab-count-all">0</span>)</span>
+            </button>
+            <button type="button" class="history-subtab-btn" id="btn-subtab-completed-orders">
+              <i data-lucide="check-check" style="width:14px;height:14px;color:var(--accent-emerald);"></i>
+              <span>Completed Orders (<span id="subtab-count-completed">0</span>)</span>
+            </button>
+            <button type="button" class="history-subtab-btn voided-tab" id="btn-subtab-voided-orders">
+              <i data-lucide="shield-alert" style="width:14px;height:14px;color:var(--accent-rose);"></i>
+              <span>Voided Orders Audit Trail (<span id="subtab-count-voided">0</span>)</span>
+            </button>
+          </div>
+
+          <!-- Voided Orders Audit Trail Security Callout -->
+          <div id="voided-audit-banner" class="audit-trail-alert" style="display: none;">
+            <i data-lucide="shield-alert" style="width: 22px; height: 22px;"></i>
+            <div>
+              <strong>Secure Voided Orders Audit Trail:</strong> Orders listed below were soft-deleted/voided by kitchen staff. In accordance with zero-leakage security protocols, order records are preserved permanently in Google Sheets to provide an immutable financial audit log of cancelled KOTs.
             </div>
           </div>
 
@@ -316,10 +373,11 @@
               </div>
 
               <!-- Payment & Order Status Dropdown -->
-              <select id="history-status-filter" class="form-select" style="padding:7px 12px; font-size:0.82rem; width:auto; min-width:140px;">
+              <select id="history-status-filter" class="form-select" style="padding:7px 12px; font-size:0.82rem; width:auto; min-width:150px;">
                 <option value="all">All Statuses</option>
                 <option value="completed">Completed Orders</option>
                 <option value="pending">Pending / Live</option>
+                <option value="deleted">Voided / Deleted Orders</option>
                 <option value="cancelled">Cancelled Orders</option>
                 <option value="refunded">Refunded Orders</option>
               </select>
@@ -360,6 +418,298 @@
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+
+        <!-- VIEW 4: Daily Expenses Ledger & Outflow Management -->
+        <div id="section-expenses-view" style="display: none;">
+          <!-- Top Financial Overview Summary Metric Cards -->
+          <div class="history-metrics-grid" style="grid-template-columns: repeat(4, 1fr);">
+            <div class="history-metric-card">
+              <div class="history-metric-icon" style="background:#ECFDF5; color:#059669;">
+                <i data-lucide="arrow-down-left" style="width:20px;height:20px;"></i>
+              </div>
+              <div class="history-metric-content">
+                <span class="history-metric-label">Total Gross Revenue</span>
+                <span class="history-metric-val" id="metric-exp-revenue">₹0.00</span>
+              </div>
+            </div>
+
+            <div class="history-metric-card">
+              <div class="history-metric-icon" style="background:#FFF1F2; color:#E11D48;">
+                <i data-lucide="arrow-up-right" style="width:20px;height:20px;"></i>
+              </div>
+              <div class="history-metric-content">
+                <span class="history-metric-label">Total Daily Expenses</span>
+                <span class="history-metric-val" style="color:var(--accent-rose);" id="metric-exp-total">₹0.00</span>
+              </div>
+            </div>
+
+            <div class="history-metric-card">
+              <div class="history-metric-icon" style="background:#F0FDF4; color:#16A34A;" id="icon-exp-net-profit">
+                <i data-lucide="wallet" style="width:20px;height:20px;"></i>
+              </div>
+              <div class="history-metric-content">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span class="history-metric-label">Net Profit (Revenue - Outflows)</span>
+                  <span class="profit-badge positive" id="badge-net-profit">Profitable</span>
+                </div>
+                <span class="history-metric-val metric-profit-positive" id="metric-exp-net-profit">₹0.00</span>
+              </div>
+            </div>
+
+            <div class="history-metric-card">
+              <div class="history-metric-icon" style="background:#EFF6FF; color:#2563EB;">
+                <i data-lucide="receipt-text" style="width:20px;height:20px;"></i>
+              </div>
+              <div class="history-metric-content">
+                <span class="history-metric-label">Logged Outflows</span>
+                <span class="history-metric-val" id="metric-exp-count">0</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Log Expense Outflow Form Card -->
+          <div class="admin-card" style="margin-bottom: 20px;">
+            <div class="admin-card-header">
+              <div>
+                <h2 style="font-size: 1.15rem; font-weight: 700; color: var(--brand-navy); display: flex; align-items: center; gap: 8px;">
+                  <i data-lucide="plus-circle" style="width: 18px; height: 18px; color: var(--primary);"></i>
+                  <span>Log Daily Expense Outflow</span>
+                </h2>
+                <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">
+                  Record real-time cash, UPI, or vendor outflows (inventory, wages, utilities, packaging) to track accurate net margin.
+                </p>
+              </div>
+            </div>
+
+            <div style="padding: 16px 20px; background: #FFFFFF;">
+              <form id="owner-expense-form" onsubmit="return false;">
+                <div class="expense-entry-grid">
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" for="expense-category">Category *</label>
+                    <select id="expense-category" class="form-select" required style="padding: 8px 12px; font-size: 0.84rem;">
+                      <option value="Inventory / Raw Materials">Raw Materials &amp; Groceries</option>
+                      <option value="Staff Payouts / Wages">Staff Wages &amp; Advance</option>
+                      <option value="Utilities / Gas / Electric">Utilities (LPG / Electricity)</option>
+                      <option value="Packaging &amp; Disposables">Packaging &amp; Takeaway Boxes</option>
+                      <option value="Maintenance &amp; Repairs">Maintenance &amp; Repairs</option>
+                      <option value="Marketing &amp; Promotions">Marketing &amp; Ads</option>
+                      <option value="Miscellaneous / Other">Miscellaneous / Other</option>
+                    </select>
+                  </div>
+
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" for="expense-amount">Amount (₹) *</label>
+                    <input type="number" id="expense-amount" class="form-input" placeholder="e.g. 1250" min="1" step="1" required style="padding: 8px 12px; font-size: 0.84rem;">
+                  </div>
+
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" for="expense-desc">Description / Vendor / Item Details *</label>
+                    <input type="text" id="expense-desc" class="form-input" placeholder="e.g. 50kg Royal Basmati Rice from Wholesale Depot" required style="padding: 8px 12px; font-size: 0.84rem;">
+                  </div>
+
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" for="expense-date">Expense Date</label>
+                    <input type="date" id="expense-date" class="form-input" style="padding: 7px 10px; font-size: 0.84rem;">
+                  </div>
+
+                  <button type="submit" class="btn-primary" id="btn-submit-expense" style="height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 18px; white-space: nowrap;">
+                    <i data-lucide="check-circle" style="width: 15px; height: 15px;"></i>
+                    <span>Log Expense</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Expense Ledger Table Card -->
+          <div class="admin-card" style="margin-bottom: 0;">
+            <div class="admin-card-header">
+              <div>
+                <h2 style="font-size: 1.15rem; font-weight: 700; color: var(--brand-navy); display: flex; align-items: center; gap: 8px;">
+                  <i data-lucide="receipt" style="width: 18px; height: 18px; color: var(--accent-rose);"></i>
+                  <span>Expenses Ledger (Google Sheet: Expenses)</span>
+                </h2>
+                <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">
+                  Synchronized live with the Expenses tab in your Google Sheet.
+                </p>
+              </div>
+
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <button class="btn-secondary" id="btn-refresh-expenses" style="padding: 7px 12px; font-size: 0.82rem;">
+                  <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+                  <span>Sync Expenses</span>
+                </button>
+                <button class="btn-primary" id="btn-export-expenses-csv" style="padding: 7px 12px; font-size: 0.82rem; background: var(--brand-navy);">
+                  <i data-lucide="download" style="width: 14px; height: 14px;"></i>
+                  <span>Export CSV</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Ledger Filter Toolbar -->
+            <div style="padding: 12px 18px; background: #FFFFFF; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+              <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                <select id="filter-expense-category" class="form-select" style="padding: 6px 12px; font-size: 0.82rem; width: auto; min-width: 150px;">
+                  <option value="all">All Categories</option>
+                  <option value="Inventory / Raw Materials">Raw Materials</option>
+                  <option value="Staff Payouts / Wages">Staff Wages</option>
+                  <option value="Utilities / Gas / Electric">Utilities</option>
+                  <option value="Packaging &amp; Disposables">Packaging</option>
+                  <option value="Maintenance &amp; Repairs">Maintenance</option>
+                  <option value="Marketing &amp; Promotions">Marketing</option>
+                  <option value="Miscellaneous / Other">Miscellaneous</option>
+                </select>
+              </div>
+
+              <div style="position: relative; min-width: 240px; flex: 1; max-width: 320px;">
+                <input type="text" id="expense-search-input" class="form-input" placeholder="Search expenses by vendor or notes..." style="padding: 7px 12px 7px 34px; font-size: 0.84rem;">
+                <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-dim); pointer-events: none;"></i>
+              </div>
+            </div>
+
+            <div class="data-table-wrap">
+              <table class="data-table" id="expenses-table">
+                <thead>
+                  <tr>
+                    <th style="width: 16%;">Expense ID</th>
+                    <th style="width: 18%;">Date &amp; Time</th>
+                    <th style="width: 20%;">Category</th>
+                    <th style="width: 30%;">Description / Notes</th>
+                    <th style="width: 16%; text-align: right;">Outflow (₹)</th>
+                  </tr>
+                </thead>
+                <tbody id="expenses-tbody">
+                  <!-- Dynamically populated rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- VIEW 5: Interactive Sales Trends & Analytics (Chart.js Integration) -->
+        <div id="section-trends-view" style="display: none;">
+          <div class="trends-container">
+            
+            <!-- Trends Header Toolbar & Timeframe Switcher -->
+            <div class="trends-header-toolbar">
+              <div>
+                <h2 style="font-size: 1.2rem; font-weight: 700; color: var(--brand-navy); display: flex; align-items: center; gap: 8px;">
+                  <i data-lucide="trending-up" style="width: 20px; height: 20px; color: var(--accent-indigo);"></i>
+                  <span>Sales Trends &amp; Revenue Analytics</span>
+                </h2>
+                <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">
+                  Real-time visualization of completed dining transactions grouped by time intervals.
+                </p>
+              </div>
+
+              <!-- Timeframe Switcher Controls -->
+              <div class="trend-view-selector">
+                <button type="button" class="trend-pill active" data-timeframe="daily" id="btn-trend-daily">
+                  <i data-lucide="clock" style="width: 13px; height: 13px; display: inline-block; vertical-align: -2px; margin-right: 4px;"></i>
+                  <span>Daily (Hourly)</span>
+                </button>
+                <button type="button" class="trend-pill" data-timeframe="weekly" id="btn-trend-weekly">
+                  <i data-lucide="calendar-days" style="width: 13px; height: 13px; display: inline-block; vertical-align: -2px; margin-right: 4px;"></i>
+                  <span>Weekly (Mon-Sun)</span>
+                </button>
+                <button type="button" class="trend-pill" data-timeframe="monthly" id="btn-trend-monthly">
+                  <i data-lucide="calendar-range" style="width: 13px; height: 13px; display: inline-block; vertical-align: -2px; margin-right: 4px;"></i>
+                  <span>Monthly</span>
+                </button>
+                <button type="button" class="trend-pill" data-timeframe="yearly" id="btn-trend-yearly">
+                  <i data-lucide="calendar" style="width: 13px; height: 13px; display: inline-block; vertical-align: -2px; margin-right: 4px;"></i>
+                  <span>Yearly</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Key Insight Metric Cards -->
+            <div class="history-metrics-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 0;">
+              <div class="history-metric-card">
+                <div class="history-metric-icon" style="background:#EEF2FF; color:#4F46E5;">
+                  <i data-lucide="circle-dollar-sign" style="width:20px;height:20px;"></i>
+                </div>
+                <div class="history-metric-content">
+                  <span class="history-metric-label">Window Gross Revenue</span>
+                  <span class="history-metric-val" style="color:#4F46E5;" id="trend-metric-revenue">₹0</span>
+                </div>
+              </div>
+
+              <div class="history-metric-card">
+                <div class="history-metric-icon" style="background:#ECFDF5; color:#059669;">
+                  <i data-lucide="flame" style="width:20px;height:20px;"></i>
+                </div>
+                <div class="history-metric-content">
+                  <span class="history-metric-label">Peak Sales Window</span>
+                  <span class="history-metric-val" style="font-size: 1.05rem;" id="trend-metric-peak">-</span>
+                </div>
+              </div>
+
+              <div class="history-metric-card">
+                <div class="history-metric-icon" style="background:#EFF6FF; color:#2563EB;">
+                  <i data-lucide="shopping-bag" style="width:20px;height:20px;"></i>
+                </div>
+                <div class="history-metric-content">
+                  <span class="history-metric-label">Completed Orders</span>
+                  <span class="history-metric-val" id="trend-metric-orders">0</span>
+                </div>
+              </div>
+
+              <div class="history-metric-card">
+                <div class="history-metric-icon" style="background:#FFFBEB; color:#D97706;">
+                  <i data-lucide="calculator" style="width:20px;height:20px;"></i>
+                </div>
+                <div class="history-metric-content">
+                  <span class="history-metric-label">Average Order Value</span>
+                  <span class="history-metric-val" id="trend-metric-aov">₹0</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Chart.js Interactive Canvas Grid -->
+            <div class="trends-chart-grid">
+              <!-- Primary Dynamic Sales Chart -->
+              <div class="chart-card">
+                <div class="chart-card-header">
+                  <div>
+                    <div class="chart-card-title" id="trend-chart-main-title">
+                      <i data-lucide="bar-chart-3" style="width: 17px; height: 17px; color: var(--accent-indigo);"></i>
+                      <span>Revenue Breakdown &amp; Performance</span>
+                    </div>
+                    <div class="chart-card-subtitle" id="trend-chart-main-subtitle">
+                      Visualizing hourly transaction volume and peak order intervals
+                    </div>
+                  </div>
+                  <span class="profit-badge positive" id="trend-chart-tag">Interactive Live</span>
+                </div>
+
+                <div class="chart-canvas-wrap">
+                  <canvas id="ownerTrendsChart"></canvas>
+                </div>
+              </div>
+
+              <!-- Secondary Category / Top Dish Distribution Chart -->
+              <div class="chart-card">
+                <div class="chart-card-header">
+                  <div>
+                    <div class="chart-card-title">
+                      <i data-lucide="pie-chart" style="width: 17px; height: 17px; color: var(--accent-emerald);"></i>
+                      <span>Category Sales Share</span>
+                    </div>
+                    <div class="chart-card-subtitle">
+                      Dish category distribution by total order volume
+                    </div>
+                  </div>
+                </div>
+
+                <div class="chart-canvas-wrap">
+                  <canvas id="ownerBreakdownChart"></canvas>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 

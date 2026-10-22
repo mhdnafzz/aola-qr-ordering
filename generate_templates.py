@@ -88,5 +88,15 @@ orders_rows = [
 ]
 style_sheet(ws_orders, orders_headers, orders_rows)
 
+# Tab 3: Expenses
+ws_expenses = wb_client.create_sheet(title="Expenses")
+expenses_headers = ["Expense_ID", "Timestamp", "Category", "Description", "Amount"]
+expenses_rows = [
+    ["EXP-20261020-001", "2026-10-20 09:30:00", "Inventory", "Fresh Vegetables & Herbs", 1250],
+    ["EXP-20261020-002", "2026-10-20 11:00:00", "Staff", "Kitchen Helper Daily Wages", 600],
+    ["EXP-20261020-003", "2026-10-20 16:15:00", "Utilities", "Commercial LPG Gas Cylinder", 1850]
+]
+style_sheet(ws_expenses, expenses_headers, expenses_rows)
+
 wb_client.save("database_templates/Client_Template_Orders_and_Menu.xlsx")
 print("Created database_templates/Client_Template_Orders_and_Menu.xlsx")

@@ -135,6 +135,19 @@ function handleRequest(e, method) {
         responseData = handleCompleteOrder(params);
         break;
 
+      case "delete_order":
+      case "void_order":
+        responseData = handleSoftDeleteOrder(params);
+        break;
+
+      case "add_expense":
+        responseData = handleAddExpense(params);
+        break;
+
+      case "get_expenses":
+        responseData = handleGetExpenses(params);
+        break;
+
       case "admin_login":
         responseData = handleAdminLogin(params);
         break;
@@ -733,13 +746,28 @@ function handlePlaceOrder(params) {
 function handleGetOrders(params) {
   var shopId = params.shop_id || params.shop;
   var pin = params.pin || params.owner_pin;
+  var tenant = null;
 
-  var auth = verifyOwnerAuth(shopId, pin);
-  if (!auth.valid) {
-    return { success: false, error: auth.error };
+  if (params.admin_pin && verifyAdminAuth(params.admin_pin)) {
+    if (shopId) {
+      tenant = getTenantRecord(shopId);
+    }
+    if (!tenant) {
+      var allTenants = getAllTenants();
+      if (allTenants && allTenants.length > 0) {
+        tenant = allTenants[0];
+      }
+    }
+    if (!tenant) {
+      return { success: false, error: "No client restaurants found in Master DB." };
+    }
+  } else {
+    var auth = verifyOwnerAuth(shopId, pin);
+    if (!auth.valid) {
+      return { success: false, error: auth.error };
+    }
+    tenant = auth.tenant;
   }
-
-  var tenant = auth.tenant;
 
   try {
     var clientSs = SpreadsheetApp.openById(tenant.sheetId);
@@ -837,6 +865,251 @@ function handleCompleteOrder(params) {
     };
   } finally {
     lock.releaseLock();
+  }
+}
+
+// =========================================================================
+// ACTION: delete_order / void_order (Soft-Delete & Voided Orders Protocol)
+// =========================================================================
+
+/**
+ * Soft-deletes an order by updating its status to "Deleted" (or "Voided")
+ * CRITICAL RULE: Never permanently deletes row data, maintaining a secure audit trail.
+ */
+function handleSoftDeleteOrder(params) {
+  var shopId = params.shop_id || params.shop;
+  var pin = params.pin || params.owner_pin;
+  var targetOrderId = sanitizeString(params.order_id);
+  var reason = sanitizeString(params.reason || "Voided from Kitchen Console");
+
+  if (!targetOrderId) {
+    return { success: false, error: "Missing order_id." };
+  }
+
+  var auth = verifyOwnerAuth(shopId, pin);
+  if (!auth.valid) {
+    return { success: false, error: auth.error };
+  }
+
+  var tenant = auth.tenant;
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(CONFIG.LOCK_TIMEOUT_MS);
+
+    var clientSs = SpreadsheetApp.openById(tenant.sheetId);
+    var ordersSheet = clientSs.getSheetByName("Orders") || clientSs.getSheets()[1];
+    var data = ordersSheet.getDataRange().getValues();
+
+    var found = false;
+    for (var i = 1; i < data.length; i++) {
+      var currentOrderId = String(data[i][0]).trim();
+      if (currentOrderId === targetOrderId) {
+        // Column F is Order_Status (Column 6 in 1-based index)
+        ordersSheet.getRange(i + 1, 6).setValue("Deleted");
+        
+        // Append void reason to Customer Notes (Column 7) if provided
+        var existingNotes = String(data[i][6] || "").trim();
+        var voidStamp = "[VOIDED: " + reason + "]";
+        if (!existingNotes.includes("[VOIDED")) {
+          var updatedNotes = existingNotes ? existingNotes + " | " + voidStamp : voidStamp;
+          ordersSheet.getRange(i + 1, 7).setValue(updatedNotes);
+        }
+
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      return { success: false, error: "Order not found: " + targetOrderId };
+    }
+
+    return {
+      success: true,
+      order_id: targetOrderId,
+      status: "Deleted",
+      message: "Order #" + targetOrderId + " marked as Deleted/Voided in audit trail."
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: "Error soft-deleting order: " + err.toString()
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// =========================================================================
+// EXPENSES LEDGER MODULE (add_expense, get_expenses)
+// Google Sheet Tab: Expenses (Columns: Expense_ID, Timestamp, Category, Description, Amount)
+// =========================================================================
+
+/**
+ * Ensures the Expenses sheet exists in the target spreadsheet with standard headers
+ */
+function getOrCreateExpensesSheet(spreadsheet) {
+  var sheet = spreadsheet.getSheetByName("Expenses");
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet("Expenses");
+    var headers = ["Expense_ID", "Timestamp", "Category", "Description", "Amount"];
+    sheet.appendRow(headers);
+    sheet.setFrozenRows(1);
+
+    // Apply header styling
+    try {
+      var headerRange = sheet.getRange(1, 1, 1, 5);
+      headerRange.setFontWeight("bold");
+      headerRange.setBackground("#0F172A");
+      headerRange.setFontColor("#FFFFFF");
+      sheet.autoResizeColumns(1, 5);
+    } catch (e) {}
+  }
+  return sheet;
+}
+
+/**
+ * ACTION: add_expense
+ * Logs a new daily expense outflow (inventory, wages, utilities, packaging, etc.)
+ */
+function handleAddExpense(params) {
+  var shopId = params.shop_id || params.shop;
+  var pin = params.pin || params.owner_pin;
+  var adminPin = params.admin_pin;
+
+  var targetSs = null;
+
+  if (adminPin) {
+    if (!verifyAdminAuth(adminPin)) {
+      return { success: false, error: "Unauthorized: Invalid Agency Admin PIN." };
+    }
+    if (shopId && shopId !== "master" && shopId !== "agency" && shopId !== "hq") {
+      var tenant = getTenantRecord(shopId);
+      if (!tenant) return { success: false, error: "Restaurant not found: " + shopId };
+      targetSs = SpreadsheetApp.openById(tenant.sheetId);
+    } else {
+      var masterDbId = getMasterDbId();
+      targetSs = SpreadsheetApp.openById(masterDbId);
+    }
+  } else {
+    var auth = verifyOwnerAuth(shopId, pin);
+    if (!auth.valid) {
+      return { success: false, error: auth.error };
+    }
+    targetSs = SpreadsheetApp.openById(auth.tenant.sheetId);
+  }
+
+  var amount = parseFloat(params.amount);
+  if (isNaN(amount) || amount <= 0) {
+    return { success: false, error: "Expense amount must be a positive number." };
+  }
+
+  var category = sanitizeString(params.category || "General");
+  var description = sanitizeString(params.description || "");
+  var expenseId = params.expense_id 
+    ? sanitizeString(params.expense_id) 
+    : "EXP-" + Utilities.formatDate(new Date(), "GMT+5:30", "yyyyMMdd-HHmmss") + "-" + Math.floor(Math.random() * 1000);
+  var timestamp = params.timestamp 
+    ? sanitizeString(params.timestamp) 
+    : Utilities.formatDate(new Date(), "GMT+5:30", "yyyy-MM-dd HH:mm:ss");
+
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(CONFIG.LOCK_TIMEOUT_MS);
+    var expensesSheet = getOrCreateExpensesSheet(targetSs);
+    expensesSheet.appendRow([expenseId, timestamp, category, description, amount]);
+
+    return {
+      success: true,
+      message: "Expense logged successfully.",
+      expense: {
+        expenseId: expenseId,
+        timestamp: timestamp,
+        category: category,
+        description: description,
+        amount: amount
+      }
+    };
+  } catch (err) {
+    return { success: false, error: "Error writing expense to Google Sheet: " + err.toString() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * ACTION: get_expenses
+ * Retrieves all expense rows from the Expenses sheet tab
+ */
+function handleGetExpenses(params) {
+  var shopId = params.shop_id || params.shop;
+  var pin = params.pin || params.owner_pin;
+  var adminPin = params.admin_pin;
+
+  var targetSs = null;
+
+  if (adminPin) {
+    if (!verifyAdminAuth(adminPin)) {
+      return { success: false, error: "Unauthorized: Invalid Agency Admin PIN." };
+    }
+    if (shopId && shopId !== "master" && shopId !== "agency" && shopId !== "hq") {
+      var tenant = getTenantRecord(shopId);
+      if (!tenant) return { success: false, error: "Restaurant not found: " + shopId };
+      targetSs = SpreadsheetApp.openById(tenant.sheetId);
+    } else {
+      var masterDbId = getMasterDbId();
+      targetSs = SpreadsheetApp.openById(masterDbId);
+    }
+  } else {
+    var auth = verifyOwnerAuth(shopId, pin);
+    if (!auth.valid) {
+      return { success: false, error: auth.error };
+    }
+    targetSs = SpreadsheetApp.openById(auth.tenant.sheetId);
+  }
+
+  try {
+    var expensesSheet = targetSs.getSheetByName("Expenses");
+    if (!expensesSheet) {
+      expensesSheet = getOrCreateExpensesSheet(targetSs);
+      return {
+        success: true,
+        expenses: [],
+        total_expenses: 0
+      };
+    }
+
+    var data = expensesSheet.getDataRange().getValues();
+    var expenses = [];
+    var total = 0;
+
+    // Headers: Expense_ID, Timestamp, Category, Description, Amount
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      var expId = String(row[0]).trim();
+      if (!expId) continue;
+
+      var amt = parseFloat(row[4]) || 0;
+      total += amt;
+      expenses.push({
+        expenseId: expId,
+        timestamp: String(row[1] || ""),
+        category: String(row[2] || "General").trim(),
+        description: String(row[3] || "").trim(),
+        amount: amt
+      });
+    }
+
+    // Newest first
+    expenses.reverse();
+
+    return {
+      success: true,
+      expenses: expenses,
+      total_expenses: total
+    };
+  } catch (err) {
+    return { success: false, error: "Error reading expenses: " + err.toString() };
   }
 }
 
@@ -1009,6 +1282,17 @@ function autoProvisionClientSheet(shopName) {
   } else {
     var newOrders = newSs.insertSheet("Orders");
     newOrders.appendRow(["Order_ID", "Timestamp", "Table_Number", "Items_Summary", "Total_Price", "Order_Status", "Customer_Notes"]);
+  }
+
+  // Copy or Create Expenses sheet
+  var templateExpenses = templateSs.getSheetByName("Expenses");
+  if (templateExpenses) {
+    var newExpenses = templateExpenses.copyTo(newSs);
+    newExpenses.setName("Expenses");
+  } else {
+    var newExpenses = newSs.insertSheet("Expenses");
+    newExpenses.appendRow(["Expense_ID", "Timestamp", "Category", "Description", "Amount"]);
+    newExpenses.setFrozenRows(1);
   }
 
   // Delete default "Sheet1"
