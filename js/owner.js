@@ -39,7 +39,13 @@
       endDate: "",
       status: "all",
       search: ""
-    }
+    },
+    // Manual POS Cashier Terminal State
+    cashierCart: [],
+    posOrderSource: "Dine-In",
+    posSelectedTable: "1",
+    posCategoryFilter: "all",
+    posSearchQuery: ""
   };
 
   const el = {
@@ -58,6 +64,34 @@
     btnOpenSettings: document.getElementById("btn-open-settings"),
     btnSidebarSettings: document.getElementById("btn-sidebar-settings"),
     btnLogout: document.getElementById("btn-logout"),
+
+    // Manual POS Terminal Elements
+    btnHeaderPos: document.getElementById("btn-header-pos"),
+    viewTabPos: document.getElementById("view-tab-pos"),
+    posModal: document.getElementById("pos-modal"),
+    btnClosePos: document.getElementById("btn-close-pos"),
+    btnPosCancel: document.getElementById("btn-pos-cancel"),
+    btnPosQuickClear: document.getElementById("btn-pos-quick-clear"),
+    btnPosClearItems: document.getElementById("btn-pos-clear-items"),
+    posDishSearch: document.getElementById("pos-dish-search"),
+    btnPosClearSearch: document.getElementById("btn-pos-clear-search"),
+    posCategoryChips: document.getElementById("pos-category-chips"),
+    posMenuGrid: document.getElementById("pos-menu-grid"),
+    posMenuEmpty: document.getElementById("pos-menu-empty"),
+    btnPosResetFilters: document.getElementById("btn-pos-reset-filters"),
+    posSourceSelector: document.getElementById("pos-source-selector"),
+    posSourceIndicator: document.getElementById("pos-source-indicator"),
+    posOrderRef: document.getElementById("pos-order-ref"),
+    posOrderRefLabel: document.getElementById("pos-order-ref-label"),
+    posQuickTables: document.getElementById("pos-quick-tables"),
+    posOrderNotes: document.getElementById("pos-order-notes"),
+    posCartCount: document.getElementById("pos-cart-count"),
+    posCartList: document.getElementById("pos-cart-list"),
+    posCartEmpty: document.getElementById("pos-cart-empty"),
+    posSubtotal: document.getElementById("pos-subtotal"),
+    posGrandTotal: document.getElementById("pos-grand-total"),
+    btnPosSubmitOrder: document.getElementById("btn-pos-submit-order"),
+    posSubmitText: document.getElementById("pos-submit-text"),
 
     // View Switcher Tabs
     viewTabOrders: document.getElementById("view-tab-orders"),
@@ -1286,6 +1320,69 @@
     el.btnManualRefresh.onclick = () => {
       fetchOrders(true);
     };
+
+    // Manual POS Terminal Triggers
+    if (el.btnHeaderPos) el.btnHeaderPos.onclick = openPosModal;
+    if (el.viewTabPos) el.viewTabPos.onclick = openPosModal;
+    if (el.btnClosePos) el.btnClosePos.onclick = closePosModal;
+    if (el.btnPosCancel) el.btnPosCancel.onclick = closePosModal;
+    if (el.posModal) {
+      el.posModal.onclick = (e) => {
+        if (e.target === el.posModal) closePosModal();
+      };
+    }
+    if (el.btnPosQuickClear) el.btnPosQuickClear.onclick = clearCashierCart;
+    if (el.btnPosClearItems) el.btnPosClearItems.onclick = clearCashierCart;
+
+    if (el.posDishSearch) {
+      el.posDishSearch.oninput = (e) => {
+        state.posSearchQuery = e.target.value.toLowerCase().trim();
+        if (el.btnPosClearSearch) {
+          el.btnPosClearSearch.style.display = state.posSearchQuery ? "block" : "none";
+        }
+        renderPosMenu();
+      };
+    }
+    if (el.btnPosClearSearch) {
+      el.btnPosClearSearch.onclick = () => {
+        if (el.posDishSearch) el.posDishSearch.value = "";
+        state.posSearchQuery = "";
+        el.btnPosClearSearch.style.display = "none";
+        renderPosMenu();
+        if (el.posDishSearch) el.posDishSearch.focus();
+      };
+    }
+    if (el.btnPosResetFilters) {
+      el.btnPosResetFilters.onclick = () => {
+        state.posCategoryFilter = "all";
+        state.posSearchQuery = "";
+        if (el.posDishSearch) el.posDishSearch.value = "";
+        if (el.btnPosClearSearch) el.btnPosClearSearch.style.display = "none";
+        renderPosCategories();
+        renderPosMenu();
+      };
+    }
+
+    if (el.posSourceSelector) {
+      el.posSourceSelector.querySelectorAll(".pos-source-btn").forEach((btn) => {
+        btn.onclick = () => setPosOrderSource(btn.dataset.source);
+      });
+    }
+
+    if (el.posQuickTables) {
+      el.posQuickTables.querySelectorAll(".pos-table-chip").forEach((chip) => {
+        chip.onclick = () => {
+          el.posQuickTables.querySelectorAll(".pos-table-chip").forEach((c) => c.classList.remove("active"));
+          chip.classList.add("active");
+          state.posSelectedTable = chip.dataset.table;
+          if (el.posOrderRef) el.posOrderRef.value = chip.dataset.table;
+        };
+      });
+    }
+
+    if (el.btnPosSubmitOrder) {
+      el.btnPosSubmitOrder.onclick = handlePosSubmitOrder;
+    }
 
     // View Switcher (Tickets vs History vs Menu vs Expenses vs Trends)
     if (el.viewTabOrders) {
@@ -3413,11 +3510,534 @@
     if (window.lucide) lucide.createIcons();
   }
 
+  // =========================================================================
+  // MANUAL POS CASHIER TERMINAL CONTROLLER (owner.html)
+  // Split-screen interface for fast touch punching of orders
+  // =========================================================================
+
+  /**
+   * Open the POS Terminal Modal
+   */
+  async function openPosModal() {
+    if (!el.posModal) return;
+
+    // Ensure menu items are loaded
+    if (!state.menu || state.menu.length === 0) {
+      if (el.posMenuGrid) {
+        el.posMenuGrid.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 40px 16px; color: var(--text-muted);">
+            <i data-lucide="loader" class="spin" style="width: 28px; height: 28px; margin-bottom: 8px;"></i>
+            <div>Loading restaurant menu...</div>
+          </div>
+        `;
+        if (window.lucide) lucide.createIcons();
+      }
+      try {
+        await fetchOwnerMenu(false);
+      } catch (err) {
+        console.warn("[POS Menu Load Warn]:", err);
+      }
+    }
+
+    // Reset filters and render
+    state.posCategoryFilter = "all";
+    state.posSearchQuery = "";
+    if (el.posDishSearch) el.posDishSearch.value = "";
+    if (el.btnPosClearSearch) el.btnPosClearSearch.style.display = "none";
+
+    // Set default order source if not set
+    if (!state.posOrderSource) {
+      setPosOrderSource("Dine-In");
+    } else {
+      setPosOrderSource(state.posOrderSource);
+    }
+
+    renderPosCategories();
+    renderPosMenu();
+    renderCashierCart();
+
+    el.posModal.style.display = "flex";
+    el.posModal.classList.add("open");
+
+    if (window.lucide) lucide.createIcons();
+
+    // Auto-focus search or ref field
+    setTimeout(() => {
+      if (el.posDishSearch && window.innerWidth > 768) {
+        el.posDishSearch.focus();
+      }
+    }, 150);
+  }
+
+  /**
+   * Close the POS Terminal Modal
+   */
+  function closePosModal() {
+    if (!el.posModal) return;
+    el.posModal.classList.remove("open");
+    el.posModal.style.display = "none";
+  }
+
+  /**
+   * Set the POS Order Source (Dine-In, Takeaway, Zomato, Swiggy)
+   */
+  function setPosOrderSource(source) {
+    state.posOrderSource = source || "Dine-In";
+
+    if (el.posSourceSelector) {
+      el.posSourceSelector.querySelectorAll(".pos-source-btn").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.source === state.posOrderSource);
+      });
+    }
+
+    if (el.posSourceIndicator) {
+      const labels = {
+        "Dine-In": "Dine-In Table",
+        "Takeaway": "Takeaway / Parcel",
+        "Zomato": "Zomato Delivery",
+        "Swiggy": "Swiggy Delivery"
+      };
+      el.posSourceIndicator.textContent = labels[state.posOrderSource] || state.posOrderSource;
+      el.posSourceIndicator.style.color = state.posOrderSource === "Zomato" ? "#E23744" : (state.posOrderSource === "Swiggy" ? "#FC8019" : "var(--primary)");
+    }
+
+    // Configure the reference input label and quick tables
+    if (state.posOrderSource === "Dine-In") {
+      if (el.posOrderRefLabel) el.posOrderRefLabel.textContent = "Table Number *";
+      if (el.posOrderRef) {
+        el.posOrderRef.placeholder = "e.g. 4";
+        el.posOrderRef.value = state.posSelectedTable || "1";
+      }
+      if (el.posQuickTables) el.posQuickTables.style.display = "flex";
+    } else if (state.posOrderSource === "Takeaway") {
+      if (el.posOrderRefLabel) el.posOrderRefLabel.textContent = "Customer Name / Phone *";
+      if (el.posOrderRef) {
+        el.posOrderRef.placeholder = "e.g. Rahul / 9876543210";
+        if (el.posOrderRef.value === "1" || el.posOrderRef.value === state.posSelectedTable) {
+          el.posOrderRef.value = "";
+        }
+      }
+      if (el.posQuickTables) el.posQuickTables.style.display = "none";
+    } else if (state.posOrderSource === "Zomato") {
+      if (el.posOrderRefLabel) el.posOrderRefLabel.textContent = "Zomato Order / Token ID *";
+      if (el.posOrderRef) {
+        el.posOrderRef.placeholder = "e.g. #ZOM-4921";
+        if (el.posOrderRef.value === "1" || el.posOrderRef.value === state.posSelectedTable) {
+          el.posOrderRef.value = "";
+        }
+      }
+      if (el.posQuickTables) el.posQuickTables.style.display = "none";
+    } else if (state.posOrderSource === "Swiggy") {
+      if (el.posOrderRefLabel) el.posOrderRefLabel.textContent = "Swiggy Order / Token ID *";
+      if (el.posOrderRef) {
+        el.posOrderRef.placeholder = "e.g. #SWG-8103";
+        if (el.posOrderRef.value === "1" || el.posOrderRef.value === state.posSelectedTable) {
+          el.posOrderRef.value = "";
+        }
+      }
+      if (el.posQuickTables) el.posQuickTables.style.display = "none";
+    }
+  }
+
+  /**
+   * Render POS Category Chips dynamically from menu
+   */
+  function renderPosCategories() {
+    if (!el.posCategoryChips) return;
+
+    const categories = ["all"];
+    (state.menu || []).forEach((dish) => {
+      const cat = (dish.category || "General").trim();
+      if (cat && !categories.some(c => c.toLowerCase() === cat.toLowerCase())) {
+        categories.push(cat);
+      }
+    });
+
+    el.posCategoryChips.innerHTML = categories.map((cat) => {
+      const isAll = cat.toLowerCase() === "all";
+      const isActive = state.posCategoryFilter.toLowerCase() === cat.toLowerCase();
+      const label = isAll ? "All Items" : cat;
+      const icon = isAll ? `<i data-lucide="utensils" style="width:13px;height:13px;"></i>` : "";
+      return `
+        <button type="button" class="pos-cat-chip ${isActive ? "active" : ""}" data-category="${escapeHtml(cat)}">
+          ${icon}
+          <span>${escapeHtml(label)}</span>
+        </button>
+      `;
+    }).join("");
+
+    el.posCategoryChips.querySelectorAll(".pos-cat-chip").forEach((btn) => {
+      btn.onclick = () => {
+        el.posCategoryChips.querySelectorAll(".pos-cat-chip").forEach(c => c.classList.remove("active"));
+        btn.classList.add("active");
+        state.posCategoryFilter = btn.dataset.category || "all";
+        renderPosMenu();
+      };
+    });
+
+    if (window.lucide) lucide.createIcons();
+  }
+
+  /**
+   * Render POS Dishes Grid with Large Touch Hitboxes
+   */
+  function renderPosMenu() {
+    if (!el.posMenuGrid) return;
+
+    let items = state.menu || [];
+
+    // Filter by Category
+    if (state.posCategoryFilter && state.posCategoryFilter.toLowerCase() !== "all") {
+      const catTarget = state.posCategoryFilter.toLowerCase();
+      items = items.filter((d) => (d.category || "").toLowerCase() === catTarget);
+    }
+
+    // Filter by Search Query
+    if (state.posSearchQuery) {
+      const q = state.posSearchQuery;
+      items = items.filter((d) =>
+        (d.name || "").toLowerCase().includes(q) ||
+        (d.category || "").toLowerCase().includes(q) ||
+        (d.description || "").toLowerCase().includes(q) ||
+        (d.id || "").toLowerCase().includes(q)
+      );
+    }
+
+    if (items.length === 0) {
+      el.posMenuGrid.style.display = "none";
+      if (el.posMenuEmpty) el.posMenuEmpty.style.display = "flex";
+      return;
+    }
+
+    el.posMenuGrid.style.display = "grid";
+    if (el.posMenuEmpty) el.posMenuEmpty.style.display = "none";
+
+    el.posMenuGrid.innerHTML = items.map((dish) => {
+      const inCart = state.cashierCart.find(i => String(i.id).toLowerCase() === String(dish.id).toLowerCase());
+      const inCartQty = inCart ? inCart.qty : 0;
+      const isInStock = dish.inStock !== false && String(dish.inStock).toLowerCase() !== "false";
+      const isVeg = dish.isVeg === true || String(dish.isVeg).toLowerCase() === "true";
+      const priceVal = Number(dish.price) || 0;
+
+      return `
+        <div class="pos-dish-card ${inCartQty > 0 ? "in-cart" : ""} ${!isInStock ? "out-of-stock" : ""}" 
+             data-dish-id="${escapeHtml(dish.id)}" 
+             title="${isInStock ? "Click to add " + escapeHtml(dish.name) + " to cart" : "Item marked out of stock"}">
+          <div>
+            <div class="pos-card-header">
+              <span class="pos-diet-dot ${isVeg ? "veg" : "non-veg"}" title="${isVeg ? "Vegetarian" : "Non-Vegetarian"}"></span>
+              <span class="pos-dish-price">${state.currency}${priceVal.toFixed(2)}</span>
+            </div>
+            <div class="pos-dish-name">${escapeHtml(dish.name)}</div>
+          </div>
+          <div class="pos-card-footer">
+            <span style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; font-weight:600;">${escapeHtml(dish.category || "")}</span>
+            ${!isInStock 
+              ? `<span style="font-size:0.7rem; font-weight:700; color:var(--accent-rose);">Out of Stock</span>` 
+              : (inCartQty > 0 ? `<span class="pos-card-badge"><i data-lucide="check" style="width:11px;height:11px;"></i> x${inCartQty}</span>` : `<span style="font-size:0.74rem; font-weight:700; color:var(--primary);"><i data-lucide="plus" style="width:13px;height:13px;"></i> Add</span>`)
+            }
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    // Attach click events
+    el.posMenuGrid.querySelectorAll(".pos-dish-card").forEach((card) => {
+      card.onclick = () => {
+        if (card.classList.contains("out-of-stock")) {
+          showToast("This item is currently marked Out of Stock.", "warning");
+          return;
+        }
+        const dishId = card.dataset.dishId;
+        const dish = (state.menu || []).find(d => String(d.id).toLowerCase() === String(dishId).toLowerCase());
+        if (dish) {
+          addToCashierCart(dish);
+        }
+      };
+    });
+
+    if (window.lucide) lucide.createIcons();
+  }
+
+  /**
+   * Update active badges on dish cards without re-rendering the whole grid
+   */
+  function updatePosDishCardBadges() {
+    if (!el.posMenuGrid) return;
+    el.posMenuGrid.querySelectorAll(".pos-dish-card").forEach((card) => {
+      const dishId = card.dataset.dishId;
+      const inCart = state.cashierCart.find(i => String(i.id).toLowerCase() === String(dishId).toLowerCase());
+      const inCartQty = inCart ? inCart.qty : 0;
+      const isInStock = !card.classList.contains("out-of-stock");
+
+      if (inCartQty > 0) {
+        card.classList.add("in-cart");
+      } else {
+        card.classList.remove("in-cart");
+      }
+
+      if (isInStock) {
+        const footer = card.querySelector(".pos-card-footer");
+        if (footer) {
+          const badgeSpan = footer.querySelector(".pos-card-badge") || footer.querySelector("span:last-child");
+          if (badgeSpan) {
+            if (inCartQty > 0) {
+              badgeSpan.outerHTML = `<span class="pos-card-badge"><i data-lucide="check" style="width:11px;height:11px;"></i> x${inCartQty}</span>`;
+            } else {
+              badgeSpan.outerHTML = `<span style="font-size:0.74rem; font-weight:700; color:var(--primary);"><i data-lucide="plus" style="width:13px;height:13px;"></i> Add</span>`;
+            }
+          }
+        }
+      }
+    });
+    if (window.lucide) lucide.createIcons();
+  }
+
+  /**
+   * Add Item to Cashier Cart
+   */
+  function addToCashierCart(dish) {
+    if (!dish) return;
+    const existing = state.cashierCart.find(i => String(i.id).toLowerCase() === String(dish.id).toLowerCase());
+    if (existing) {
+      existing.qty += 1;
+    } else {
+      state.cashierCart.push({
+        id: dish.id,
+        name: dish.name,
+        price: Number(dish.price) || 0,
+        qty: 1,
+        category: dish.category || "",
+        isVeg: dish.isVeg
+      });
+    }
+
+    renderCashierCart();
+    updatePosDishCardBadges();
+  }
+
+  /**
+   * Update quantity of an item in Cashier Cart
+   */
+  function updateCashierCartQty(dishId, delta) {
+    const item = state.cashierCart.find(i => String(i.id).toLowerCase() === String(dishId).toLowerCase());
+    if (!item) return;
+
+    item.qty += delta;
+    if (item.qty <= 0) {
+      state.cashierCart = state.cashierCart.filter(i => String(i.id).toLowerCase() !== String(dishId).toLowerCase());
+    }
+
+    renderCashierCart();
+    updatePosDishCardBadges();
+  }
+
+  /**
+   * Remove single item from Cashier Cart
+   */
+  function removeFromCashierCart(dishId) {
+    state.cashierCart = state.cashierCart.filter(i => String(i.id).toLowerCase() !== String(dishId).toLowerCase());
+    renderCashierCart();
+    updatePosDishCardBadges();
+  }
+
+  /**
+   * Clear entire Cashier Cart
+   */
+  function clearCashierCart() {
+    state.cashierCart = [];
+    renderCashierCart();
+    updatePosDishCardBadges();
+  }
+
+  /**
+   * Render Cashier Cart and update grand totals
+   */
+  function renderCashierCart() {
+    const totalQty = state.cashierCart.reduce((acc, it) => acc + (it.qty || 0), 0);
+    const grandTotal = state.cashierCart.reduce((acc, it) => acc + ((it.price || 0) * (it.qty || 0)), 0);
+
+    if (el.posCartCount) el.posCartCount.textContent = totalQty;
+    if (el.posSubtotal) el.posSubtotal.textContent = `${state.currency}${grandTotal.toFixed(2)}`;
+    if (el.posGrandTotal) el.posGrandTotal.textContent = `${state.currency}${grandTotal.toFixed(2)}`;
+
+    // Toggle clear buttons
+    if (el.btnPosQuickClear) el.btnPosQuickClear.style.display = totalQty > 0 ? "inline-flex" : "none";
+    if (el.btnPosClearItems) el.btnPosClearItems.style.display = totalQty > 0 ? "inline-block" : "none";
+
+    // Enable / disable submit button
+    if (el.btnPosSubmitOrder) {
+      el.btnPosSubmitOrder.disabled = totalQty === 0;
+    }
+
+    if (!el.posCartList) return;
+
+    if (state.cashierCart.length === 0) {
+      el.posCartList.innerHTML = `
+        <div class="pos-cart-empty" id="pos-cart-empty">
+          <div class="pos-cart-empty-icon">
+            <i data-lucide="shopping-cart" style="width: 30px; height: 30px; color: var(--text-dim);"></i>
+          </div>
+          <div style="font-weight: 600; color: var(--brand-navy); font-size: 0.92rem; margin-bottom: 4px;">Cart is empty</div>
+          <div style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; max-width: 220px; margin: 0 auto;">
+            Tap any item on the left menu grid to instantly punch it into this order.
+          </div>
+        </div>
+      `;
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
+
+    el.posCartList.innerHTML = state.cashierCart.map((item) => {
+      const lineTotal = (item.price || 0) * (item.qty || 0);
+      const isOne = item.qty === 1;
+
+      return `
+        <div class="pos-cart-row" data-cart-dish-id="${escapeHtml(item.id)}">
+          <div class="pos-cart-row-info">
+            <div class="pos-cart-row-title">${escapeHtml(item.name)}</div>
+            <div class="pos-cart-row-rate">${state.currency}${(item.price || 0).toFixed(2)} each</div>
+          </div>
+
+          <!-- Quantity Stepper with Large Hitboxes -->
+          <div class="pos-qty-stepper">
+            <button type="button" class="pos-qty-btn ${isOne ? "trash" : ""}" data-action="dec" title="${isOne ? "Remove from cart" : "Decrease quantity"}">
+              ${isOne ? `<i data-lucide="trash-2" style="width:14px;height:14px;"></i>` : `&minus;`}
+            </button>
+            <span class="pos-qty-value">${item.qty}</span>
+            <button type="button" class="pos-qty-btn" data-action="inc" title="Increase quantity">
+              &plus;
+            </button>
+          </div>
+
+          <!-- Line Total -->
+          <div class="pos-cart-row-total">${state.currency}${lineTotal.toFixed(2)}</div>
+        </div>
+      `;
+    }).join("");
+
+    // Wire stepper buttons
+    el.posCartList.querySelectorAll(".pos-cart-row").forEach((row) => {
+      const dishId = row.dataset.cartDishId;
+      const decBtn = row.querySelector('[data-action="dec"]');
+      const incBtn = row.querySelector('[data-action="inc"]');
+
+      if (decBtn) {
+        decBtn.onclick = (e) => {
+          e.stopPropagation();
+          updateCashierCartQty(dishId, -1);
+        };
+      }
+      if (incBtn) {
+        incBtn.onclick = (e) => {
+          e.stopPropagation();
+          updateCashierCartQty(dishId, 1);
+        };
+      }
+    });
+
+    if (window.lucide) lucide.createIcons();
+  }
+
+  /**
+   * Format Cashier Cart and Dispatch Order to Kitchen API
+   */
+  async function handlePosSubmitOrder() {
+    if (!state.cashierCart || state.cashierCart.length === 0) {
+      showToast("Please add at least one dish to the cart before submitting.", "warning");
+      return;
+    }
+
+    const orderRefRaw = (el.posOrderRef ? el.posOrderRef.value : "").trim();
+    if (!orderRefRaw) {
+      const refLabel = state.posOrderSource === "Dine-In" ? "Table Number" : "Customer Reference";
+      showToast(`Please enter the ${refLabel}.`, "warning");
+      if (el.posOrderRef) el.posOrderRef.focus();
+      return;
+    }
+
+    // Format destination label based on source
+    let finalTableRef = orderRefRaw;
+    if (state.posOrderSource === "Dine-In") {
+      finalTableRef = /^[0-9]+$/.test(orderRefRaw) ? `Table ${orderRefRaw}` : orderRefRaw;
+    } else if (state.posOrderSource === "Takeaway") {
+      finalTableRef = `Takeaway - ${orderRefRaw}`;
+    } else if (state.posOrderSource === "Zomato") {
+      finalTableRef = `Zomato - ${orderRefRaw}`;
+    } else if (state.posOrderSource === "Swiggy") {
+      finalTableRef = `Swiggy - ${orderRefRaw}`;
+    }
+
+    // Format notes with explicit source tag
+    const userNotes = (el.posOrderNotes ? el.posOrderNotes.value : "").trim();
+    const finalNotes = `[Source: ${state.posOrderSource}]${userNotes ? " " + userNotes : ""}`;
+
+    // Format items array to match Google Apps Script / QR endpoint exactly
+    const formattedItems = state.cashierCart.map((item) => ({
+      dishId: item.id,
+      qty: item.qty
+    }));
+
+    // Build the payload
+    const payload = {
+      shop_id: state.shopId,
+      table_number: finalTableRef,
+      items: formattedItems,
+      customer_notes: finalNotes,
+      customer_fax: "", // Anti-bot honeypot
+      is_pos: true, // Manual cashier punch (bypasses rate limit)
+      pin: state.pin // Authenticated owner pin
+    };
+
+    // UI Loading state
+    if (el.btnPosSubmitOrder) el.btnPosSubmitOrder.disabled = true;
+    if (el.posSubmitText) el.posSubmitText.textContent = "Sending to Kitchen...";
+
+    try {
+      const response = await AOLA_API.post("place_order", payload);
+
+      if (response && response.success) {
+        const orderId = response.order_id || "New Order";
+        showToast(`Order ${orderId} sent to kitchen successfully!`, "success");
+
+        // Clear cart and reset inputs
+        clearCashierCart();
+        if (el.posOrderNotes) el.posOrderNotes.value = "";
+        if (state.posOrderSource !== "Dine-In" && el.posOrderRef) {
+          el.posOrderRef.value = "";
+        }
+
+        // Close POS terminal modal
+        closePosModal();
+
+        // Immediately trigger kitchen sync to refresh display & tickets
+        fetchOrders(true);
+
+        // Play loud audible chime for kitchen alert
+        playNewOrderSound();
+      } else {
+        const errMsg = response && response.error ? response.error : "Failed to place order.";
+        showToast(errMsg, "error");
+      }
+    } catch (err) {
+      console.error("[POS Submit Order Error]:", err);
+      showToast("Network error submitting POS order to kitchen.", "error");
+    } finally {
+      if (el.btnPosSubmitOrder) {
+        el.btnPosSubmitOrder.disabled = state.cashierCart.length === 0;
+      }
+      if (el.posSubmitText) {
+        el.posSubmitText.textContent = "Send to Kitchen";
+      }
+    }
+  }
+
   // Expose global controller helpers
   window.AOLA_OWNER = {
     openBill: (id) => openBillModal(id, false),
     openKot: (id) => openBillModal(id, true),
     quickPrintKot: (id) => quickPrintKot(id),
+    openPos: () => openPosModal(),
     openWhatsApp: (id) => {
       const order = state.orders.find((o) => String(o.orderId) === String(id));
       if (order) {

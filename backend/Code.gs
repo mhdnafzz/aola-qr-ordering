@@ -124,6 +124,7 @@ function handleRequest(e, method) {
         break;
 
       case "place_order":
+      case "create_order":
         responseData = handlePlaceOrder(params);
         break;
 
@@ -578,8 +579,9 @@ function handlePlaceOrder(params) {
     return { success: false, error: "Missing required parameter: shop_id" };
   }
 
-  // 2. Anti-Spam Rate Limit Check (60 seconds per table per shop)
-  if (isTableRateLimited(shopId, tableNumber)) {
+  // 2. Anti-Spam Rate Limit Check (60 seconds per table per shop - bypassed for manual POS cashier orders)
+  var isPos = params.is_pos === true || String(params.is_pos).toLowerCase() === "true" || !!params.pin;
+  if (!isPos && isTableRateLimited(shopId, tableNumber)) {
     return {
       success: false,
       error: "An order was already placed recently for Table " + tableNumber + ". Please wait a moment before ordering again."
@@ -717,8 +719,10 @@ function handlePlaceOrder(params) {
       customerNotes
     ]);
 
-    // Apply 60s table rate lock
-    lockTableRateLimit(shopId, tableNumber);
+    // Apply 60s table rate lock (only for customer QR self-orders, not POS)
+    if (!isPos) {
+      lockTableRateLimit(shopId, tableNumber);
+    }
 
     return {
       success: true,

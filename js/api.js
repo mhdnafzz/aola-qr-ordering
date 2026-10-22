@@ -425,7 +425,7 @@ const MockProvider = {
           });
         }
 
-        if (action === "place_order") {
+        if (action === "place_order" || action === "create_order") {
           // Honeypot check
           if (params.customer_fax && params.customer_fax.length > 0) {
             return resolve({ success: false, error: "Submission error detected." });
@@ -434,9 +434,10 @@ const MockProvider = {
           const table = String(params.table_number || "1");
           const rateKey = cleanShop + "_" + table;
           const now = Date.now();
+          const isPos = params.is_pos === true || String(params.is_pos).toLowerCase() === "true" || !!params.pin;
 
-          // Rate limit 60 seconds
-          if (this.db.rateLimits[rateKey] && (now - this.db.rateLimits[rateKey]) < 60000) {
+          // Rate limit 60 seconds (bypassed for manual POS cashier orders)
+          if (!isPos && this.db.rateLimits[rateKey] && (now - this.db.rateLimits[rateKey]) < 60000) {
             const remaining = Math.ceil((60000 - (now - this.db.rateLimits[rateKey])) / 1000);
             return resolve({
               success: false,
@@ -444,7 +445,9 @@ const MockProvider = {
             });
           }
 
-          this.db.rateLimits[rateKey] = now;
+          if (!isPos) {
+            this.db.rateLimits[rateKey] = now;
+          }
 
           // Server-Side Price Recalculation for Mock Provider (Prevent Tampering)
           const menuList = this.db.menus[cleanShop] || this.db.menus.bismillah || [];

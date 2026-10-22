@@ -99,6 +99,10 @@
       </div>
 
       <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <button class="btn-primary" id="btn-header-pos" title="Punch Manual POS Order (Direct Cashier Entry)" style="display: flex; align-items: center; gap: 6px; background: var(--brand-navy); color: #fff; font-weight: 600; box-shadow: 0 2px 8px rgba(15,23,42,0.18);">
+          <i data-lucide="calculator" style="width:15px;height:15px;color:#38BDF8;"></i>
+          <span>New Order (POS)</span>
+        </button>
         <button class="btn-secondary" id="btn-manual-refresh" title="Refresh orders now">
           <i data-lucide="refresh-cw" style="width:15px;height:15px;"></i>
           <span>Refresh</span>
@@ -133,6 +137,10 @@
             Navigation Views
           </div>
           <div style="display: flex; flex-direction: column; gap: 6px;">
+            <button class="cat-chip" id="view-tab-pos" style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600; background: var(--primary-light); color: var(--primary); border: 1.5px solid var(--primary-border);">
+              <i data-lucide="calculator" style="width:16px;height:16px;color:var(--primary);"></i>
+              <span>New Order (POS)</span>
+            </button>
             <button class="cat-chip active" id="view-tab-orders" style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
               <i data-lucide="chef-hat" style="width:16px;height:16px;"></i>
               <span>Kitchen Tickets</span>
@@ -1039,6 +1047,194 @@
           <span>Update PIN</span>
         </button>
       </form>
+    </div>
+  </div>
+
+  <!-- Manual POS Cashier Terminal Modal (Split-Screen Interface) -->
+  <div class="modal-backdrop" id="pos-modal" role="dialog" aria-modal="true" style="display: none;">
+    <div class="modal-popup pos-modal-popup">
+      <!-- Modal Header -->
+      <div class="modal-header pos-modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="pos-badge-icon">
+            <i data-lucide="calculator" style="width: 20px; height: 20px; color: #fff;"></i>
+          </div>
+          <div>
+            <h2 class="modal-title" style="margin: 0; font-size: 1.18rem; font-weight: 700; color: var(--brand-navy); display: flex; align-items: center; gap: 8px;">
+              <span>Manual POS Terminal</span>
+              <span class="live-indicator" style="background:#ECFDF5; color:#059669; border-color:#A7F3D0; font-size:0.7rem; padding:2px 8px;">Direct Cashier Punch</span>
+            </h2>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
+              Fast touchscreen ordering for Dine-In, Takeaway, Zomato &amp; Swiggy
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button type="button" class="btn-secondary" id="btn-pos-quick-clear" title="Clear current cart" style="font-size: 0.8rem; padding: 6px 12px; display: none;">
+            <i data-lucide="trash-2" style="width: 14px; height: 14px; color: var(--accent-rose);"></i>
+            <span>Clear Cart</span>
+          </button>
+          <button class="btn-close-modal" id="btn-close-pos" aria-label="Close POS terminal">&times;</button>
+        </div>
+      </div>
+
+      <!-- Split-Screen Body -->
+      <div class="pos-split-layout">
+        
+        <!-- LEFT PANEL: Menu & Category Browser -->
+        <div class="pos-menu-panel">
+          
+          <!-- Search & Filters Toolbar -->
+          <div class="pos-menu-toolbar">
+            <div class="pos-search-box">
+              <i data-lucide="search" class="pos-search-icon"></i>
+              <input type="text" id="pos-dish-search" class="form-input" placeholder="Search dishes (e.g. Biryani, Naan, Chai)..." autocomplete="off">
+              <button type="button" id="btn-pos-clear-search" class="pos-clear-search" style="display: none;" title="Clear search">&times;</button>
+            </div>
+            
+            <!-- Category Chips Filter (Starters, Mains, Breads, Beverages, etc.) -->
+            <div class="pos-cat-scroll" id="pos-category-chips">
+              <button class="pos-cat-chip active" data-category="all">
+                <i data-lucide="utensils" style="width:13px;height:13px;"></i>
+                <span>All Items</span>
+              </button>
+              <!-- Dynamically populated categories -->
+            </div>
+          </div>
+
+          <!-- Dishes Grid Container -->
+          <div class="pos-grid-container">
+            <div class="pos-menu-grid" id="pos-menu-grid">
+              <!-- Dynamically populated dish cards with large touch hitboxes -->
+            </div>
+            <!-- Empty state when no dishes match -->
+            <div id="pos-menu-empty" class="pos-empty-state" style="display: none;">
+              <i data-lucide="search-x" style="width: 36px; height: 36px; color: var(--text-dim); margin-bottom: 8px;"></i>
+              <p style="margin: 0; font-weight: 600; color: var(--text-muted);">No dishes match your filter</p>
+              <button type="button" class="btn-secondary" id="btn-pos-reset-filters" style="margin-top: 10px; font-size: 0.8rem; padding: 6px 12px;">Reset Filters</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT PANEL: Cart, Order Details & Checkout -->
+        <div class="pos-cart-panel">
+          
+          <!-- Order Source & Destination Box -->
+          <div class="pos-order-meta-box">
+            
+            <!-- Order Source Selector (Dine-In, Takeaway, Zomato, Swiggy) -->
+            <div class="form-group" style="margin-bottom: 10px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <label class="form-label" style="font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin: 0;">
+                  Order Source *
+                </label>
+                <span id="pos-source-indicator" style="font-size: 0.76rem; font-weight: 700; color: var(--primary);">Dine-In Table</span>
+              </div>
+              
+              <div class="pos-source-selector" id="pos-source-selector">
+                <button type="button" class="pos-source-btn active" data-source="Dine-In" title="Dine-In table order">
+                  <i data-lucide="utensils" style="width:15px;height:15px;"></i>
+                  <span>Dine-In</span>
+                </button>
+                <button type="button" class="pos-source-btn" data-source="Takeaway" title="Takeaway / Parcel order">
+                  <i data-lucide="shopping-bag" style="width:15px;height:15px;"></i>
+                  <span>Takeaway</span>
+                </button>
+                <button type="button" class="pos-source-btn" data-source="Zomato" title="Zomato delivery order">
+                  <i data-lucide="bike" style="width:15px;height:15px;color:#E23744;"></i>
+                  <span>Zomato</span>
+                </button>
+                <button type="button" class="pos-source-btn" data-source="Swiggy" title="Swiggy delivery order">
+                  <i data-lucide="truck" style="width:15px;height:15px;color:#FC8019;"></i>
+                  <span>Swiggy</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Table Number or Customer Name Input -->
+            <div class="form-group" style="margin-bottom: 10px;">
+              <label class="form-label" for="pos-order-ref" id="pos-order-ref-label" style="font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">
+                Table Number *
+              </label>
+              <div style="position: relative;">
+                <input type="text" id="pos-order-ref" class="form-input" placeholder="e.g. 4" value="1" required style="font-size: 0.95rem; font-weight: 600; padding: 10px 12px;">
+                <!-- Quick table selector chips for Dine-In -->
+                <div class="pos-quick-tables" id="pos-quick-tables">
+                  <button type="button" class="pos-table-chip active" data-table="1">T1</button>
+                  <button type="button" class="pos-table-chip" data-table="2">T2</button>
+                  <button type="button" class="pos-table-chip" data-table="3">T3</button>
+                  <button type="button" class="pos-table-chip" data-table="4">T4</button>
+                  <button type="button" class="pos-table-chip" data-table="5">T5</button>
+                  <button type="button" class="pos-table-chip" data-table="6">T6</button>
+                  <button type="button" class="pos-table-chip" data-table="7">T7</button>
+                  <button type="button" class="pos-table-chip" data-table="8">T8</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Customer Notes / Kitchen Instructions -->
+            <div class="form-group" style="margin-bottom: 0;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <label class="form-label" for="pos-order-notes" style="font-size: 0.74rem; font-weight: 600; color: var(--text-muted); margin:0;">
+                  Kitchen Notes (Optional)
+                </label>
+                <span style="font-size:0.7rem; color:var(--text-dim);">Spicy, no onions, etc.</span>
+              </div>
+              <input type="text" id="pos-order-notes" class="form-input" placeholder="e.g. Extra spicy, no onions, less oil" style="font-size: 0.85rem; padding: 8px 12px;">
+            </div>
+          </div>
+
+          <!-- Cart Items Scroll Area -->
+          <div class="pos-cart-items-container">
+            <div class="pos-cart-header-row">
+              <span style="font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">
+                Selected Dishes (<span id="pos-cart-count">0</span>)
+              </span>
+              <button type="button" class="pos-btn-text-clear" id="btn-pos-clear-items" style="display:none;">Clear All</button>
+            </div>
+
+            <!-- Selected Cart Items List -->
+            <div class="pos-cart-list" id="pos-cart-list">
+              <!-- Empty state -->
+              <div class="pos-cart-empty" id="pos-cart-empty">
+                <div class="pos-cart-empty-icon">
+                  <i data-lucide="shopping-cart" style="width: 30px; height: 30px; color: var(--text-dim);"></i>
+                </div>
+                <div style="font-weight: 600; color: var(--brand-navy); font-size: 0.92rem; margin-bottom: 4px;">Cart is empty</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; max-width: 220px; margin: 0 auto;">
+                  Tap any item on the left menu grid to instantly punch it into this order.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cart Checkout Summary & Action Footer -->
+          <div class="pos-cart-footer">
+            <div class="pos-totals-box">
+              <div class="pos-total-row">
+                <span style="font-size: 0.82rem; color: var(--text-muted);">Items Subtotal:</span>
+                <span id="pos-subtotal" style="font-size: 0.86rem; font-weight: 600; color: var(--brand-navy);">₹0.00</span>
+              </div>
+              <div class="pos-total-row grand-total">
+                <span style="font-size: 1rem; font-weight: 700; color: var(--brand-navy);">Grand Total:</span>
+                <span id="pos-grand-total" style="font-size: 1.35rem; font-weight: 800; color: var(--accent-emerald);">₹0.00</span>
+              </div>
+            </div>
+
+            <div class="pos-action-buttons">
+              <button type="button" class="btn-secondary pos-btn-cancel" id="btn-pos-cancel">
+                Cancel
+              </button>
+              <button type="button" class="btn-primary pos-btn-submit" id="btn-pos-submit-order" disabled>
+                <i data-lucide="chef-hat" style="width: 18px; height: 18px;"></i>
+                <span id="pos-submit-text">Send to Kitchen</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
     </div>
   </div>
 
