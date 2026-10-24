@@ -4,9 +4,13 @@
  * Zero Google Apps Script dependencies
  */
 
-// Supabase Connection Credentials
-const SUPABASE_URL = (typeof AOLA_CONFIG !== 'undefined' && AOLA_CONFIG.SUPABASE_URL) || "https://oalrrzifbtinuuroyvch.supabase.co";
-const SUPABASE_ANON_KEY = (typeof AOLA_CONFIG !== 'undefined' && AOLA_CONFIG.SUPABASE_ANON_KEY) || "sb_publishable_Tyv6wth5cDcdvZoTZmHFTQ_MV9arf3Q";
+// Supabase Connection Credentials (safely read from window, config, or defaults)
+var SUPABASE_URL = (typeof window !== 'undefined' && window.SUPABASE_URL) || (typeof AOLA_CONFIG !== 'undefined' && AOLA_CONFIG.SUPABASE_URL) || "https://oalrrzifbtinuuroyvch.supabase.co";
+var SUPABASE_ANON_KEY = (typeof window !== 'undefined' && window.SUPABASE_ANON_KEY) || (typeof AOLA_CONFIG !== 'undefined' && AOLA_CONFIG.SUPABASE_ANON_KEY) || "sb_publishable_Tyv6wth5cDcdvZoTZmHFTQ_MV9arf3Q";
+if (typeof window !== 'undefined') {
+  window.SUPABASE_URL = SUPABASE_URL;
+  window.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
+}
 
 /**
  * Global Supabase Client Accessor
@@ -827,4 +831,11 @@ function showToast(message, type = "info", duration = 4000) {
       setTimeout(() => toast.remove(), 300);
     }
   }, duration);
+}
+
+// Global window exports
+if (typeof window !== 'undefined') {
+  window.AOLA_CACHE = AOLA_CACHE;
+  window.AOLA_API = AOLA_API;
+  window.showToast = showToast;
 }

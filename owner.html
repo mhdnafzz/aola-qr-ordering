@@ -18,13 +18,17 @@
   <!-- Supabase JS Client CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const SUPABASE_URL = 'https://oalrrzifbtinuuroyvch.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_Tyv6wth5cDcdvZoTZmHFTQ_MV9arf3Q';
-    if (window.supabase && typeof window.supabase.createClient === 'function') {
-      const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      window.supabase = client;
-      window.supabaseClient = client;
-    }
+    (function() {
+      var url = "https://oalrrzifbtinuuroyvch.supabase.co";
+      var key = "sb_publishable_Tyv6wth5cDcdvZoTZmHFTQ_MV9arf3Q";
+      window.SUPABASE_URL = url;
+      window.SUPABASE_ANON_KEY = key;
+      if (window.supabase && typeof window.supabase.createClient === "function") {
+        var client = window.supabase.createClient(url, key);
+        window.supabase = client;
+        window.supabaseClient = client;
+      }
+    })();
   </script>
 </head>
 
