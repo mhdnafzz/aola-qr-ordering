@@ -1321,6 +1321,11 @@
       fetchOrders(true);
     };
 
+    // Instant real-time order push handler
+    window.addEventListener("aola_new_order", () => {
+      fetchOrders(false);
+    });
+
     // Manual POS Terminal Triggers
     if (el.btnHeaderPos) el.btnHeaderPos.onclick = openPosModal;
     if (el.viewTabPos) el.viewTabPos.onclick = openPosModal;
@@ -1804,13 +1809,20 @@
   }
 
   /**
-   * 15-Second Polling Timer for Kitchen Tickets
+   * Push-based Supabase Realtime Subscription for Kitchen Tickets
+   * (Replaces legacy setInterval polling loop)
    */
   function startPolling() {
     stopPolling();
-    state.pollTimer = setInterval(() => {
-      fetchOrders(false);
-    }, AOLA_CONFIG.OWNER_POLL_INTERVAL_MS);
+    if (!state.shopId) return;
+
+    if (AOLA_API && typeof AOLA_API.subscribeToOrders === 'function') {
+      state.realtimeChannel = AOLA_API.subscribeToOrders(state.shopId, (newOrder) => {
+        playNewOrderSound();
+        showToast("🔔 New Kitchen Order Received!", "success");
+        fetchOrders(false);
+      });
+    }
   }
 
   function stopPolling() {
@@ -1818,6 +1830,10 @@
       clearInterval(state.pollTimer);
       state.pollTimer = null;
     }
+    if (AOLA_API && typeof AOLA_API.unsubscribeFromOrders === 'function') {
+      AOLA_API.unsubscribeFromOrders();
+    }
+    state.realtimeChannel = null;
   }
 
   async function fetchOrders(isManual = false) {

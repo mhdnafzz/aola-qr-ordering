@@ -9,6 +9,17 @@
   <link rel="icon" type="image/svg+xml" href="AU-dark-icon.svg">
   <!-- Lucide Icons Library -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Supabase JS Client CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = "https://oalrrzifbtinuuroyvch.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_Tyv6wth5cDcdvZoTZmHFTQ_MV9arf3Q";
+    if (window.supabase && typeof window.supabase.createClient === "function") {
+      const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      window.supabase = client;
+      window.supabaseClient = client;
+    }
+  </script>
 </head>
 <body>
 

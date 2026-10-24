@@ -6,17 +6,22 @@
  */
 
 const AOLA_CONFIG = {
-  // Set your deployed Web App URL here, or leave empty to use localStorage / mock fallback
-  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbwjswoNvRV4guVN1ChdjpoWUDCCH-1JuGhD2XQJF-GpCMYXB0sviHoJnnRJ-kxJy_8/exec",
+  // ── Supabase Production Database ──────────────────────────────────────
+  USE_SUPABASE: true,
+  SUPABASE_URL: "https://oalrrzifbtinuuroyvch.supabase.co",
+  SUPABASE_ANON_KEY: "sb_publishable_Tyv6wth5cDcdvZoTZmHFTQ_MV9arf3Q",
 
-  // Polling interval for Owner Kitchen Dashboard (in milliseconds)
+  // Legacy Apps Script Web App URL (Deprecated - backend migrated to Supabase)
+  APPS_SCRIPT_URL: "",
+
+  // Polling interval (Deprecated - replaced by Supabase Realtime WebSockets)
   OWNER_POLL_INTERVAL_MS: 15000,
 
   // Table rate-limit lock reminder (seconds)
   RATE_LIMIT_COOLDOWN_SECONDS: 60,
 
-  // Enable Mock Mode if Apps Script URL is empty or unreachable during local development
-  ENABLE_MOCK_FALLBACK: true,
+  // Fallback flag (false - Supabase is fully configured)
+  ENABLE_MOCK_FALLBACK: false,
 
   // Live Production domain for customer QR codes and shareable links
   PRODUCTION_URL: "https://aola-blue.vercel.app"

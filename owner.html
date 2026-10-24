@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,7 +15,19 @@
   <!-- Client-side PDF & QR Code Engine (Thermal Invoicing & Quick-Pay) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Supabase JS Client CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = 'https://oalrrzifbtinuuroyvch.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_Tyv6wth5cDcdvZoTZmHFTQ_MV9arf3Q';
+    if (window.supabase && typeof window.supabase.createClient === 'function') {
+      const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      window.supabase = client;
+      window.supabaseClient = client;
+    }
+  </script>
 </head>
+
 <body>
 
   <!-- Quick Portal Switcher & Navigation Header -->
@@ -53,18 +66,24 @@
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
             <label class="form-label" for="login-shop-id" style="margin-bottom:0;">Restaurant ID</label>
             <div style="display:flex; gap:6px;">
-              <button type="button" class="btn-secondary" style="padding:2px 8px;font-size:0.72rem;" onclick="document.getElementById('login-shop-id').value='bismillah';">bismillah</button>
-              <button type="button" class="btn-secondary" style="padding:2px 8px;font-size:0.72rem;" onclick="document.getElementById('login-shop-id').value='kfc';">kfc</button>
+              <button type="button" class="btn-secondary" style="padding:2px 8px;font-size:0.72rem;"
+                onclick="document.getElementById('login-shop-id').value='bismillah';">bismillah</button>
+              <button type="button" class="btn-secondary" style="padding:2px 8px;font-size:0.72rem;"
+                onclick="document.getElementById('login-shop-id').value='kfc';">kfc</button>
             </div>
           </div>
-          <input type="text" id="login-shop-id" class="form-input" value="bismillah" placeholder="e.g. bismillah" required>
+          <input type="text" id="login-shop-id" class="form-input" value="bismillah" placeholder="e.g. bismillah"
+            required>
         </div>
 
         <div class="form-group" style="text-align: left;">
           <label class="form-label" for="login-pin">Security PIN / 8-Char Access Token</label>
           <div style="position:relative; display:flex; align-items:center;">
-            <input type="password" id="login-pin" class="form-input" placeholder="4-digit PIN or 8-char token" maxlength="16" inputmode="text" required style="padding-right:42px;">
-            <button type="button" id="btn-toggle-pin-visibility" style="position:absolute; right:12px; background:none; border:none; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center;" title="Show/Hide PIN">
+            <input type="password" id="login-pin" class="form-input" placeholder="4-digit PIN or 8-char token"
+              maxlength="16" inputmode="text" required style="padding-right:42px;">
+            <button type="button" id="btn-toggle-pin-visibility"
+              style="position:absolute; right:12px; background:none; border:none; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center;"
+              title="Show/Hide PIN">
               <i data-lucide="eye" style="width:16px;height:16px;"></i>
             </button>
           </div>
@@ -76,7 +95,9 @@
         </button>
 
         <div style="margin-top:16px; font-size:0.76rem; color:var(--text-muted); text-align:center;">
-          Need a fresh start? <a href="javascript:void(0)" onclick="localStorage.removeItem('AOLA_BACKEND_URL'); sessionStorage.clear(); location.reload();" style="color:var(--primary); font-weight:600; text-decoration:underline;">Reset Local Cache &amp; Reload</a>
+          Need a fresh start? <a href="javascript:void(0)"
+            onclick="localStorage.removeItem('AOLA_BACKEND_URL'); sessionStorage.clear(); location.reload();"
+            style="color:var(--primary); font-weight:600; text-decoration:underline;">Reset Local Cache &amp; Reload</a>
         </div>
       </form>
     </div>
@@ -84,22 +105,25 @@
 
   <!-- Dashboard Main Layout -->
   <main class="desktop-container" id="dashboard-container" style="display: none;">
-    
+
     <!-- Top Header Bar -->
     <header class="owner-header">
       <div>
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px; flex-wrap: wrap;">
-          <h1 id="owner-shop-name" style="font-size: 1.55rem; font-weight: 700; color: var(--brand-navy);">Kitchen Display</h1>
-          <span class="live-indicator" id="poll-indicator">Live Sync (15s)</span>
+          <h1 id="owner-shop-name" style="font-size: 1.55rem; font-weight: 700; color: var(--brand-navy);">Kitchen
+            Display</h1>
+          <span class="live-indicator" id="poll-indicator"
+            style="background:#ECFDF5; color:#059669; border-color:#A7F3D0;">WebSocket Live</span>
         </div>
         <div style="font-size: 0.84rem; color: var(--text-muted);">
           Logged in as: <strong id="owner-shop-tag" style="color: var(--primary);">@shop</strong> &bull;
-          <span id="last-sync-time">Last updated: Just now</span>
+          <span id="last-sync-time">Connected to Database</span>
         </div>
       </div>
 
       <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-        <button class="btn-primary" id="btn-header-pos" title="Punch Manual POS Order (Direct Cashier Entry)" style="display: flex; align-items: center; gap: 6px; background: var(--brand-navy); color: #fff; font-weight: 600; box-shadow: 0 2px 8px rgba(15,23,42,0.18);">
+        <button class="btn-primary" id="btn-header-pos" title="Punch Manual POS Order (Direct Cashier Entry)"
+          style="display: flex; align-items: center; gap: 6px; background: var(--brand-navy); color: #fff; font-weight: 600; box-shadow: 0 2px 8px rgba(15,23,42,0.18);">
           <i data-lucide="calculator" style="width:15px;height:15px;color:#38BDF8;"></i>
           <span>New Order (POS)</span>
         </button>
@@ -128,40 +152,48 @@
 
     <!-- Visual Split-Screen Layout -->
     <div class="kds-split-layout">
-      
+
       <!-- Left Sidebar: Controls, Metrics & Filters -->
       <aside class="kds-sidebar">
         <!-- View Switcher -->
         <div>
-          <div style="font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px;">
+          <div
+            style="font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px;">
             Navigation Views
           </div>
           <div style="display: flex; flex-direction: column; gap: 6px;">
-            <button class="cat-chip" id="view-tab-pos" style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600; background: var(--primary-light); color: var(--primary); border: 1.5px solid var(--primary-border);">
+            <button class="cat-chip" id="view-tab-pos"
+              style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600; background: var(--primary-light); color: var(--primary); border: 1.5px solid var(--primary-border);">
               <i data-lucide="calculator" style="width:16px;height:16px;color:var(--primary);"></i>
               <span>New Order (POS)</span>
             </button>
-            <button class="cat-chip active" id="view-tab-orders" style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
+            <button class="cat-chip active" id="view-tab-orders"
+              style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
               <i data-lucide="chef-hat" style="width:16px;height:16px;"></i>
               <span>Kitchen Tickets</span>
             </button>
-            <button class="cat-chip" id="view-tab-history" style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
+            <button class="cat-chip" id="view-tab-history"
+              style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
               <i data-lucide="history" style="width:16px;height:16px;"></i>
               <span>Order History &amp; Ledger</span>
             </button>
-            <button class="cat-chip" id="view-tab-menu" style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
+            <button class="cat-chip" id="view-tab-menu"
+              style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
               <i data-lucide="utensils" style="width:16px;height:16px;"></i>
               <span>Menu Manager (<span id="count-menu-items">0</span>)</span>
             </button>
-            <button class="cat-chip" id="view-tab-expenses" style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
+            <button class="cat-chip" id="view-tab-expenses"
+              style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
               <i data-lucide="receipt-text" style="width:16px;height:16px;color:var(--accent-rose);"></i>
               <span>Daily Expenses (<span id="count-expenses-badge">₹0</span>)</span>
             </button>
-            <button class="cat-chip" id="view-tab-trends" style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
+            <button class="cat-chip" id="view-tab-trends"
+              style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
               <i data-lucide="line-chart" style="width:16px;height:16px;color:var(--accent-indigo);"></i>
               <span>Sales Trends &amp; Analytics</span>
             </button>
-            <button class="cat-chip" id="btn-sidebar-settings" style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
+            <button class="cat-chip" id="btn-sidebar-settings"
+              style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
               <i data-lucide="store" style="width:16px;height:16px;"></i>
               <span>Store Profile</span>
             </button>
@@ -170,53 +202,64 @@
 
         <!-- Ticket Filter Quick Stats -->
         <div id="sidebar-order-filters">
-          <div style="font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px;">
+          <div
+            style="font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px;">
             Ticket Filters
           </div>
           <div style="display: flex; flex-direction: column; gap: 6px;">
-            <button class="cat-chip active" id="tab-pending" style="width: 100%; justify-content: space-between; padding: 10px 14px;">
+            <button class="cat-chip active" id="tab-pending"
+              style="width: 100%; justify-content: space-between; padding: 10px 14px;">
               <span style="display: flex; align-items: center; gap: 8px;">
                 <i data-lucide="clock-3" style="width:15px;height:15px;"></i>
                 <span>Pending Orders</span>
               </span>
-              <span id="count-pending" style="background:var(--primary); color:#fff; padding:2px 8px; border-radius:9999px; font-size:0.75rem; font-weight:700;">0</span>
+              <span id="count-pending"
+                style="background:var(--primary); color:#fff; padding:2px 8px; border-radius:9999px; font-size:0.75rem; font-weight:700;">0</span>
             </button>
-            <button class="cat-chip" id="tab-completed" style="width: 100%; justify-content: space-between; padding: 10px 14px;">
+            <button class="cat-chip" id="tab-completed"
+              style="width: 100%; justify-content: space-between; padding: 10px 14px;">
               <span style="display: flex; align-items: center; gap: 8px;">
                 <i data-lucide="check-circle-2" style="width:15px;height:15px;"></i>
                 <span>Completed</span>
               </span>
-              <span id="count-completed" style="background:var(--bg-subtle); color:var(--text-muted); padding:2px 8px; border-radius:9999px; font-size:0.75rem; font-weight:700;">0</span>
+              <span id="count-completed"
+                style="background:var(--bg-subtle); color:var(--text-muted); padding:2px 8px; border-radius:9999px; font-size:0.75rem; font-weight:700;">0</span>
             </button>
           </div>
         </div>
 
         <!-- Audio Alert Preference -->
-        <div style="background: var(--bg-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 12px 14px;">
+        <div
+          style="background: var(--bg-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 12px 14px;">
           <div style="display: flex; align-items: center; gap: 10px;">
             <i data-lucide="volume-2" style="width:18px;height:18px;color:var(--primary);"></i>
             <div style="flex: 1;">
-              <label for="chk-audio" style="font-size: 0.84rem; font-weight: 600; color: var(--brand-navy); cursor: pointer; display: block;">
+              <label for="chk-audio"
+                style="font-size: 0.84rem; font-weight: 600; color: var(--brand-navy); cursor: pointer; display: block;">
                 Order Audio Chime
               </label>
               <span style="font-size: 0.74rem; color: var(--text-muted);">Play chime on new order</span>
             </div>
-            <input type="checkbox" id="chk-audio" checked style="accent-color: var(--primary); width:16px; height:16px; cursor: pointer;">
+            <input type="checkbox" id="chk-audio" checked
+              style="accent-color: var(--primary); width:16px; height:16px; cursor: pointer;">
           </div>
         </div>
 
         <!-- Menu View Specific Actions -->
         <div id="menu-view-actions" style="display: none; flex-direction: column; gap: 8px;">
-          <div style="font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 2px;">
+          <div
+            style="font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 2px;">
             Menu Actions
           </div>
-          <button class="btn-primary" id="btn-open-add-dish" style="width: 100%; font-size: 0.86rem; padding: 10px 14px;">
+          <button class="btn-primary" id="btn-open-add-dish"
+            style="width: 100%; font-size: 0.86rem; padding: 10px 14px;">
             <i data-lucide="plus" style="width:16px;height:16px;"></i>
             <span>Add New Dish</span>
           </button>
-          <button class="btn-secondary" id="btn-refresh-menu" style="width: 100%; font-size: 0.84rem; padding: 8px 14px;" title="Refresh menu from Google Sheet">
+          <button class="btn-secondary" id="btn-refresh-menu"
+            style="width: 100%; font-size: 0.84rem; padding: 8px 14px;" title="Refresh menu from Database">
             <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>
-            <span>Sync Google Sheet</span>
+            <span>Sync Database</span>
           </button>
         </div>
 
@@ -224,7 +267,7 @@
 
       <!-- Central Content Panel: Orders / Menu Manager -->
       <section class="kds-content">
-        
+
         <!-- VIEW 1: Live Kitchen Tickets -->
         <div id="section-orders-view">
           <!-- Live Ticket Grid -->
@@ -236,14 +279,17 @@
         <!-- VIEW 2: Restaurant Menu Manager -->
         <div id="section-menu-view" style="display: none;">
           <!-- Search & Category Filters -->
-          <div style="display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 20px; flex-wrap: wrap;">
+          <div
+            style="display: flex; justify-content: space-between; align-items: center; gap: 14px; margin-bottom: 20px; flex-wrap: wrap;">
             <div style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;" id="owner-menu-cats">
               <!-- Dynamically populated category chips -->
             </div>
 
             <div style="position: relative; min-width: 240px; flex: 1; max-width: 320px;">
-              <input type="text" id="owner-menu-search" class="form-input" placeholder="Search menu dishes..." style="padding: 8px 14px 8px 36px; font-size: 0.86rem;">
-              <i data-lucide="search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--text-dim); pointer-events:none;"></i>
+              <input type="text" id="owner-menu-search" class="form-input" placeholder="Search menu dishes..."
+                style="padding: 8px 14px 8px 36px; font-size: 0.86rem;">
+              <i data-lucide="search"
+                style="position:absolute; left:12px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--text-dim); pointer-events:none;"></i>
             </div>
           </div>
 
@@ -289,7 +335,8 @@
               </div>
               <div class="history-metric-content">
                 <span class="history-metric-label">Daily Outflows</span>
-                <span class="history-metric-val" style="color:var(--accent-rose);" id="metric-history-expenses">₹0.00</span>
+                <span class="history-metric-val" style="color:var(--accent-rose);"
+                  id="metric-history-expenses">₹0.00</span>
               </div>
             </div>
 
@@ -357,7 +404,9 @@
           <div id="voided-audit-banner" class="audit-trail-alert" style="display: none;">
             <i data-lucide="shield-alert" style="width: 22px; height: 22px;"></i>
             <div>
-              <strong>Secure Voided Orders Audit Trail:</strong> Orders listed below were soft-deleted/voided by kitchen staff. In accordance with zero-leakage security protocols, order records are preserved permanently in Google Sheets to provide an immutable financial audit log of cancelled KOTs.
+              <strong>Secure Voided Orders Audit Trail:</strong> Orders listed below were soft-deleted/voided by kitchen
+              staff. In accordance with zero-leakage security protocols, order records are preserved permanently in
+              Database to provide an immutable financial audit log of cancelled KOTs.
             </div>
           </div>
 
@@ -375,13 +424,16 @@
 
               <!-- Custom Date Pickers (hidden by default unless custom is clicked) -->
               <div id="custom-date-container" style="display:none; align-items:center; gap:8px;">
-                <input type="date" id="history-start-date" class="form-input" style="padding:6px 10px; font-size:0.82rem; width:135px;">
+                <input type="date" id="history-start-date" class="form-input"
+                  style="padding:6px 10px; font-size:0.82rem; width:135px;">
                 <span style="color:var(--text-muted); font-size:0.8rem;">to</span>
-                <input type="date" id="history-end-date" class="form-input" style="padding:6px 10px; font-size:0.82rem; width:135px;">
+                <input type="date" id="history-end-date" class="form-input"
+                  style="padding:6px 10px; font-size:0.82rem; width:135px;">
               </div>
 
               <!-- Payment & Order Status Dropdown -->
-              <select id="history-status-filter" class="form-select" style="padding:7px 12px; font-size:0.82rem; width:auto; min-width:150px;">
+              <select id="history-status-filter" class="form-select"
+                style="padding:7px 12px; font-size:0.82rem; width:auto; min-width:150px;">
                 <option value="all">All Statuses</option>
                 <option value="completed">Completed Orders</option>
                 <option value="pending">Pending / Live</option>
@@ -394,12 +446,16 @@
             <div class="history-filters-right">
               <!-- Live Search Box -->
               <div style="position:relative; min-width:220px; flex:1;">
-                <input type="text" id="history-search-input" class="form-input" placeholder="Search Order ID, Table, Dish..." style="padding:8px 12px 8px 34px; font-size:0.84rem;">
-                <i data-lucide="search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--text-dim); pointer-events:none;"></i>
+                <input type="text" id="history-search-input" class="form-input"
+                  placeholder="Search Order ID, Table, Dish..." style="padding:8px 12px 8px 34px; font-size:0.84rem;">
+                <i data-lucide="search"
+                  style="position:absolute; left:10px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--text-dim); pointer-events:none;"></i>
               </div>
 
               <!-- One-Click Export to CSV -->
-              <button type="button" class="btn-primary" id="btn-export-csv" style="display:inline-flex; align-items:center; gap:6px; padding:8px 14px; font-size:0.84rem; background:var(--brand-navy); white-space:nowrap;" title="Export Excel-ready CSV for daily reconciliation">
+              <button type="button" class="btn-primary" id="btn-export-csv"
+                style="display:inline-flex; align-items:center; gap:6px; padding:8px 14px; font-size:0.84rem; background:var(--brand-navy); white-space:nowrap;"
+                title="Export Excel-ready CSV for daily reconciliation">
                 <i data-lucide="download" style="width:15px;height:15px;"></i>
                 <span>Export CSV</span>
               </button>
@@ -481,12 +537,14 @@
           <div class="admin-card" style="margin-bottom: 20px;">
             <div class="admin-card-header">
               <div>
-                <h2 style="font-size: 1.15rem; font-weight: 700; color: var(--brand-navy); display: flex; align-items: center; gap: 8px;">
+                <h2
+                  style="font-size: 1.15rem; font-weight: 700; color: var(--brand-navy); display: flex; align-items: center; gap: 8px;">
                   <i data-lucide="plus-circle" style="width: 18px; height: 18px; color: var(--primary);"></i>
                   <span>Log Daily Expense Outflow</span>
                 </h2>
                 <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">
-                  Record real-time cash, UPI, or vendor outflows (inventory, wages, utilities, packaging) to track accurate net margin.
+                  Record real-time cash, UPI, or vendor outflows (inventory, wages, utilities, packaging) to track
+                  accurate net margin.
                 </p>
               </div>
             </div>
@@ -496,7 +554,8 @@
                 <div class="expense-entry-grid">
                   <div class="form-group" style="margin-bottom: 0;">
                     <label class="form-label" for="expense-category">Category *</label>
-                    <select id="expense-category" class="form-select" required style="padding: 8px 12px; font-size: 0.84rem;">
+                    <select id="expense-category" class="form-select" required
+                      style="padding: 8px 12px; font-size: 0.84rem;">
                       <option value="Inventory / Raw Materials">Raw Materials &amp; Groceries</option>
                       <option value="Staff Payouts / Wages">Staff Wages &amp; Advance</option>
                       <option value="Utilities / Gas / Electric">Utilities (LPG / Electricity)</option>
@@ -509,20 +568,25 @@
 
                   <div class="form-group" style="margin-bottom: 0;">
                     <label class="form-label" for="expense-amount">Amount (₹) *</label>
-                    <input type="number" id="expense-amount" class="form-input" placeholder="e.g. 1250" min="1" step="1" required style="padding: 8px 12px; font-size: 0.84rem;">
+                    <input type="number" id="expense-amount" class="form-input" placeholder="e.g. 1250" min="1" step="1"
+                      required style="padding: 8px 12px; font-size: 0.84rem;">
                   </div>
 
                   <div class="form-group" style="margin-bottom: 0;">
                     <label class="form-label" for="expense-desc">Description / Vendor / Item Details *</label>
-                    <input type="text" id="expense-desc" class="form-input" placeholder="e.g. 50kg Royal Basmati Rice from Wholesale Depot" required style="padding: 8px 12px; font-size: 0.84rem;">
+                    <input type="text" id="expense-desc" class="form-input"
+                      placeholder="e.g. 50kg Royal Basmati Rice from Wholesale Depot" required
+                      style="padding: 8px 12px; font-size: 0.84rem;">
                   </div>
 
                   <div class="form-group" style="margin-bottom: 0;">
                     <label class="form-label" for="expense-date">Expense Date</label>
-                    <input type="date" id="expense-date" class="form-input" style="padding: 7px 10px; font-size: 0.84rem;">
+                    <input type="date" id="expense-date" class="form-input"
+                      style="padding: 7px 10px; font-size: 0.84rem;">
                   </div>
 
-                  <button type="submit" class="btn-primary" id="btn-submit-expense" style="height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 18px; white-space: nowrap;">
+                  <button type="submit" class="btn-primary" id="btn-submit-expense"
+                    style="height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 18px; white-space: nowrap;">
                     <i data-lucide="check-circle" style="width: 15px; height: 15px;"></i>
                     <span>Log Expense</span>
                   </button>
@@ -535,12 +599,13 @@
           <div class="admin-card" style="margin-bottom: 0;">
             <div class="admin-card-header">
               <div>
-                <h2 style="font-size: 1.15rem; font-weight: 700; color: var(--brand-navy); display: flex; align-items: center; gap: 8px;">
+                <h2
+                  style="font-size: 1.15rem; font-weight: 700; color: var(--brand-navy); display: flex; align-items: center; gap: 8px;">
                   <i data-lucide="receipt" style="width: 18px; height: 18px; color: var(--accent-rose);"></i>
-                  <span>Expenses Ledger (Google Sheet: Expenses)</span>
+                  <span>Expenses Ledger (Database: Expenses)</span>
                 </h2>
                 <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">
-                  Synchronized live with the Expenses tab in your Google Sheet.
+                  Synchronized live with the Expenses table in your Database.
                 </p>
               </div>
 
@@ -549,7 +614,8 @@
                   <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
                   <span>Sync Expenses</span>
                 </button>
-                <button class="btn-primary" id="btn-export-expenses-csv" style="padding: 7px 12px; font-size: 0.82rem; background: var(--brand-navy);">
+                <button class="btn-primary" id="btn-export-expenses-csv"
+                  style="padding: 7px 12px; font-size: 0.82rem; background: var(--brand-navy);">
                   <i data-lucide="download" style="width: 14px; height: 14px;"></i>
                   <span>Export CSV</span>
                 </button>
@@ -557,9 +623,11 @@
             </div>
 
             <!-- Ledger Filter Toolbar -->
-            <div style="padding: 12px 18px; background: #FFFFFF; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div
+              style="padding: 12px 18px; background: #FFFFFF; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
               <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                <select id="filter-expense-category" class="form-select" style="padding: 6px 12px; font-size: 0.82rem; width: auto; min-width: 150px;">
+                <select id="filter-expense-category" class="form-select"
+                  style="padding: 6px 12px; font-size: 0.82rem; width: auto; min-width: 150px;">
                   <option value="all">All Categories</option>
                   <option value="Inventory / Raw Materials">Raw Materials</option>
                   <option value="Staff Payouts / Wages">Staff Wages</option>
@@ -572,8 +640,11 @@
               </div>
 
               <div style="position: relative; min-width: 240px; flex: 1; max-width: 320px;">
-                <input type="text" id="expense-search-input" class="form-input" placeholder="Search expenses by vendor or notes..." style="padding: 7px 12px 7px 34px; font-size: 0.84rem;">
-                <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-dim); pointer-events: none;"></i>
+                <input type="text" id="expense-search-input" class="form-input"
+                  placeholder="Search expenses by vendor or notes..."
+                  style="padding: 7px 12px 7px 34px; font-size: 0.84rem;">
+                <i data-lucide="search"
+                  style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-dim); pointer-events: none;"></i>
               </div>
             </div>
 
@@ -599,11 +670,12 @@
         <!-- VIEW 5: Interactive Sales Trends & Analytics (Chart.js Integration) -->
         <div id="section-trends-view" style="display: none;">
           <div class="trends-container">
-            
+
             <!-- Trends Header Toolbar & Timeframe Switcher -->
             <div class="trends-header-toolbar">
               <div>
-                <h2 style="font-size: 1.2rem; font-weight: 700; color: var(--brand-navy); display: flex; align-items: center; gap: 8px;">
+                <h2
+                  style="font-size: 1.2rem; font-weight: 700; color: var(--brand-navy); display: flex; align-items: center; gap: 8px;">
                   <i data-lucide="trending-up" style="width: 20px; height: 20px; color: var(--accent-indigo);"></i>
                   <span>Sales Trends &amp; Revenue Analytics</span>
                 </h2>
@@ -615,19 +687,23 @@
               <!-- Timeframe Switcher Controls -->
               <div class="trend-view-selector">
                 <button type="button" class="trend-pill active" data-timeframe="daily" id="btn-trend-daily">
-                  <i data-lucide="clock" style="width: 13px; height: 13px; display: inline-block; vertical-align: -2px; margin-right: 4px;"></i>
+                  <i data-lucide="clock"
+                    style="width: 13px; height: 13px; display: inline-block; vertical-align: -2px; margin-right: 4px;"></i>
                   <span>Daily (Hourly)</span>
                 </button>
                 <button type="button" class="trend-pill" data-timeframe="weekly" id="btn-trend-weekly">
-                  <i data-lucide="calendar-days" style="width: 13px; height: 13px; display: inline-block; vertical-align: -2px; margin-right: 4px;"></i>
+                  <i data-lucide="calendar-days"
+                    style="width: 13px; height: 13px; display: inline-block; vertical-align: -2px; margin-right: 4px;"></i>
                   <span>Weekly (Mon-Sun)</span>
                 </button>
                 <button type="button" class="trend-pill" data-timeframe="monthly" id="btn-trend-monthly">
-                  <i data-lucide="calendar-range" style="width: 13px; height: 13px; display: inline-block; vertical-align: -2px; margin-right: 4px;"></i>
+                  <i data-lucide="calendar-range"
+                    style="width: 13px; height: 13px; display: inline-block; vertical-align: -2px; margin-right: 4px;"></i>
                   <span>Monthly</span>
                 </button>
                 <button type="button" class="trend-pill" data-timeframe="yearly" id="btn-trend-yearly">
-                  <i data-lucide="calendar" style="width: 13px; height: 13px; display: inline-block; vertical-align: -2px; margin-right: 4px;"></i>
+                  <i data-lucide="calendar"
+                    style="width: 13px; height: 13px; display: inline-block; vertical-align: -2px; margin-right: 4px;"></i>
                   <span>Yearly</span>
                 </button>
               </div>
@@ -740,13 +816,15 @@
 
         <div class="form-group">
           <label class="form-label" for="dish-form-name">Dish Name *</label>
-          <input type="text" id="dish-form-name" class="form-input" placeholder="e.g. Special Chicken Dum Biryani" required>
+          <input type="text" id="dish-form-name" class="form-input" placeholder="e.g. Special Chicken Dum Biryani"
+            required>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
           <div class="form-group">
             <label class="form-label" for="dish-form-category">Category *</label>
-            <input type="text" id="dish-form-category" class="form-input" placeholder="e.g. Biryani" list="category-suggestions" required>
+            <input type="text" id="dish-form-category" class="form-input" placeholder="e.g. Biryani"
+              list="category-suggestions" required>
             <datalist id="category-suggestions">
               <option value="Biryani">
               <option value="Starters">
@@ -760,13 +838,15 @@
 
           <div class="form-group">
             <label class="form-label" for="dish-form-price">Price (₹) *</label>
-            <input type="number" id="dish-form-price" class="form-input" placeholder="e.g. 240" min="0" step="1" required>
+            <input type="number" id="dish-form-price" class="form-input" placeholder="e.g. 240" min="0" step="1"
+              required>
           </div>
         </div>
 
         <div class="form-group">
           <label class="form-label" for="dish-form-desc">Description (Optional)</label>
-          <textarea id="dish-form-desc" class="form-textarea" rows="2" placeholder="Ingredients, taste, spice level..."></textarea>
+          <textarea id="dish-form-desc" class="form-textarea" rows="2"
+            placeholder="Ingredients, taste, spice level..."></textarea>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px;">
@@ -818,7 +898,8 @@
 
       <!-- Bill Controls: Mode Switcher, Paper Format & Adjustments -->
       <div class="bill-modal-toolbar">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; border-bottom:1px solid var(--border-subtle); padding-bottom:10px;">
+        <div
+          style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; border-bottom:1px solid var(--border-subtle); padding-bottom:10px;">
           <div class="bill-type-tabs" style="border-bottom:none; padding-bottom:0;">
             <button type="button" class="bill-type-btn active" id="btn-bill-type-customer">
               <i data-lucide="file-text" style="width:14px;height:14px;"></i>
@@ -833,7 +914,8 @@
           <!-- Paper Roll Format Selector (58mm vs 80mm) -->
           <div class="bill-paper-selector" style="display:flex; align-items:center; gap:6px;">
             <span style="font-size:0.75rem; font-weight:600; color:var(--text-muted);">Paper Roll:</span>
-            <button type="button" class="btn-paper-toggle active" id="btn-paper-58mm" data-width="58mm">58mm (Default)</button>
+            <button type="button" class="btn-paper-toggle active" id="btn-paper-58mm" data-width="58mm">58mm
+              (Default)</button>
             <button type="button" class="btn-paper-toggle" id="btn-paper-80mm" data-width="80mm">80mm (Wide)</button>
           </div>
         </div>
@@ -861,7 +943,8 @@
 
           <div class="form-group" style="margin-bottom:0; width:95px;">
             <label class="form-label" style="font-size:0.74rem;">Discount (₹)</label>
-            <input type="number" id="bill-discount-amount" class="form-input" min="0" step="5" value="0" placeholder="0" style="padding:6px 10px; font-size:0.82rem;">
+            <input type="number" id="bill-discount-amount" class="form-input" min="0" step="5" value="0" placeholder="0"
+              style="padding:6px 10px; font-size:0.82rem;">
           </div>
         </div>
       </div>
@@ -874,28 +957,39 @@
       </div>
 
       <!-- Modal Footer with Multi-Action Printing, PDF & WhatsApp -->
-      <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-top:16px;">
+      <div class="modal-footer"
+        style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-top:16px;">
         <div style="display:flex; gap:6px; flex-wrap:wrap;">
-          <button type="button" class="btn-secondary" id="btn-bill-whatsapp" style="display:flex; align-items:center; gap:6px;">
-            <svg style="width:15px;height:15px;fill:#25D366;" viewBox="0 0 24 24"><path d="M17.472 14.382c-.301-.15-1.78-.879-2.056-.98-.276-.1-.477-.15-.678.15-.2.301-.778.98-.954 1.18-.175.2-.351.226-.652.075-.301-.15-1.272-.469-2.423-1.496-.896-.799-1.501-1.787-1.677-2.088-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.175.2-.301.301-.501.1-.2.05-.376-.025-.526-.075-.15-.678-1.635-.93-2.24-.244-.589-.493-.509-.678-.519-.175-.01-.376-.01-.577-.01-.2 0-.527.075-.803.376s-1.054 1.029-1.054 2.509 1.079 2.909 1.23 3.109c.15.2 2.124 3.243 5.145 4.549.719.311 1.28.497 1.718.636.722.23 1.378.197 1.898.12.579-.086 1.78-.727 2.031-1.429.251-.702.251-1.304.176-1.429-.076-.126-.276-.201-.577-.352z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.891.524 3.662 1.435 5.179L2 22l4.981-1.399A9.957 9.957 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18.053c-1.63 0-3.14-.476-4.417-1.298l-.317-.202-3.238.91.928-3.125-.213-.332A8.04 8.04 0 0 1 3.947 12C3.947 7.559 7.559 3.947 12 3.947c4.441 0 8.053 3.612 8.053 8.053 0 4.441-3.612 8.053-8.053 8.053z"/></svg>
+          <button type="button" class="btn-secondary" id="btn-bill-whatsapp"
+            style="display:flex; align-items:center; gap:6px;">
+            <svg style="width:15px;height:15px;fill:#25D366;" viewBox="0 0 24 24">
+              <path
+                d="M17.472 14.382c-.301-.15-1.78-.879-2.056-.98-.276-.1-.477-.15-.678.15-.2.301-.778.98-.954 1.18-.175.2-.351.226-.652.075-.301-.15-1.272-.469-2.423-1.496-.896-.799-1.501-1.787-1.677-2.088-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.175.2-.301.301-.501.1-.2.05-.376-.025-.526-.075-.15-.678-1.635-.93-2.24-.244-.589-.493-.509-.678-.519-.175-.01-.376-.01-.577-.01-.2 0-.527.075-.803.376s-1.054 1.029-1.054 2.509 1.079 2.909 1.23 3.109c.15.2 2.124 3.243 5.145 4.549.719.311 1.28.497 1.718.636.722.23 1.378.197 1.898.12.579-.086 1.78-.727 2.031-1.429.251-.702.251-1.304.176-1.429-.076-.126-.276-.201-.577-.352z" />
+              <path
+                d="M12 2C6.477 2 2 6.477 2 12c0 1.891.524 3.662 1.435 5.179L2 22l4.981-1.399A9.957 9.957 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18.053c-1.63 0-3.14-.476-4.417-1.298l-.317-.202-3.238.91.928-3.125-.213-.332A8.04 8.04 0 0 1 3.947 12C3.947 7.559 7.559 3.947 12 3.947c4.441 0 8.053 3.612 8.053 8.053 0 4.441-3.612 8.053-8.053 8.053z" />
+            </svg>
             <span>WhatsApp</span>
           </button>
-          <button type="button" class="btn-secondary" id="btn-bill-download-pdf" style="display:flex; align-items:center; gap:6px;" title="Download Branded PDF Tax Invoice">
+          <button type="button" class="btn-secondary" id="btn-bill-download-pdf"
+            style="display:flex; align-items:center; gap:6px;" title="Download Branded PDF Tax Invoice">
             <i data-lucide="file-down" style="width:15px;height:15px;color:var(--primary);"></i>
             <span>PDF Invoice</span>
           </button>
         </div>
 
         <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-          <button type="button" class="btn-secondary" id="btn-bill-bluetooth" style="display:flex; align-items:center; gap:5px;" title="Stream raw ESC/POS commands via Web Bluetooth">
+          <button type="button" class="btn-secondary" id="btn-bill-bluetooth"
+            style="display:flex; align-items:center; gap:5px;" title="Stream raw ESC/POS commands via Web Bluetooth">
             <i data-lucide="bluetooth" style="width:14px;height:14px;color:#3B82F6;"></i>
             <span>Bluetooth</span>
           </button>
-          <button type="button" class="btn-secondary" id="btn-bill-usb" style="display:flex; align-items:center; gap:5px;" title="Stream raw ESC/POS commands via WebUSB">
+          <button type="button" class="btn-secondary" id="btn-bill-usb"
+            style="display:flex; align-items:center; gap:5px;" title="Stream raw ESC/POS commands via WebUSB">
             <i data-lucide="usb" style="width:14px;height:14px;color:#8B5CF6;"></i>
             <span>USB</span>
           </button>
-          <button type="button" class="btn-primary" id="btn-trigger-print" style="display:flex; align-items:center; gap:6px; background:var(--accent-emerald);">
+          <button type="button" class="btn-primary" id="btn-trigger-print"
+            style="display:flex; align-items:center; gap:6px; background:var(--accent-emerald);">
             <i data-lucide="printer" style="width:15px;height:15px;"></i>
             <span>Print Receipt</span>
           </button>
@@ -909,7 +1003,12 @@
     <div class="modal-popup" style="max-width: 420px; text-align: left;">
       <div class="modal-header">
         <div style="display:flex; align-items:center; gap:8px;">
-          <svg style="width:20px;height:20px;fill:#25D366;" viewBox="0 0 24 24"><path d="M17.472 14.382c-.301-.15-1.78-.879-2.056-.98-.276-.1-.477-.15-.678.15-.2.301-.778.98-.954 1.18-.175.2-.351.226-.652.075-.301-.15-1.272-.469-2.423-1.496-.896-.799-1.501-1.787-1.677-2.088-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.175.2-.301.301-.501.1-.2.05-.376-.025-.526-.075-.15-.678-1.635-.93-2.24-.244-.589-.493-.509-.678-.519-.175-.01-.376-.01-.577-.01-.2 0-.527.075-.803.376s-1.054 1.029-1.054 2.509 1.079 2.909 1.23 3.109c.15.2 2.124 3.243 5.145 4.549.719.311 1.28.497 1.718.636.722.23 1.378.197 1.898.12.579-.086 1.78-.727 2.031-1.429.251-.702.251-1.304.176-1.429-.076-.126-.276-.201-.577-.352z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.891.524 3.662 1.435 5.179L2 22l4.981-1.399A9.957 9.957 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18.053c-1.63 0-3.14-.476-4.417-1.298l-.317-.202-3.238.91.928-3.125-.213-.332A8.04 8.04 0 0 1 3.947 12C3.947 7.559 7.559 3.947 12 3.947c4.441 0 8.053 3.612 8.053 8.053 0 4.441-3.612 8.053-8.053 8.053z"/></svg>
+          <svg style="width:20px;height:20px;fill:#25D366;" viewBox="0 0 24 24">
+            <path
+              d="M17.472 14.382c-.301-.15-1.78-.879-2.056-.98-.276-.1-.477-.15-.678.15-.2.301-.778.98-.954 1.18-.175.2-.351.226-.652.075-.301-.15-1.272-.469-2.423-1.496-.896-.799-1.501-1.787-1.677-2.088-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.175.2-.301.301-.501.1-.2.05-.376-.025-.526-.075-.15-.678-1.635-.93-2.24-.244-.589-.493-.509-.678-.519-.175-.01-.376-.01-.577-.01-.2 0-.527.075-.803.376s-1.054 1.029-1.054 2.509 1.079 2.909 1.23 3.109c.15.2 2.124 3.243 5.145 4.549.719.311 1.28.497 1.718.636.722.23 1.378.197 1.898.12.579-.086 1.78-.727 2.031-1.429.251-.702.251-1.304.176-1.429-.076-.126-.276-.201-.577-.352z" />
+            <path
+              d="M12 2C6.477 2 2 6.477 2 12c0 1.891.524 3.662 1.435 5.179L2 22l4.981-1.399A9.957 9.957 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18.053c-1.63 0-3.14-.476-4.417-1.298l-.317-.202-3.238.91.928-3.125-.213-.332A8.04 8.04 0 0 1 3.947 12C3.947 7.559 7.559 3.947 12 3.947c4.441 0 8.053 3.612 8.053 8.053 0 4.441-3.612 8.053-8.053 8.053z" />
+          </svg>
           <h2 class="modal-title" style="font-size:1.15rem;">Send WhatsApp Invoice</h2>
         </div>
         <button class="btn-close-modal" id="btn-close-wa-consent">&times;</button>
@@ -919,22 +1018,29 @@
         <div class="form-group">
           <label class="form-label" for="wa-customer-phone">Customer Phone Number *</label>
           <div style="display:flex; align-items:center; gap:6px;">
-            <span style="background:var(--bg-subtle); border:1px solid var(--border-subtle); padding:8px 12px; border-radius:var(--radius-sm); font-size:0.86rem; font-weight:600; color:var(--text-muted);">+91</span>
-            <input type="tel" id="wa-customer-phone" class="form-input" placeholder="9876543210" maxlength="12" required style="flex:1;">
+            <span
+              style="background:var(--bg-subtle); border:1px solid var(--border-subtle); padding:8px 12px; border-radius:var(--radius-sm); font-size:0.86rem; font-weight:600; color:var(--text-muted);">+91</span>
+            <input type="tel" id="wa-customer-phone" class="form-input" placeholder="9876543210" maxlength="12" required
+              style="flex:1;">
           </div>
         </div>
 
         <!-- Explicit DPDP Consent Compliance Tag -->
-        <div style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:var(--radius-sm); padding:10px 12px; margin-bottom:16px;">
-          <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer; font-size:0.78rem; color:#166534; line-height:1.4;">
-            <input type="checkbox" id="chk-dpdp-consent" checked style="margin-top:2px; accent-color:#16A34A; cursor:pointer;">
-            <span><strong>DPDP Consent Tag:</strong> Customer explicitly consented to receive their digital tax invoice and dining receipt via WhatsApp.</span>
+        <div
+          style="background:#F0FDF4; border:1px solid #BBF7D0; border-radius:var(--radius-sm); padding:10px 12px; margin-bottom:16px;">
+          <label
+            style="display:flex; align-items:flex-start; gap:8px; cursor:pointer; font-size:0.78rem; color:#166534; line-height:1.4;">
+            <input type="checkbox" id="chk-dpdp-consent" checked
+              style="margin-top:2px; accent-color:#16A34A; cursor:pointer;">
+            <span><strong>DPDP Consent Tag:</strong> Customer explicitly consented to receive their digital tax invoice
+              and dining receipt via WhatsApp.</span>
           </label>
         </div>
 
         <div style="display:flex; justify-content:flex-end; gap:8px;">
           <button type="button" class="btn-secondary" id="btn-cancel-wa-consent">Cancel</button>
-          <button type="submit" class="btn-primary" id="btn-confirm-wa-send" style="background:#25D366; display:flex; align-items:center; gap:6px;">
+          <button type="submit" class="btn-primary" id="btn-confirm-wa-send"
+            style="background:#25D366; display:flex; align-items:center; gap:6px;">
             <i data-lucide="send" style="width:15px;height:15px;"></i>
             <span>Dispatch WhatsApp</span>
           </button>
@@ -944,19 +1050,22 @@
   </div>
 
   <!-- Dedicated Isolated Iframe for Zero-Margin Thermal Printing -->
-  <iframe id="isolated-print-frame" style="position:fixed; right:100vw; bottom:100vh; width:0; height:0; border:0;" aria-hidden="true"></iframe>
+  <iframe id="isolated-print-frame" style="position:fixed; right:100vw; bottom:100vh; width:0; height:0; border:0;"
+    aria-hidden="true"></iframe>
 
   <!-- Store Profile & Thermal Header Settings Modal -->
   <div class="modal-backdrop" id="settings-modal" role="dialog" aria-modal="true">
     <div class="modal-popup" style="max-width: 520px;">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 8px;">
-          <div style="background: var(--bg-subtle); padding: 8px; border-radius: var(--radius-sm); color: var(--primary); display: flex;">
+          <div
+            style="background: var(--bg-subtle); padding: 8px; border-radius: var(--radius-sm); color: var(--primary); display: flex;">
             <i data-lucide="store" style="width: 20px; height: 20px;"></i>
           </div>
           <div>
             <h2 class="modal-title" style="margin: 0; font-size: 1.15rem;">Store Profile &amp; Billing Header</h2>
-            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">Customize receipt header, GSTIN, and printer details</div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">Customize receipt header, GSTIN,
+              and printer details</div>
           </div>
         </div>
         <button class="btn-close-modal" id="btn-close-settings">&times;</button>
@@ -965,12 +1074,14 @@
       <form id="settings-form" onsubmit="return false;" style="margin-top: 14px;">
         <div class="form-group">
           <label class="form-label" for="settings-restaurant-name">Restaurant / Outlet Name *</label>
-          <input type="text" id="settings-restaurant-name" class="form-input" placeholder="e.g. Bismillah Biryani &amp; Grill" required>
+          <input type="text" id="settings-restaurant-name" class="form-input"
+            placeholder="e.g. Bismillah Biryani &amp; Grill" required>
         </div>
 
         <div class="form-group">
           <label class="form-label" for="settings-store-address">Store Address / Location</label>
-          <input type="text" id="settings-store-address" class="form-input" placeholder="e.g. Shop 4, Market Complex, MG Road">
+          <input type="text" id="settings-store-address" class="form-input"
+            placeholder="e.g. Shop 4, Market Complex, MG Road">
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
@@ -997,19 +1108,22 @@
 
         <div class="form-group">
           <label class="form-label" for="settings-footer-message">Custom Receipt Footer Message</label>
-          <textarea id="settings-footer-message" class="form-input" rows="2" placeholder="e.g. Thank you for dining with us! Please visit again."></textarea>
+          <textarea id="settings-footer-message" class="form-input" rows="2"
+            placeholder="e.g. Thank you for dining with us! Please visit again."></textarea>
         </div>
 
-        <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 16px;">
+        <div
+          style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 16px;">
           <div style="font-size: 0.76rem; color: #1E40AF; display: flex; align-items: center; gap: 6px;">
             <i data-lucide="cloud" style="width: 14px; height: 14px; flex-shrink: 0;"></i>
-            <span>Saved locally for instant printing and synchronized to Google Sheet for multi-device harmony.</span>
+            <span>Saved locally for instant printing and synchronized to Database for multi-device harmony.</span>
           </div>
         </div>
 
         <div style="display: flex; justify-content: flex-end; gap: 8px;">
           <button type="button" class="btn-secondary" id="btn-cancel-settings">Cancel</button>
-          <button type="submit" class="btn-primary" id="btn-save-settings" style="display: flex; align-items: center; gap: 6px;">
+          <button type="submit" class="btn-primary" id="btn-save-settings"
+            style="display: flex; align-items: center; gap: 6px;">
             <i data-lucide="save" style="width: 15px; height: 15px;"></i>
             <span>Save Store Profile</span>
           </button>
@@ -1029,17 +1143,20 @@
       <form id="change-pin-form" onsubmit="return false;">
         <div class="form-group">
           <label class="form-label" for="input-current-pin">Current PIN</label>
-          <input type="password" id="input-current-pin" class="form-input" placeholder="••••" maxlength="6" inputmode="numeric" required>
+          <input type="password" id="input-current-pin" class="form-input" placeholder="••••" maxlength="6"
+            inputmode="numeric" required>
         </div>
 
         <div class="form-group">
           <label class="form-label" for="input-new-pin">New 4-Digit PIN</label>
-          <input type="password" id="input-new-pin" class="form-input" placeholder="••••" maxlength="6" inputmode="numeric" required>
+          <input type="password" id="input-new-pin" class="form-input" placeholder="••••" maxlength="6"
+            inputmode="numeric" required>
         </div>
 
         <div class="form-group">
           <label class="form-label" for="input-confirm-pin">Confirm New PIN</label>
-          <input type="password" id="input-confirm-pin" class="form-input" placeholder="••••" maxlength="6" inputmode="numeric" required>
+          <input type="password" id="input-confirm-pin" class="form-input" placeholder="••••" maxlength="6"
+            inputmode="numeric" required>
         </div>
 
         <button type="submit" class="btn-primary" id="btn-submit-change-pin" style="margin-top: 14px;">
@@ -1060,9 +1177,12 @@
             <i data-lucide="calculator" style="width: 20px; height: 20px; color: #fff;"></i>
           </div>
           <div>
-            <h2 class="modal-title" style="margin: 0; font-size: 1.18rem; font-weight: 700; color: var(--brand-navy); display: flex; align-items: center; gap: 8px;">
+            <h2 class="modal-title"
+              style="margin: 0; font-size: 1.18rem; font-weight: 700; color: var(--brand-navy); display: flex; align-items: center; gap: 8px;">
               <span>Manual POS Terminal</span>
-              <span class="live-indicator" style="background:#ECFDF5; color:#059669; border-color:#A7F3D0; font-size:0.7rem; padding:2px 8px;">Direct Cashier Punch</span>
+              <span class="live-indicator"
+                style="background:#ECFDF5; color:#059669; border-color:#A7F3D0; font-size:0.7rem; padding:2px 8px;">Direct
+                Cashier Punch</span>
             </h2>
             <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
               Fast touchscreen ordering for Dine-In, Takeaway, Zomato &amp; Swiggy
@@ -1070,7 +1190,8 @@
           </div>
         </div>
         <div style="display: flex; align-items: center; gap: 8px;">
-          <button type="button" class="btn-secondary" id="btn-pos-quick-clear" title="Clear current cart" style="font-size: 0.8rem; padding: 6px 12px; display: none;">
+          <button type="button" class="btn-secondary" id="btn-pos-quick-clear" title="Clear current cart"
+            style="font-size: 0.8rem; padding: 6px 12px; display: none;">
             <i data-lucide="trash-2" style="width: 14px; height: 14px; color: var(--accent-rose);"></i>
             <span>Clear Cart</span>
           </button>
@@ -1080,18 +1201,20 @@
 
       <!-- Split-Screen Body -->
       <div class="pos-split-layout">
-        
+
         <!-- LEFT PANEL: Menu & Category Browser -->
         <div class="pos-menu-panel">
-          
+
           <!-- Search & Filters Toolbar -->
           <div class="pos-menu-toolbar">
             <div class="pos-search-box">
               <i data-lucide="search" class="pos-search-icon"></i>
-              <input type="text" id="pos-dish-search" class="form-input" placeholder="Search dishes (e.g. Biryani, Naan, Chai)..." autocomplete="off">
-              <button type="button" id="btn-pos-clear-search" class="pos-clear-search" style="display: none;" title="Clear search">&times;</button>
+              <input type="text" id="pos-dish-search" class="form-input"
+                placeholder="Search dishes (e.g. Biryani, Naan, Chai)..." autocomplete="off">
+              <button type="button" id="btn-pos-clear-search" class="pos-clear-search" style="display: none;"
+                title="Clear search">&times;</button>
             </div>
-            
+
             <!-- Category Chips Filter (Starters, Mains, Breads, Beverages, etc.) -->
             <div class="pos-cat-scroll" id="pos-category-chips">
               <button class="pos-cat-chip active" data-category="all">
@@ -1109,28 +1232,32 @@
             </div>
             <!-- Empty state when no dishes match -->
             <div id="pos-menu-empty" class="pos-empty-state" style="display: none;">
-              <i data-lucide="search-x" style="width: 36px; height: 36px; color: var(--text-dim); margin-bottom: 8px;"></i>
+              <i data-lucide="search-x"
+                style="width: 36px; height: 36px; color: var(--text-dim); margin-bottom: 8px;"></i>
               <p style="margin: 0; font-weight: 600; color: var(--text-muted);">No dishes match your filter</p>
-              <button type="button" class="btn-secondary" id="btn-pos-reset-filters" style="margin-top: 10px; font-size: 0.8rem; padding: 6px 12px;">Reset Filters</button>
+              <button type="button" class="btn-secondary" id="btn-pos-reset-filters"
+                style="margin-top: 10px; font-size: 0.8rem; padding: 6px 12px;">Reset Filters</button>
             </div>
           </div>
         </div>
 
         <!-- RIGHT PANEL: Cart, Order Details & Checkout -->
         <div class="pos-cart-panel">
-          
+
           <!-- Order Source & Destination Box -->
           <div class="pos-order-meta-box">
-            
+
             <!-- Order Source Selector (Dine-In, Takeaway, Zomato, Swiggy) -->
             <div class="form-group" style="margin-bottom: 10px;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <label class="form-label" style="font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin: 0;">
+                <label class="form-label"
+                  style="font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin: 0;">
                   Order Source *
                 </label>
-                <span id="pos-source-indicator" style="font-size: 0.76rem; font-weight: 700; color: var(--primary);">Dine-In Table</span>
+                <span id="pos-source-indicator"
+                  style="font-size: 0.76rem; font-weight: 700; color: var(--primary);">Dine-In Table</span>
               </div>
-              
+
               <div class="pos-source-selector" id="pos-source-selector">
                 <button type="button" class="pos-source-btn active" data-source="Dine-In" title="Dine-In table order">
                   <i data-lucide="utensils" style="width:15px;height:15px;"></i>
@@ -1153,11 +1280,13 @@
 
             <!-- Table Number or Customer Name Input -->
             <div class="form-group" style="margin-bottom: 10px;">
-              <label class="form-label" for="pos-order-ref" id="pos-order-ref-label" style="font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">
+              <label class="form-label" for="pos-order-ref" id="pos-order-ref-label"
+                style="font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">
                 Table Number *
               </label>
               <div style="position: relative;">
-                <input type="text" id="pos-order-ref" class="form-input" placeholder="e.g. 4" value="1" required style="font-size: 0.95rem; font-weight: 600; padding: 10px 12px;">
+                <input type="text" id="pos-order-ref" class="form-input" placeholder="e.g. 4" value="1" required
+                  style="font-size: 0.95rem; font-weight: 600; padding: 10px 12px;">
                 <!-- Quick table selector chips for Dine-In -->
                 <div class="pos-quick-tables" id="pos-quick-tables">
                   <button type="button" class="pos-table-chip active" data-table="1">T1</button>
@@ -1175,22 +1304,26 @@
             <!-- Customer Notes / Kitchen Instructions -->
             <div class="form-group" style="margin-bottom: 0;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                <label class="form-label" for="pos-order-notes" style="font-size: 0.74rem; font-weight: 600; color: var(--text-muted); margin:0;">
+                <label class="form-label" for="pos-order-notes"
+                  style="font-size: 0.74rem; font-weight: 600; color: var(--text-muted); margin:0;">
                   Kitchen Notes (Optional)
                 </label>
                 <span style="font-size:0.7rem; color:var(--text-dim);">Spicy, no onions, etc.</span>
               </div>
-              <input type="text" id="pos-order-notes" class="form-input" placeholder="e.g. Extra spicy, no onions, less oil" style="font-size: 0.85rem; padding: 8px 12px;">
+              <input type="text" id="pos-order-notes" class="form-input"
+                placeholder="e.g. Extra spicy, no onions, less oil" style="font-size: 0.85rem; padding: 8px 12px;">
             </div>
           </div>
 
           <!-- Cart Items Scroll Area -->
           <div class="pos-cart-items-container">
             <div class="pos-cart-header-row">
-              <span style="font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">
+              <span
+                style="font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);">
                 Selected Dishes (<span id="pos-cart-count">0</span>)
               </span>
-              <button type="button" class="pos-btn-text-clear" id="btn-pos-clear-items" style="display:none;">Clear All</button>
+              <button type="button" class="pos-btn-text-clear" id="btn-pos-clear-items" style="display:none;">Clear
+                All</button>
             </div>
 
             <!-- Selected Cart Items List -->
@@ -1200,8 +1333,10 @@
                 <div class="pos-cart-empty-icon">
                   <i data-lucide="shopping-cart" style="width: 30px; height: 30px; color: var(--text-dim);"></i>
                 </div>
-                <div style="font-weight: 600; color: var(--brand-navy); font-size: 0.92rem; margin-bottom: 4px;">Cart is empty</div>
-                <div style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; max-width: 220px; margin: 0 auto;">
+                <div style="font-weight: 600; color: var(--brand-navy); font-size: 0.92rem; margin-bottom: 4px;">Cart is
+                  empty</div>
+                <div
+                  style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; max-width: 220px; margin: 0 auto;">
                   Tap any item on the left menu grid to instantly punch it into this order.
                 </div>
               </div>
@@ -1213,11 +1348,13 @@
             <div class="pos-totals-box">
               <div class="pos-total-row">
                 <span style="font-size: 0.82rem; color: var(--text-muted);">Items Subtotal:</span>
-                <span id="pos-subtotal" style="font-size: 0.86rem; font-weight: 600; color: var(--brand-navy);">₹0.00</span>
+                <span id="pos-subtotal"
+                  style="font-size: 0.86rem; font-weight: 600; color: var(--brand-navy);">₹0.00</span>
               </div>
               <div class="pos-total-row grand-total">
                 <span style="font-size: 1rem; font-weight: 700; color: var(--brand-navy);">Grand Total:</span>
-                <span id="pos-grand-total" style="font-size: 1.35rem; font-weight: 800; color: var(--accent-emerald);">₹0.00</span>
+                <span id="pos-grand-total"
+                  style="font-size: 1.35rem; font-weight: 800; color: var(--accent-emerald);">₹0.00</span>
               </div>
             </div>
 
@@ -1242,7 +1379,9 @@
   <footer class="aola-footer" id="aola-footer">
     <div class="aola-footer-container">
       <div class="aola-footer-brand">
-        <a href="https://wa.me/919847054970?text=Hi%20AOLA%20Team,%20I%20saw%20your%20QR%20Ordering%20system%20and%20want%20this%20for%20my%20restaurant" target="_blank" rel="noopener noreferrer" class="aola-brand-pill" title="Get AOLA Smart QR Ordering for your restaurant">
+        <a href="https://wa.me/919847054970?text=Hi%20AOLA%20Team,%20I%20saw%20your%20QR%20Ordering%20system%20and%20want%20this%20for%20my%20restaurant"
+          target="_blank" rel="noopener noreferrer" class="aola-brand-pill"
+          title="Get AOLA Smart QR Ordering for your restaurant">
           <img src="AU-dark-icon.svg" alt="AOLA" class="aola-pill-logo">
           <span>Powered by <strong class="aola-brand-name">AOLA</strong> — Smart QR Ordering</span>
           <span class="aola-brand-tag">Get for your restaurant &rarr;</span>
@@ -1253,8 +1392,15 @@
           <i data-lucide="mail" class="aola-icon" style="width:15px;height:15px;"></i>
           <span>mh.nasif012@gmail.com</span>
         </a>
-        <a href="https://wa.me/919847054970" target="_blank" rel="noopener noreferrer" class="aola-contact-badge aola-whatsapp-badge" title="Chat on WhatsApp">
-          <svg class="aola-icon aola-icon-wa" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.301-.15-1.78-.879-2.056-.98-.276-.1-.477-.15-.678.15-.2.301-.778.98-.954 1.18-.175.2-.351.226-.652.075-.301-.15-1.272-.469-2.423-1.496-.896-.799-1.501-1.787-1.677-2.088-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.175.2-.301.301-.501.1-.2.05-.376-.025-.526-.075-.15-.678-1.635-.93-2.24-.244-.589-.493-.509-.678-.519-.175-.01-.376-.01-.577-.01-.2 0-.527.075-.803.376s-1.054 1.029-1.054 2.509 1.079 2.909 1.23 3.109c.15.2 2.124 3.243 5.145 4.549.719.311 1.28.497 1.718.636.722.23 1.378.197 1.898.12.579-.086 1.78-.727 2.031-1.429.251-.702.251-1.304.176-1.429-.076-.126-.276-.201-.577-.352z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.891.524 3.662 1.435 5.179L2 22l4.981-1.399A9.957 9.957 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18.053c-1.63 0-3.14-.476-4.417-1.298l-.317-.202-3.238.91.928-3.125-.213-.332A8.04 8.04 0 0 1 3.947 12C3.947 7.559 7.559 3.947 12 3.947c4.441 0 8.053 3.612 8.053 8.053 0 4.441-3.612 8.053-8.053 8.053z"/></svg>
+        <a href="https://wa.me/919847054970" target="_blank" rel="noopener noreferrer"
+          class="aola-contact-badge aola-whatsapp-badge" title="Chat on WhatsApp">
+          <svg class="aola-icon aola-icon-wa" width="15" height="15" viewBox="0 0 24 24" fill="currentColor"
+            aria-hidden="true">
+            <path
+              d="M17.472 14.382c-.301-.15-1.78-.879-2.056-.98-.276-.1-.477-.15-.678.15-.2.301-.778.98-.954 1.18-.175.2-.351.226-.652.075-.301-.15-1.272-.469-2.423-1.496-.896-.799-1.501-1.787-1.677-2.088-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.175.2-.301.301-.501.1-.2.05-.376-.025-.526-.075-.15-.678-1.635-.93-2.24-.244-.589-.493-.509-.678-.519-.175-.01-.376-.01-.577-.01-.2 0-.527.075-.803.376s-1.054 1.029-1.054 2.509 1.079 2.909 1.23 3.109c.15.2 2.124 3.243 5.145 4.549.719.311 1.28.497 1.718.636.722.23 1.378.197 1.898.12.579-.086 1.78-.727 2.031-1.429.251-.702.251-1.304.176-1.429-.076-.126-.276-.201-.577-.352z" />
+            <path
+              d="M12 2C6.477 2 2 6.477 2 12c0 1.891.524 3.662 1.435 5.179L2 22l4.981-1.399A9.957 9.957 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18.053c-1.63 0-3.14-.476-4.417-1.298l-.317-.202-3.238.91.928-3.125-.213-.332A8.04 8.04 0 0 1 3.947 12C3.947 7.559 7.559 3.947 12 3.947c4.441 0 8.053 3.612 8.053 8.053 0 4.441-3.612 8.053-8.053 8.053z" />
+          </svg>
           <span>+91 98470 54970</span>
         </a>
       </div>
@@ -1271,6 +1417,58 @@
     </div>
   </footer>
 
+  <!-- Supabase Initialization & Real-time Websocket Connection -->
+  <script>
+    // Audio Notification Chime Player (Synthesizes crisp chime without needing external mp3 files)
+    function playNotificationAudio() {
+      const audioEnabled = document.getElementById('chk-audio');
+      if (audioEnabled && !audioEnabled.checked) return;
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.15); // A5
+
+        gain.gain.setValueAtTime(0.35, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.7);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.7);
+      } catch (e) {
+        console.warn("[Audio Chime] Web Audio playback blocked:", e);
+      }
+    }
+    window.playNotificationAudio = playNotificationAudio;
+
+    // Realtime orders subscription for Kitchen Display
+    window.setupKitchenRealtime = function(shopId) {
+      if (!shopId) return;
+      const cleanShop = String(shopId).toLowerCase().trim();
+
+      if (window.AOLA_API && typeof window.AOLA_API.subscribeToOrders === 'function') {
+        window.AOLA_API.subscribeToOrders(cleanShop, (newOrder) => {
+          playNotificationAudio();
+          // Dispatch global custom event for owner.js ticket feed
+          window.dispatchEvent(new CustomEvent('aola_new_order', { detail: newOrder }));
+        });
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const activeShop = sessionStorage.getItem("AOLA_OWNER_SHOP") || localStorage.getItem("AOLA_SHOP_ID");
+      if (activeShop) {
+        window.setupKitchenRealtime(activeShop);
+      }
+    });
+  </script>
+
   <!-- Scripts -->
   <script src="js/config.js"></script>
   <script src="js/api.js"></script>
@@ -1282,4 +1480,5 @@
     }
   </script>
 </body>
+
 </html>
