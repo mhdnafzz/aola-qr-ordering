@@ -147,6 +147,13 @@
     }
 
     setupEvents();
+
+    if (window.location.hash) {
+      const tab = window.location.hash.replace("#", "").toLowerCase();
+      if (["shops", "expenses", "trends", "logs"].includes(tab)) {
+        switchHqTab(tab);
+      }
+    }
   }
 
   function setupEvents() {
@@ -251,7 +258,19 @@
       loadShops(true);
     };
 
-    // Subtab navigation switcher
+    // Subtab navigation switcher (Direct + Event Delegation for 100% click reliability)
+    const subtabsContainer = document.querySelector(".history-subtabs");
+    if (subtabsContainer) {
+      subtabsContainer.addEventListener("click", (e) => {
+        const btn = e.target.closest(".history-subtab-btn");
+        if (!btn) return;
+        if (btn.id === "tab-btn-shops") switchHqTab("shops");
+        else if (btn.id === "tab-btn-expenses") switchHqTab("expenses");
+        else if (btn.id === "tab-btn-trends") switchHqTab("trends");
+        else if (btn.id === "tab-btn-logs") switchHqTab("logs");
+      });
+    }
+
     if (el.tabBtnShops) el.tabBtnShops.onclick = () => switchHqTab("shops");
     if (el.tabBtnExpenses) el.tabBtnExpenses.onclick = () => switchHqTab("expenses");
     if (el.tabBtnTrends) el.tabBtnTrends.onclick = () => switchHqTab("trends");
@@ -299,6 +318,7 @@
 
   function switchHqTab(tabName) {
     state.activeTab = tabName;
+    try { history.replaceState(null, "", '#' + tabName); } catch (e) {}
     if (el.tabBtnShops) el.tabBtnShops.classList.toggle("active", tabName === "shops");
     if (el.tabBtnExpenses) el.tabBtnExpenses.classList.toggle("active", tabName === "expenses");
     if (el.tabBtnTrends) el.tabBtnTrends.classList.toggle("active", tabName === "trends");
@@ -1411,7 +1431,7 @@
           // Map cloud logs to uniform structure
           const cloudMapped = data.map(row => ({
             id: row.id,
-            timestamp: row.created_at || new Date().toISOString(),
+            created_at: row.created_at || new Date().toISOString(),
             level: (row.level || "info").toLowerCase(),
             action: row.action || "telemetry",
             shop_id: row.shop_id || "global",
@@ -1427,7 +1447,8 @@
           const merged = [];
 
           for (const item of [...localLogs, ...cloudMapped]) {
-            const key = `${item.timestamp}_${item.message}_${item.action}`;
+            const timeKey = item.created_at || item.timestamp || "";
+            const key = `${timeKey}_${item.message}_${item.action}`;
             if (!seen.has(key)) {
               seen.add(key);
               merged.push(item);
@@ -1435,7 +1456,7 @@
           }
 
           // Sort descending by timestamp
-          merged.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          merged.sort((a, b) => new Date(b.created_at || b.timestamp || 0).getTime() - new Date(a.created_at || a.timestamp || 0).getTime());
           state.logs = merged;
 
           if (showFeedback) {
@@ -1542,11 +1563,20 @@
 
       // Format timestamp nicely
       let timeStr = "";
-      try {
-        const d = new Date(log.timestamp);
-        timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ' + d.toLocaleDateString([], { month: 'short', day: 'numeric' });
-      } catch (e) {
-        timeStr = String(log.timestamp);
+      const rawDate = log.created_at || log.timestamp || log.time;
+      if (rawDate) {
+        try {
+          const d = new Date(rawDate);
+          if (!isNaN(d.getTime())) {
+            timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ' + d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+          } else {
+            timeStr = String(rawDate);
+          }
+        } catch (e) {
+          timeStr = String(rawDate);
+        }
+      } else {
+        timeStr = "Just now";
       }
 
       const shopTag = log.shop_id ? `<span style="background: rgba(99, 102, 241, 0.2); color: #a5b4fc; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 600;">Shop: ${escapeHtml(log.shop_id)}</span>` : "";
