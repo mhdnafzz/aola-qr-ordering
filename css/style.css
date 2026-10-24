@@ -736,7 +736,8 @@ button, input, select, textarea {
 }
 
 .modal-sheet {
-  background: #FFFFFF;
+  background: var(--bg-surface, #FFFFFF);
+  color: var(--text-main);
   border: 1px solid var(--border-subtle);
   border-bottom: none;
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
@@ -760,7 +761,8 @@ button, input, select, textarea {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%) scale(0.95);
-  background: #FFFFFF;
+  background: var(--bg-surface, #FFFFFF);
+  color: var(--text-main);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   width: 90%;
@@ -891,11 +893,11 @@ button, input, select, textarea {
 
 .form-input, .form-textarea, .form-select {
   width: 100%;
-  background: #FFFFFF;
+  background: var(--bg-input, #FFFFFF);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   padding: 10px 14px;
-  color: var(--brand-navy);
+  color: var(--text-main);
   font-size: 0.9rem;
   transition: all 0.2s ease;
   outline: none;
@@ -960,8 +962,8 @@ button, input, select, textarea {
 }
 
 .btn-secondary {
-  background: #FFFFFF;
-  color: var(--brand-navy);
+  background: var(--bg-surface, #FFFFFF);
+  color: var(--text-main);
   border: 1px solid var(--border-subtle);
   padding: 8px 16px;
   border-radius: var(--radius-sm);
@@ -978,8 +980,8 @@ button, input, select, textarea {
 
 .btn-secondary:hover:not(:disabled) {
   background: var(--bg-subtle);
-  border-color: #CBD5E1;
-  color: var(--brand-navy);
+  border-color: var(--border-card);
+  color: var(--text-main);
   transform: translateY(-1px);
 }
 
