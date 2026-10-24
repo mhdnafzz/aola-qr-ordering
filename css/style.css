@@ -1521,6 +1521,30 @@ button, input, select, textarea {
   text-align: left;
 }
 
+#history-table {
+  min-width: 960px;
+}
+
+#history-table th:last-child,
+#history-table td:last-child {
+  position: sticky;
+  right: 0;
+  background: #FFFFFF;
+  z-index: 2;
+  box-shadow: -4px 0 8px rgba(0, 0, 0, 0.05);
+  text-align: right;
+  white-space: nowrap;
+}
+
+#history-table th:last-child {
+  background: #F8FAFC;
+  z-index: 3;
+}
+
+#history-table tr:hover td:last-child {
+  background: #F8FAFC;
+}
+
 .data-table th {
   padding: 12px 18px;
   font-size: 0.75rem;

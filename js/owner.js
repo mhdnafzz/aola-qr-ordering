@@ -3148,17 +3148,27 @@
               ${s === "deleted" || s === "voided" ? '<i data-lucide="shield-alert" style="width:12px;height:12px;"></i> Voided' : escapeHtml(order.status || "Pending")}
             </span>
           </td>
-          <td style="font-size: 0.8rem; color: var(--text-muted); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          <td style="font-size: 0.8rem; color: var(--text-muted); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(order.customerNotes || '')}">
             ${escapeHtml(order.customerNotes || "-")}
           </td>
-          <td style="text-align: right;">
-            <div style="display: inline-flex; gap: 4px;">
-              <button class="btn-secondary btn-history-bill" data-id="${escapeHtml(order.orderId)}" title="Generate Tax Bill &amp; Thermal Print" style="padding: 4px 8px; font-size: 0.78rem;">
+          <td style="text-align: right; white-space: nowrap;">
+            <div style="display: inline-flex; align-items: center; justify-content: flex-end; gap: 5px;">
+              <button type="button" class="btn-secondary btn-history-bill" data-id="${escapeHtml(order.orderId)}" title="Generate Tax Bill &amp; Thermal Print" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; font-size: 0.76rem; font-weight: 600; border-radius: 6px; cursor: pointer;">
                 <i data-lucide="receipt" style="width:13px;height:13px;"></i>
+                <span>Bill</span>
               </button>
-              <button class="btn-secondary btn-history-wa" data-id="${escapeHtml(order.orderId)}" title="WhatsApp DPDP Invoice" style="padding: 4px 8px; font-size: 0.78rem; color:#25D366;">
+              <button type="button" class="btn-secondary btn-history-wa" data-id="${escapeHtml(order.orderId)}" title="WhatsApp DPDP Invoice" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; font-size: 0.76rem; font-weight: 600; color:#059669; border-radius: 6px; cursor: pointer;">
                 <i data-lucide="send" style="width:13px;height:13px;"></i>
+                <span>Share</span>
               </button>
+              ${
+                s !== "deleted" && s !== "voided" && s !== "cancelled"
+                  ? `<button type="button" class="btn-secondary btn-history-void" data-id="${escapeHtml(order.orderId)}" title="Void / Cancel this order" style="display: inline-flex; align-items: center; gap: 3px; padding: 4px 7px; font-size: 0.76rem; font-weight: 600; color: var(--accent-rose); border-radius: 6px; cursor: pointer;">
+                       <i data-lucide="ban" style="width: 12px; height: 12px;"></i>
+                       <span>Void</span>
+                     </button>`
+                  : ''
+              }
             </div>
           </td>
         </tr>
@@ -3177,6 +3187,10 @@
           openWhatsAppConsentModal();
         }
       };
+    });
+
+    el.historyTbody.querySelectorAll(".btn-history-void").forEach((btn) => {
+      btn.onclick = () => openVoidModal(btn.dataset.id, btn);
     });
 
     if (window.lucide) lucide.createIcons();
