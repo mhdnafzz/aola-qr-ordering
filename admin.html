@@ -238,6 +238,10 @@
         <i data-lucide="line-chart" style="width:16px;height:16px;"></i>
         <span>Sales Trends &amp; Analytics</span>
       </button>
+      <button class="history-subtab-btn" id="tab-btn-logs">
+        <i data-lucide="terminal" style="width:16px;height:16px;"></i>
+        <span>System Error &amp; Audit Logs</span>
+      </button>
     </div>
 
     <!-- VIEW 1: Client Restaurants Table Card -->
@@ -564,6 +568,117 @@
       </div>
     </div>
 
+    <!-- VIEW 4: System Health, Error Tracking & Audit Logs -->
+    <div id="hq-view-logs" style="display: none;">
+      <section class="admin-card">
+        <div class="admin-card-header">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="display: inline-flex; padding: 6px; border-radius: 8px; background: #fee2e2; color: #dc2626;">
+                <i data-lucide="shield-alert" style="width: 20px; height: 20px;"></i>
+              </span>
+              <h2 style="font-size: 1.15rem; font-weight: 700; color: var(--brand-navy); margin: 0;">System Health &amp; Error Telemetry</h2>
+            </div>
+            <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">
+              Real-time audit trail, error tracking, API milestones, and diagnostic stack traces across all stores.
+            </p>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="btn-secondary" id="btn-sync-cloud-logs" title="Fetch logs from Supabase cloud database">
+              <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>
+              <span>Sync Cloud Logs</span>
+            </button>
+            <button class="btn-secondary" id="btn-export-logs" title="Export current logs as JSON">
+              <i data-lucide="download" style="width:14px;height:14px;"></i>
+              <span>Export JSON</span>
+            </button>
+            <button class="btn-secondary" id="btn-clear-local-logs" style="color: #dc2626; border-color: #fecaca;" title="Clear local telemetry buffer">
+              <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+              <span>Clear Local</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Metric KPI Cards for Error Tracking -->
+        <div style="padding: 16px 20px; background: var(--bg-subtle); border-bottom: 1px solid var(--border-subtle); display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+          <div class="metric-card" style="padding: 12px 16px; margin: 0;">
+            <div>
+              <div class="metric-label" style="font-size: 0.72rem;">Total Recorded Logs</div>
+              <h3 class="metric-value" style="font-size: 1.3rem; color: var(--brand-navy);" id="log-count-all">0</h3>
+            </div>
+            <div class="metric-icon-wrap" style="width: 36px; height: 36px;">
+              <i data-lucide="activity" style="width: 18px; height: 18px;"></i>
+            </div>
+          </div>
+
+          <div class="metric-card" style="padding: 12px 16px; margin: 0;">
+            <div>
+              <div class="metric-label" style="font-size: 0.72rem; color: #dc2626;">System Errors</div>
+              <h3 class="metric-value" style="font-size: 1.3rem; color: #dc2626;" id="log-count-error">0</h3>
+            </div>
+            <div class="metric-icon-wrap rose" style="width: 36px; height: 36px;">
+              <i data-lucide="alert-triangle" style="width: 18px; height: 18px;"></i>
+            </div>
+          </div>
+
+          <div class="metric-card" style="padding: 12px 16px; margin: 0;">
+            <div>
+              <div class="metric-label" style="font-size: 0.72rem; color: #d97706;">Warnings</div>
+              <h3 class="metric-value" style="font-size: 1.3rem; color: #d97706;" id="log-count-warn">0</h3>
+            </div>
+            <div class="metric-icon-wrap amber" style="width: 36px; height: 36px;">
+              <i data-lucide="alert-circle" style="width: 18px; height: 18px;"></i>
+            </div>
+          </div>
+
+          <div class="metric-card" style="padding: 12px 16px; margin: 0;">
+            <div>
+              <div class="metric-label" style="font-size: 0.72rem; color: #0284c7;">Audit Milestones</div>
+              <h3 class="metric-value" style="font-size: 1.3rem; color: #0284c7;" id="log-count-info">0</h3>
+            </div>
+            <div class="metric-icon-wrap indigo" style="width: 36px; height: 36px;">
+              <i data-lucide="flag" style="width: 18px; height: 18px;"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter Pills & Search Bar -->
+        <div style="padding: 14px 20px; background: #FFFFFF; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="logs-filter-group">
+            <button class="cat-chip active" id="filter-log-all">
+              <i data-lucide="layers" style="width:13px;height:13px;"></i>
+              <span>All Logs</span>
+            </button>
+            <button class="cat-chip" id="filter-log-error" style="color: #dc2626;">
+              <i data-lucide="x-circle" style="width:13px;height:13px;"></i>
+              <span>Errors Only</span>
+            </button>
+            <button class="cat-chip" id="filter-log-warn" style="color: #d97706;">
+              <i data-lucide="alert-circle" style="width:13px;height:13px;"></i>
+              <span>Warnings</span>
+            </button>
+            <button class="cat-chip" id="filter-log-info" style="color: #0284c7;">
+              <i data-lucide="info" style="width:13px;height:13px;"></i>
+              <span>Milestones</span>
+            </button>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 8px; flex: 1; max-width: 360px; min-width: 220px;">
+            <div style="position: relative; width: 100%;">
+              <input type="text" id="search-logs-input" class="form-input" placeholder="Search message, store, action..." style="padding-left: 34px; font-size: 0.82rem; height: 36px;">
+              <i data-lucide="search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--text-muted);"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Terminal Console Feed -->
+        <div style="padding: 16px 20px; background: #0b1120;">
+          <div id="admin-logs-container" style="max-height: 540px; min-height: 280px; overflow-y: auto; font-family: 'Consolas', 'Courier New', monospace; font-size: 0.8rem; display: flex; flex-direction: column; gap: 8px;">
+            <!-- Dynamically rendered log cards -->
+          </div>
+        </div>
+      </section>
+    </div>
   </main>
 
   <!-- Onboard Client Modal -->

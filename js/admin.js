@@ -16,7 +16,10 @@
     orders: [],
     trendTimeframe: "daily",
     trendChartInstance: null,
-    breakdownChartInstance: null
+    breakdownChartInstance: null,
+    logsFilter: "all",
+    logsSearchQuery: "",
+    logs: []
   };
 
   const el = {
@@ -83,9 +86,26 @@
     tabBtnShops: document.getElementById("tab-btn-shops"),
     tabBtnExpenses: document.getElementById("tab-btn-expenses"),
     tabBtnTrends: document.getElementById("tab-btn-trends"),
+    tabBtnLogs: document.getElementById("tab-btn-logs"),
     hqViewShops: document.getElementById("hq-view-shops"),
     hqViewExpenses: document.getElementById("hq-view-expenses"),
     hqViewTrends: document.getElementById("hq-view-trends"),
+    hqViewLogs: document.getElementById("hq-view-logs"),
+
+    // System Logs Elements
+    btnSyncCloudLogs: document.getElementById("btn-sync-cloud-logs"),
+    btnExportLogs: document.getElementById("btn-export-logs"),
+    btnClearLocalLogs: document.getElementById("btn-clear-local-logs"),
+    logCountAll: document.getElementById("log-count-all"),
+    logCountError: document.getElementById("log-count-error"),
+    logCountWarn: document.getElementById("log-count-warn"),
+    logCountInfo: document.getElementById("log-count-info"),
+    filterLogAll: document.getElementById("filter-log-all"),
+    filterLogError: document.getElementById("filter-log-error"),
+    filterLogWarn: document.getElementById("filter-log-warn"),
+    filterLogInfo: document.getElementById("filter-log-info"),
+    searchLogsInput: document.getElementById("search-logs-input"),
+    adminLogsContainer: document.getElementById("admin-logs-container"),
 
     // Expenses Elements
     hqExpGrossRevenue: document.getElementById("hq-exp-gross-revenue"),
@@ -235,6 +255,22 @@
     if (el.tabBtnShops) el.tabBtnShops.onclick = () => switchHqTab("shops");
     if (el.tabBtnExpenses) el.tabBtnExpenses.onclick = () => switchHqTab("expenses");
     if (el.tabBtnTrends) el.tabBtnTrends.onclick = () => switchHqTab("trends");
+    if (el.tabBtnLogs) el.tabBtnLogs.onclick = () => switchHqTab("logs");
+
+    // System Logs events
+    if (el.filterLogAll) el.filterLogAll.onclick = () => setLogFilter("all");
+    if (el.filterLogError) el.filterLogError.onclick = () => setLogFilter("error");
+    if (el.filterLogWarn) el.filterLogWarn.onclick = () => setLogFilter("warn");
+    if (el.filterLogInfo) el.filterLogInfo.onclick = () => setLogFilter("info");
+    if (el.searchLogsInput) {
+      el.searchLogsInput.oninput = (e) => {
+        state.logsSearchQuery = e.target.value.toLowerCase().trim();
+        renderHqLogsView();
+      };
+    }
+    if (el.btnSyncCloudLogs) el.btnSyncCloudLogs.onclick = () => fetchCloudLogs(true);
+    if (el.btnExportLogs) el.btnExportLogs.onclick = exportAdminLogsJson;
+    if (el.btnClearLocalLogs) el.btnClearLocalLogs.onclick = clearAdminLocalLogs;
 
     // Expenses events
     if (el.hqExpenseForm) el.hqExpenseForm.onsubmit = handleSaveHqExpenseSubmit;
@@ -266,10 +302,12 @@
     if (el.tabBtnShops) el.tabBtnShops.classList.toggle("active", tabName === "shops");
     if (el.tabBtnExpenses) el.tabBtnExpenses.classList.toggle("active", tabName === "expenses");
     if (el.tabBtnTrends) el.tabBtnTrends.classList.toggle("active", tabName === "trends");
+    if (el.tabBtnLogs) el.tabBtnLogs.classList.toggle("active", tabName === "logs");
 
     if (el.hqViewShops) el.hqViewShops.style.display = tabName === "shops" ? "block" : "none";
     if (el.hqViewExpenses) el.hqViewExpenses.style.display = tabName === "expenses" ? "block" : "none";
     if (el.hqViewTrends) el.hqViewTrends.style.display = tabName === "trends" ? "block" : "none";
+    if (el.hqViewLogs) el.hqViewLogs.style.display = tabName === "logs" ? "block" : "none";
 
     if (tabName === "trends") {
       setTimeout(() => {
@@ -277,6 +315,9 @@
       }, 50);
     } else if (tabName === "expenses") {
       renderHqExpensesTable();
+    } else if (tabName === "logs") {
+      renderHqLogsView();
+      fetchCloudLogs(false);
     }
 
     if (window.lucide) lucide.createIcons();
@@ -1329,6 +1370,262 @@
     } catch (err) {
       showToast("Connected URL saved, but ping test failed. Ensure Web App is set to 'Execute as: Me' and 'Access: Anyone'.", "error");
     }
+  }
+
+  /**
+   * =========================================================================
+   * SYSTEM HEALTH, ERROR TELEMETRY & AUDIT LOGS
+   * =========================================================================
+   */
+
+  function setLogFilter(filter) {
+    state.logsFilter = filter;
+    if (el.filterLogAll) el.filterLogAll.classList.toggle("active", filter === "all");
+    if (el.filterLogError) el.filterLogError.classList.toggle("active", filter === "error");
+    if (el.filterLogWarn) el.filterLogWarn.classList.toggle("active", filter === "warn");
+    if (el.filterLogInfo) el.filterLogInfo.classList.toggle("active", filter === "info");
+    renderHqLogsView();
+  }
+
+  async function fetchCloudLogs(showFeedback = false) {
+    if (showFeedback && el.btnSyncCloudLogs) {
+      el.btnSyncCloudLogs.disabled = true;
+      el.btnSyncCloudLogs.innerHTML = `<span>Syncing...</span>`;
+    }
+
+    try {
+      const client = (typeof window.getSupabaseClient === 'function' ? window.getSupabaseClient() : null) || window.supabaseClient || window.supabase;
+      if (client && typeof client.from === 'function') {
+        const { data, error } = await client
+          .from("system_logs")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(150);
+
+        if (!error && Array.isArray(data)) {
+          // Merge Supabase logs with local logger logs
+          const localLogs = window.AOLA_LOGGER && typeof window.AOLA_LOGGER.getLogs === 'function'
+            ? window.AOLA_LOGGER.getLogs()
+            : [];
+
+          // Map cloud logs to uniform structure
+          const cloudMapped = data.map(row => ({
+            id: row.id,
+            timestamp: row.created_at || new Date().toISOString(),
+            level: (row.level || "info").toLowerCase(),
+            action: row.action || "telemetry",
+            shop_id: row.shop_id || "global",
+            message: row.message || "",
+            data: row.metadata || null,
+            error: row.error_details || null,
+            url: row.url || "",
+            isCloud: true
+          }));
+
+          // Merge without duplicate timestamps & messages
+          const seen = new Set();
+          const merged = [];
+
+          for (const item of [...localLogs, ...cloudMapped]) {
+            const key = `${item.timestamp}_${item.message}_${item.action}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              merged.push(item);
+            }
+          }
+
+          // Sort descending by timestamp
+          merged.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          state.logs = merged;
+
+          if (showFeedback) {
+            showToast(`Synchronized ${data.length} logs from cloud database.`, "success");
+          }
+        } else if (error) {
+          console.warn("[AOLA Admin] Supabase log fetch notice:", error.message);
+          if (showFeedback) showToast("Cloud logs table not reachable. Showing local buffer.", "info");
+        }
+      } else {
+        if (showFeedback) showToast("Database client offline. Showing local buffer.", "info");
+      }
+    } catch (e) {
+      console.warn("[AOLA Admin] Error querying cloud logs:", e);
+      if (showFeedback) showToast("Could not sync cloud logs. Showing local buffer.", "info");
+    } finally {
+      if (el.btnSyncCloudLogs) {
+        el.btnSyncCloudLogs.disabled = false;
+        el.btnSyncCloudLogs.innerHTML = `<i data-lucide="refresh-cw" style="width:14px;height:14px;"></i><span>Sync Cloud Logs</span>`;
+        if (window.lucide) lucide.createIcons();
+      }
+      renderHqLogsView();
+    }
+  }
+
+  function renderHqLogsView() {
+    if (!el.adminLogsContainer) return;
+
+    // Gather logs (combine state.logs with local buffer)
+    let logs = [];
+    if (state.logs && state.logs.length > 0) {
+      logs = [...state.logs];
+    } else if (window.AOLA_LOGGER && typeof window.AOLA_LOGGER.getLogs === 'function') {
+      logs = window.AOLA_LOGGER.getLogs();
+    }
+
+    // Calculate live counts
+    const totalCount = logs.length;
+    const errorCount = logs.filter(l => l.level === "error").length;
+    const warnCount = logs.filter(l => l.level === "warn" || l.level === "warning").length;
+    const infoCount = logs.filter(l => l.level === "info" || l.level === "milestone" || l.level === "debug").length;
+
+    if (el.logCountAll) el.logCountAll.textContent = totalCount;
+    if (el.logCountError) el.logCountError.textContent = errorCount;
+    if (el.logCountWarn) el.logCountWarn.textContent = warnCount;
+    if (el.logCountInfo) el.logCountInfo.textContent = infoCount;
+
+    // Apply filter
+    let filtered = logs;
+    if (state.logsFilter === "error") {
+      filtered = filtered.filter(l => l.level === "error");
+    } else if (state.logsFilter === "warn") {
+      filtered = filtered.filter(l => l.level === "warn" || l.level === "warning");
+    } else if (state.logsFilter === "info") {
+      filtered = filtered.filter(l => l.level === "info" || l.level === "milestone" || l.level === "debug");
+    }
+
+    // Apply search query
+    if (state.logsSearchQuery) {
+      const q = state.logsSearchQuery;
+      filtered = filtered.filter(l => {
+        const msg = String(l.message || "").toLowerCase();
+        const act = String(l.action || "").toLowerCase();
+        const shop = String(l.shop_id || "").toLowerCase();
+        const err = l.error ? JSON.stringify(l.error).toLowerCase() : "";
+        return msg.includes(q) || act.includes(q) || shop.includes(q) || err.includes(q);
+      });
+    }
+
+    if (filtered.length === 0) {
+      el.adminLogsContainer.innerHTML = `
+        <div style="text-align: center; padding: 48px 20px; color: #64748b;">
+          <div style="display: inline-flex; padding: 12px; border-radius: 50%; background: #1e293b; margin-bottom: 12px; color: #38bdf8;">
+            <i data-lucide="shield-check" style="width: 28px; height: 28px;"></i>
+          </div>
+          <div style="font-size: 0.95rem; font-weight: 600; color: #f1f5f9; margin-bottom: 4px;">Zero Incidents Recorded</div>
+          <div style="font-size: 0.8rem; max-width: 420px; margin: 0 auto; line-height: 1.4;">
+            ${state.logsFilter !== "all" || state.logsSearchQuery 
+              ? "No log entries match your active filter/search criteria."
+              : "All systems, orders, and payment integrations are performing normally. No crashes or unhandled exceptions logged."}
+          </div>
+        </div>
+      `;
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
+
+    let html = "";
+    filtered.forEach(log => {
+      const lvl = (log.level || "info").toLowerCase();
+      let badgeBg = "rgba(14, 165, 233, 0.15)";
+      let badgeColor = "#38bdf8";
+      let badgeIcon = "info";
+
+      if (lvl === "error") {
+        badgeBg = "rgba(239, 68, 68, 0.2)";
+        badgeColor = "#f87171";
+        badgeIcon = "alert-circle";
+      } else if (lvl === "warn" || lvl === "warning") {
+        badgeBg = "rgba(245, 158, 11, 0.2)";
+        badgeColor = "#fbbf24";
+        badgeIcon = "alert-triangle";
+      }
+
+      // Format timestamp nicely
+      let timeStr = "";
+      try {
+        const d = new Date(log.timestamp);
+        timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ' + d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      } catch (e) {
+        timeStr = String(log.timestamp);
+      }
+
+      const shopTag = log.shop_id ? `<span style="background: rgba(99, 102, 241, 0.2); color: #a5b4fc; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 600;">Shop: ${escapeHtml(log.shop_id)}</span>` : "";
+      const actionTag = log.action ? `<span style="background: rgba(148, 163, 184, 0.15); color: #cbd5e1; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;">${escapeHtml(log.action)}</span>` : "";
+      const cloudTag = log.isCloud ? `<span style="background: rgba(16, 185, 129, 0.15); color: #34d399; padding: 2px 6px; border-radius: 4px; font-size: 0.68rem;" title="Persisted in Supabase system_logs">Cloud</span>` : "";
+
+      let detailsBlock = "";
+      const hasDetails = (log.data && Object.keys(log.data).length > 0) || log.error || log.url;
+      if (hasDetails) {
+        const detailsObj = {};
+        if (log.url) detailsObj.url = log.url;
+        if (log.data) detailsObj.payload = log.data;
+        if (log.error) detailsObj.error = log.error;
+
+        detailsBlock = `
+          <details style="margin-top: 6px;">
+            <summary style="cursor: pointer; color: #94a3b8; font-size: 0.74rem; outline: none; user-select: none;">
+              Show Diagnostic Stack &amp; Details
+            </summary>
+            <pre style="background: #020617; border: 1px solid #1e293b; padding: 8px 10px; border-radius: 6px; margin-top: 6px; font-size: 0.72rem; color: #38bdf8; overflow-x: auto; white-space: pre-wrap; word-break: break-all;">${escapeHtml(JSON.stringify(detailsObj, null, 2))}</pre>
+          </details>
+        `;
+      }
+
+      html += `
+        <div style="background: #111827; border: 1px solid #1f2937; border-left: 3px solid ${badgeColor}; border-radius: 6px; padding: 10px 14px; margin-bottom: 4px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 5px;">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span style="background: ${badgeBg}; color: ${badgeColor}; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; display: inline-flex; align-items: center; gap: 4px;">
+                <i data-lucide="${badgeIcon}" style="width: 12px; height: 12px;"></i>
+                <span>${escapeHtml(lvl)}</span>
+              </span>
+              ${shopTag}
+              ${actionTag}
+              ${cloudTag}
+            </div>
+            <span style="color: #64748b; font-size: 0.72rem;">${escapeHtml(timeStr)}</span>
+          </div>
+          <div style="color: #f1f5f9; font-size: 0.82rem; font-weight: 500; word-break: break-word; line-height: 1.4;">
+            ${escapeHtml(log.message)}
+          </div>
+          ${detailsBlock}
+        </div>
+      `;
+    });
+
+    el.adminLogsContainer.innerHTML = html;
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function exportAdminLogsJson() {
+    let logs = [];
+    if (state.logs && state.logs.length > 0) {
+      logs = state.logs;
+    } else if (window.AOLA_LOGGER && typeof window.AOLA_LOGGER.getLogs === 'function') {
+      logs = window.AOLA_LOGGER.getLogs();
+    }
+
+    if (!logs || logs.length === 0) {
+      showToast("No telemetry logs available to export.", "info");
+      return;
+    }
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(logs, null, 2));
+    const dlAnchorElem = document.createElement("a");
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    dlAnchorElem.setAttribute("href", dataStr);
+    dlAnchorElem.setAttribute("download", `aola_system_logs_${timestamp}.json`);
+    dlAnchorElem.click();
+    showToast("Downloaded system telemetry logs as JSON.", "success");
+  }
+
+  function clearAdminLocalLogs() {
+    if (window.AOLA_LOGGER && typeof window.AOLA_LOGGER.clearLogs === 'function') {
+      window.AOLA_LOGGER.clearLogs();
+    }
+    state.logs = [];
+    renderHqLogsView();
+    showToast("Local telemetry buffer cleared.", "info");
   }
 
   // Launch on DOM ready (safely handling already loaded documents)

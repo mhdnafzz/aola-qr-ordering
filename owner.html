@@ -203,11 +203,6 @@
               <i data-lucide="store" style="width:16px;height:16px;"></i>
               <span>Store Profile</span>
             </button>
-            <button class="cat-chip" id="btn-sidebar-logs"
-              style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
-              <i data-lucide="terminal" style="width:16px;height:16px;color:var(--primary);"></i>
-              <span>System Health &amp; Logs</span>
-            </button>
           </div>
         </div>
 
@@ -1205,48 +1200,6 @@
           <span>Update PIN</span>
         </button>
       </form>
-  <!-- Modal: System Health & Audit Telemetry Logs -->
-  <div class="modal-backdrop" id="system-logs-modal" role="dialog" aria-modal="true" style="display:none;">
-    <div class="modal-popup" style="max-width: 860px; width: 92vw; text-align: left; padding: 22px;">
-      <div class="modal-header" style="margin-bottom: 14px;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <div style="background: var(--bg-subtle); padding: 8px; border-radius: var(--radius-sm); color: var(--primary); display: flex;">
-            <i data-lucide="terminal" style="width: 20px; height: 20px;"></i>
-          </div>
-          <div>
-            <h2 class="modal-title" style="margin: 0; font-size: 1.15rem;">System Health &amp; Telemetry Logs</h2>
-            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
-              Real-time audit trail, error tracking, and critical milestones (Sanitized &amp; Retained for 30 Days)
-            </div>
-          </div>
-        </div>
-        <button class="btn-close-modal" id="btn-close-logs-modal">&times;</button>
-      </div>
-
-      <!-- Controls & Filter Toolbar -->
-      <div style="display: flex; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap;">
-        <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
-          <button class="btn-secondary" id="btn-filter-log-all" style="padding: 4px 10px; font-size: 0.76rem; font-weight: 600; border-color: var(--primary); color: var(--primary);">All (<span id="log-count-all">0</span>)</button>
-          <button class="btn-secondary" id="btn-filter-log-error" style="padding: 4px 10px; font-size: 0.76rem; font-weight: 600; color: #dc2626;">Errors (<span id="log-count-error">0</span>)</button>
-          <button class="btn-secondary" id="btn-filter-log-warn" style="padding: 4px 10px; font-size: 0.76rem; font-weight: 600; color: #d97706;">Warnings (<span id="log-count-warn">0</span>)</button>
-          <button class="btn-secondary" id="btn-filter-log-info" style="padding: 4px 10px; font-size: 0.76rem; font-weight: 600; color: #0284c7;">Milestones (<span id="log-count-info">0</span>)</button>
-        </div>
-        <div style="display: flex; gap: 8px;">
-          <button class="btn-secondary" id="btn-export-logs" style="padding: 5px 12px; font-size: 0.76rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-            <i data-lucide="download" style="width: 13px; height: 13px;"></i>
-            <span>Export JSON</span>
-          </button>
-          <button class="btn-secondary" id="btn-clear-local-logs" style="padding: 5px 12px; font-size: 0.76rem; font-weight: 600; color: #dc2626; display: inline-flex; align-items: center; gap: 4px;">
-            <i data-lucide="trash-2" style="width: 13px; height: 13px;"></i>
-            <span>Clear Buffer</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Logs Container -->
-      <div id="system-logs-container" style="max-height: 420px; min-height: 220px; overflow-y: auto; background: #0f172a; color: #f8fafc; font-family: 'Courier New', Courier, monospace; font-size: 0.78rem; border-radius: 8px; padding: 12px; border: 1px solid #334155;">
-        <!-- Dynamically rendered log rows -->
-      </div>
     </div>
   </div>
 
