@@ -39,17 +39,21 @@
   <!-- Quick Portal Switcher & Navigation Header -->
   <header class="portal-nav-bar" id="portal-bar">
     <div class="portal-brand-wrap">
-      <img src="AU-dark.svg" alt="AOLA Merchant Kitchen Portal Logo" class="portal-brand-logo">
-      <span>Kitchen Ticket Display</span>
+      <img src="AU-dark.svg" alt="AOLA Merchant Portal Logo" class="portal-brand-logo">
+      <span>Owner &amp; Cashier Portal</span>
     </div>
     <nav class="portal-nav-links">
       <a href="./" class="portal-nav-link" id="nav-link-menu">
         <i data-lucide="smartphone"></i>
         <span>Customer Menu</span>
       </a>
-      <a href="./owner.html" class="portal-nav-link active">
+      <a href="./kitchen.html" class="portal-nav-link" id="nav-link-kds">
         <i data-lucide="chef-hat"></i>
-        <span>Kitchen</span>
+        <span>Kitchen (KDS)</span>
+      </a>
+      <a href="./owner.html" class="portal-nav-link active">
+        <i data-lucide="receipt"></i>
+        <span>Cashier &amp; POS</span>
       </a>
       <a href="./hq.html" class="portal-nav-link">
         <i data-lucide="shield-check"></i>
@@ -116,8 +120,7 @@
     <header class="owner-header">
       <div>
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px; flex-wrap: wrap;">
-          <h1 id="owner-shop-name" style="font-size: 1.55rem; font-weight: 700; color: var(--brand-navy);">Kitchen
-            Display</h1>
+          <h1 id="owner-shop-name" style="font-size: 1.55rem; font-weight: 700; color: var(--brand-navy);">Cashier &amp; POS Portal</h1>
           <span class="live-indicator" id="poll-indicator"
             style="background:#ECFDF5; color:#059669; border-color:#A7F3D0;">WebSocket Live</span>
         </div>
@@ -175,8 +178,8 @@
             </button>
             <button class="cat-chip active" id="view-tab-orders"
               style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
-              <i data-lucide="chef-hat" style="width:16px;height:16px;"></i>
-              <span>Kitchen Tickets</span>
+              <i data-lucide="receipt" style="width:16px;height:16px;color:var(--accent-emerald);"></i>
+              <span>Live Orders &amp; Billing</span>
             </button>
             <button class="cat-chip" id="view-tab-history"
               style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600;">
@@ -210,23 +213,23 @@
         <div id="sidebar-order-filters">
           <div
             style="font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px;">
-            Ticket Filters
+            Live Billing Filter
           </div>
           <div style="display: flex; flex-direction: column; gap: 6px;">
             <button class="cat-chip active" id="tab-pending"
-              style="width: 100%; justify-content: space-between; padding: 10px 14px;">
+              style="width: 100%; justify-content: space-between; padding: 10px 14px;" title="Orders prepared by kitchen awaiting payment checkout">
               <span style="display: flex; align-items: center; gap: 8px;">
-                <i data-lucide="clock-3" style="width:15px;height:15px;"></i>
-                <span>Pending Orders</span>
+                <i data-lucide="bell-ring" style="width:15px;height:15px;color:var(--accent-emerald);"></i>
+                <span>Ready to Bill</span>
               </span>
               <span id="count-pending"
                 style="background:var(--primary); color:#fff; padding:2px 8px; border-radius:9999px; font-size:0.75rem; font-weight:700;">0</span>
             </button>
             <button class="cat-chip" id="tab-completed"
-              style="width: 100%; justify-content: space-between; padding: 10px 14px;">
+              style="width: 100%; justify-content: space-between; padding: 10px 14px;" title="Orders currently cooking in the kitchen">
               <span style="display: flex; align-items: center; gap: 8px;">
-                <i data-lucide="check-circle-2" style="width:15px;height:15px;"></i>
-                <span>Completed</span>
+                <i data-lucide="chef-hat" style="width:15px;height:15px;color:var(--accent-amber);"></i>
+                <span>In Kitchen Prep</span>
               </span>
               <span id="count-completed"
                 style="background:var(--bg-subtle); color:var(--text-muted); padding:2px 8px; border-radius:9999px; font-size:0.75rem; font-weight:700;">0</span>
@@ -274,12 +277,64 @@
       <!-- Central Content Panel: Orders / Menu Manager -->
       <section class="kds-content">
 
-        <!-- VIEW 1: Live Kitchen Tickets -->
+        <!-- VIEW 1: Live Orders & Cashier Billing Queue -->
         <div id="section-orders-view">
+          <!-- Live Orders Header Bar -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; background: #FFFFFF; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 14px 18px; box-shadow: var(--shadow-xs);">
+            <div>
+              <h2 id="billing-queue-title" style="font-size: 1.15rem; font-weight: 800; color: var(--brand-navy); display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="bell-ring" style="width: 20px; height: 20px; color: var(--accent-emerald);"></i>
+                <span id="billing-queue-heading">Ready for Billing</span>
+              </h2>
+              <p id="billing-queue-subtitle" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 3px;">
+                Orders prepared by kitchen chefs. Settle payment and print thermal receipt below.
+              </p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span class="status-badge active" id="badge-ready-count"
+                style="background: #ECFDF5; color: #059669; border-color: #A7F3D0; font-size: 0.8rem; font-weight: 700; padding: 5px 12px;">
+                0 Orders Ready
+              </span>
+            </div>
+          </div>
+
           <!-- Live Ticket Grid -->
           <section class="ticket-grid" id="ticket-grid">
             <!-- Dynamically filled with order cards -->
           </section>
+
+          <!-- Completed Section: Paid Orders Table below Live View -->
+          <div class="admin-card" style="margin-top: 28px; margin-bottom: 0;">
+            <div class="admin-card-header" style="background: #F8FAFC; border-bottom: 1px solid var(--border-subtle); padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="check-check" style="width: 18px; height: 18px; color: var(--accent-emerald);"></i>
+                <h3 style="font-size: 0.96rem; font-weight: 800; color: var(--brand-navy); margin: 0;">
+                  Settled &amp; Paid Orders (Today's History)
+                </h3>
+              </div>
+              <button type="button" class="btn-secondary" id="btn-quick-to-history" style="padding: 5px 12px; font-size: 0.78rem;">
+                <i data-lucide="history" style="width: 13px; height: 13px;"></i>
+                <span>Open Full Ledger &amp; Trends</span>
+              </button>
+            </div>
+            <div class="data-table-wrap">
+              <table class="data-table" id="paid-orders-table">
+                <thead>
+                  <tr>
+                    <th style="width: 12%;">Order ID</th>
+                    <th style="width: 15%;">Paid Time</th>
+                    <th style="width: 10%;">Table</th>
+                    <th style="width: 32%;">Itemized Summary</th>
+                    <th style="width: 15%;">Amount Paid</th>
+                    <th style="width: 16%; text-align: right;">Receipt</th>
+                  </tr>
+                </thead>
+                <tbody id="paid-orders-tbody">
+                  <!-- Dynamically populated with settled orders -->
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
         <!-- VIEW 2: Restaurant Menu Manager -->

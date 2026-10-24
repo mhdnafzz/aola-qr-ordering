@@ -230,7 +230,8 @@ const AOLA_API = {
           table_number: String(params.table_number || params.table || "1"),
           items: rpcItems,
           customer_notes: params.customer_notes || params.notes || "",
-          order_source: params.order_source || (params.is_pos ? "POS" : "QR")
+          order_source: params.order_source || (params.is_pos ? "POS" : "QR"),
+          status: params.status || "pending"
         };
 
         // Call PostgreSQL stored procedure via Supabase RPC
@@ -241,6 +242,13 @@ const AOLA_API = {
           const fb = await sb.rpc('place_order', { payload: rpcPayload });
           data = fb.data;
           error = fb.error;
+        }
+
+        // Guarantee status is set to 'pending' for KDS lifecycle
+        if (data && data.order_id) {
+          try {
+            await sb.from('orders').update({ status: 'pending' }).eq('id', data.order_id).in('status', ['New', 'new']);
+          } catch (e) {}
         }
 
         if (error) {
@@ -271,7 +279,38 @@ const AOLA_API = {
         return data;
       }
 
-      // ── 3. GET ORDERS (Authenticated Kitchen Feed) ──
+      // ── 2b. GET KITCHEN ORDERS (Chef Display - No Auth, Pending Only, No Pricing) ──
+      if (action === "get_kitchen_orders") {
+        if (!shopId) return { success: false, error: "Missing restaurant shop ID." };
+
+        const { data: shops } = await sb.from('shops').select('name, currency').eq('id', shopId).limit(1);
+        const shopName = shops && shops.length ? shops[0].name : "Kitchen";
+
+        const { data: orders, error: ordersErr } = await sb
+          .from('orders')
+          .select('id, created_at, table_number, items, items_summary, status, customer_notes, order_source')
+          .eq('shop_id', shopId)
+          .in('status', ['pending', 'New', 'new'])
+          .order('created_at', { ascending: true });
+
+        if (ordersErr) throw ordersErr;
+
+        return {
+          success: true,
+          shopName: shopName,
+          orders: (orders || []).map(o => ({
+            orderId: o.id,
+            timestamp: o.created_at,
+            tableNumber: o.table_number,
+            items: o.items_summary || (typeof o.items === 'string' ? o.items : JSON.stringify(o.items)),
+            status: 'pending',
+            customerNotes: o.customer_notes || "",
+            orderSource: o.order_source || "QR"
+          }))
+        };
+      }
+
+      // ── 3. GET ORDERS (Authenticated Kitchen / Cashier Feed) ──
       if (action === "get_orders") {
         const pin = String(params.pin || params.owner_pin || "").trim();
         const adminPin = String(params.admin_pin || "").trim();
@@ -344,7 +383,18 @@ const AOLA_API = {
         }
 
         if (params.status && params.status !== "all") {
-          ordersQuery = ordersQuery.eq('status', params.status);
+          const st = String(params.status).toLowerCase().trim();
+          if (st === "ready") {
+            ordersQuery = ordersQuery.eq('status', 'ready');
+          } else if (st === "pending") {
+            ordersQuery = ordersQuery.in('status', ['pending', 'New', 'new']);
+          } else if (st === "paid" || st === "completed") {
+            ordersQuery = ordersQuery.in('status', ['paid', 'Completed', 'completed']);
+          } else if (st === "deleted" || st === "voided") {
+            ordersQuery = ordersQuery.in('status', ['Deleted', 'deleted', 'Voided', 'voided']);
+          } else {
+            ordersQuery = ordersQuery.eq('status', params.status);
+          }
         }
 
         if (typeof params.offset === "number" && typeof params.limit === "number") {
@@ -376,8 +426,8 @@ const AOLA_API = {
         };
       }
 
-      // ── 4. COMPLETE ORDER ──
-      if (action === "complete_order") {
+      // ── 4. COMPLETE / BILL ORDER (Cashier Marks Paid) ──
+      if (action === "complete_order" || action === "pay_order") {
         const orderId = params.order_id || params.orderId || params.id;
         if (!orderId) return { success: false, error: "Missing order ID." };
 
@@ -398,16 +448,45 @@ const AOLA_API = {
 
         const { error: updateErr } = await sb
           .from('orders')
-          .update({ status: 'Completed' })
+          .update({ status: 'paid' })
           .eq('id', orderId);
 
         if (updateErr) throw updateErr;
 
         if (window.AOLA_LOGGER) {
-          window.AOLA_LOGGER.logOrderCompleted(orderId, { shop_id: shopId });
+          window.AOLA_LOGGER.logOrderCompleted(orderId, { shop_id: shopId, status: 'paid' });
         }
 
-        return { success: true, order_id: orderId, message: "Order marked as Completed." };
+        return { success: true, order_id: orderId, status: 'paid', message: "Order marked as Paid." };
+      }
+
+      // ── 4a. UPDATE ORDER STATUS (Kitchen 'ready' / Cashier 'paid' / etc.) ──
+      if (action === "update_order_status") {
+        const orderId = params.order_id || params.orderId || params.id;
+        if (!orderId) return { success: false, error: "Missing order ID." };
+        const newStatus = String(params.status || "ready").toLowerCase().trim();
+
+        const { error: updateErr } = await sb
+          .from('orders')
+          .update({ status: newStatus })
+          .eq('id', orderId);
+
+        if (updateErr) throw updateErr;
+
+        if (window.AOLA_LOGGER) {
+          window.AOLA_LOGGER.info("ORDER_STATUS_UPDATED", `Order #${orderId} moved to status '${newStatus}'`, {
+            orderId,
+            status: newStatus,
+            shop_id: shopId
+          });
+        }
+
+        return {
+          success: true,
+          order_id: orderId,
+          status: newStatus,
+          message: `Order #${orderId} marked as ${newStatus}.`
+        };
       }
 
       // ── 5. VOID / DELETE ORDER ──
@@ -902,7 +981,7 @@ const AOLA_API = {
    * @param {function} onNewOrder - Callback triggered when a new order arrives
    * @returns {object} Supabase Realtime Channel
    */
-  subscribeToOrders(shopId, onNewOrder) {
+  subscribeToOrders(shopId, callbacks = {}) {
     const sb = getSupabaseClient();
     if (!sb) {
       console.error("[Supabase Realtime] Supabase client not initialized.");
@@ -910,16 +989,21 @@ const AOLA_API = {
     }
 
     const cleanShop = (shopId || "").toLowerCase().trim();
-    console.log(`[Supabase Realtime] Subscribing to INSERT on orders table for shop: "${cleanShop}"`);
+    console.log(`[Supabase Realtime] Subscribing to orders table events (*, INSERT, UPDATE) for shop: "${cleanShop}"`);
 
     // Clean up existing subscription channel if present
     if (this._realtimeChannel) {
       try { sb.removeChannel(this._realtimeChannel); } catch (e) {}
     }
 
+    const onInsert = typeof callbacks === 'function' ? callbacks : callbacks.onInsert;
+    const onUpdate = typeof callbacks === 'object' ? callbacks.onUpdate : null;
+    const onDelete = typeof callbacks === 'object' ? callbacks.onDelete : null;
+    const onAny = typeof callbacks === 'object' ? callbacks.onAny : null;
+
     const channelName = `realtime-orders-${cleanShop || 'all'}-${Date.now()}`;
     const channelConfig = {
-      event: 'INSERT',
+      event: '*',
       schema: 'public',
       table: 'orders'
     };
@@ -930,9 +1014,17 @@ const AOLA_API = {
     const channel = sb
       .channel(channelName)
       .on('postgres_changes', channelConfig, (payload) => {
-        console.log("⚡ [Supabase Realtime] New Order INSERT received:", payload.new);
-        if (typeof onNewOrder === 'function') {
-          onNewOrder(payload.new);
+        console.log(`⚡ [Supabase Realtime] Order event [${payload.eventType}]:`, payload.new || payload.old);
+        if (typeof onAny === 'function') {
+          onAny(payload);
+        }
+        if (payload.eventType === 'INSERT') {
+          if (typeof onInsert === 'function') onInsert(payload.new, payload.eventType, payload);
+        } else if (payload.eventType === 'UPDATE') {
+          if (typeof onUpdate === 'function') onUpdate(payload.new, payload.old, payload);
+          if (typeof callbacks === 'function') callbacks(payload.new, payload.eventType, payload.old);
+        } else if (payload.eventType === 'DELETE') {
+          if (typeof onDelete === 'function') onDelete(payload.old, payload.eventType, payload);
         }
       })
       .subscribe((status) => {

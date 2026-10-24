@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AOLA - Kitchen Display System (KDS)</title>
+  <meta name="description" content="Real-time kitchen order preparation display system for restaurant chefs and kitchen staff.">
+  <link rel="icon" type="image/svg+xml" href="AU-dark-icon.svg">
+
+  <!-- Lucide Vector Icons Library -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Supabase JS Client CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --kds-bg: #090D16;
+      --kds-surface: #0F172A;
+      --kds-card: #182234;
+      --kds-card-hover: #1E293B;
+      --kds-border: #334155;
+      --kds-border-subtle: #1E293B;
+      --kds-text: #F8FAFC;
+      --kds-muted: #94A3B8;
+      --kds-dim: #64748B;
+      --kds-primary: #10B981;
+      --kds-primary-hover: #059669;
+      --kds-primary-glow: rgba(16, 185, 129, 0.25);
+      --kds-amber: #F59E0B;
+      --kds-rose: #EF4444;
+      --kds-blue: #38BDF8;
+      --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--kds-bg);
+      color: var(--kds-text);
+      font-family: var(--font-family);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Top KDS Navigation Bar */
+    .kds-navbar {
+      background: rgba(15, 23, 42, 0.96);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--kds-border);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .kds-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .kds-brand-logo {
+      height: 28px;
+      width: auto;
+      object-fit: contain;
+    }
+
+    .kds-brand-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .kds-status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--kds-primary);
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .kds-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--kds-primary);
+      box-shadow: 0 0 10px var(--kds-primary);
+      animation: kds-pulse 1.8s infinite;
+    }
+
+    @keyframes kds-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    .kds-header-center {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .kds-queue-counter {
+      background: #1E293B;
+      border: 1px solid var(--kds-border);
+      padding: 6px 16px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #FFFFFF;
+    }
+
+    .kds-queue-badge {
+      background: var(--kds-amber);
+      color: #0F172A;
+      font-size: 0.82rem;
+      font-weight: 900;
+      padding: 2px 8px;
+      border-radius: 9999px;
+    }
+
+    .kds-clock {
+      font-family: monospace;
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--kds-blue);
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      padding: 5px 12px;
+      border-radius: 8px;
+      letter-spacing: 0.05em;
+    }
+
+    .kds-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-kds-control {
+      background: #1E293B;
+      border: 1px solid var(--kds-border);
+      color: var(--kds-text);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+
+    .btn-kds-control:hover {
+      background: #334155;
+      border-color: #475569;
+      color: #FFFFFF;
+    }
+
+    .btn-kds-control.active {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: var(--kds-primary);
+      color: var(--kds-primary);
+    }
+
+    /* Main Grid Viewport */
+    .kds-main {
+      flex: 1;
+      padding: 20px 24px 60px;
+      max-width: 1920px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .kds-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+      align-items: start;
+    }
+
+    /* Order Ticket Card */
+    .kds-card {
+      background: var(--kds-card);
+      border: 1.5px solid var(--kds-border);
+      border-radius: 14px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.25s ease, opacity 0.25s ease, border-color 0.2s ease;
+    }
+
+    .kds-card.urgent {
+      border-color: var(--kds-rose);
+      box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
+    }
+
+    .kds-card.ready-animating {
+      transform: scale(0.92) translateY(-12px);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .kds-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--kds-border-subtle);
+    }
+
+    .kds-table-badge {
+      font-size: 1.25rem;
+      font-weight: 900;
+      color: #FFFFFF;
+      background: #0F172A;
+      border: 1px solid var(--kds-border);
+      padding: 4px 14px;
+      border-radius: 8px;
+      letter-spacing: 0.03em;
+      display: inline-block;
+    }
+
+    .kds-order-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      align-items: flex-end;
+    }
+
+    .kds-order-id {
+      font-family: monospace;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--kds-muted);
+    }
+
+    .kds-timer-badge {
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 4px;
+    }
+
+    .kds-timer-normal {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34D399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .kds-timer-warning {
+      background: rgba(245, 158, 11, 0.15);
+      color: #FBBF24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .kds-timer-rush {
+      background: rgba(239, 68, 68, 0.2);
+      color: #F87171;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      animation: rush-glow 1s infinite alternate;
+    }
+
+    @keyframes rush-glow {
+      from { box-shadow: 0 0 4px rgba(239, 68, 68, 0.4); }
+      to { box-shadow: 0 0 14px rgba(239, 68, 68, 0.7); }
+    }
+
+    /* Dish Checklist */
+    .kds-dish-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .kds-dish-item {
+      background: #0F172A;
+      border: 1px solid var(--kds-border-subtle);
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s ease;
+    }
+
+    .kds-dish-item:hover {
+      background: #152238;
+      border-color: #475569;
+    }
+
+    .kds-dish-item.plated {
+      opacity: 0.45;
+      text-decoration: line-through;
+      background: rgba(15, 23, 42, 0.5);
+      border-color: #1E293B;
+    }
+
+    .kds-dish-qty {
+      font-size: 1.15rem;
+      font-weight: 900;
+      color: #FFFFFF;
+      background: #1E293B;
+      border: 1px solid var(--kds-border);
+      min-width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .kds-dish-item.plated .kds-dish-qty {
+      background: #0F172A;
+      color: var(--kds-dim);
+    }
+
+    .kds-dish-details {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .kds-dish-name {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #FFFFFF;
+      line-height: 1.3;
+    }
+
+    .kds-dish-note {
+      font-size: 0.76rem;
+      color: var(--kds-amber);
+      font-weight: 600;
+      margin-top: 3px;
+      display: block;
+    }
+
+    /* Special Customer Instructions */
+    .kds-notes-box {
+      background: rgba(245, 158, 11, 0.08);
+      border-left: 3px solid var(--kds-amber);
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      color: #FDE68A;
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      line-height: 1.4;
+    }
+
+    /* Action: Mark As Ready */
+    .btn-mark-ready {
+      width: 100%;
+      background: var(--kds-primary);
+      color: #064E3B;
+      border: none;
+      padding: 13px 18px;
+      border-radius: 10px;
+      font-size: 0.92rem;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 14px var(--kds-primary-glow);
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .btn-mark-ready:hover {
+      background: #34D399;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+    }
+
+    .btn-mark-ready:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Empty Queue State */
+    .kds-empty-state {
+      grid-column: 1 / -1;
+      background: var(--kds-card);
+      border: 1.5px dashed var(--kds-border);
+      border-radius: 16px;
+      padding: 70px 24px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      margin-top: 40px;
+    }
+
+    .kds-empty-icon {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      color: var(--kds-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .kds-empty-title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #FFFFFF;
+    }
+
+    .kds-empty-desc {
+      font-size: 0.9rem;
+      color: var(--kds-muted);
+      max-width: 480px;
+      line-height: 1.5;
+    }
+
+    /* Toast Notifications */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 9999;
+    }
+
+    .toast {
+      background: #1E293B;
+      color: #F8FAFC;
+      border: 1px solid var(--kds-border);
+      border-radius: 8px;
+      padding: 12px 18px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 280px;
+      animation: toast-in 0.25s ease-out;
+    }
+
+    .toast.success {
+      border-left: 4px solid var(--kds-primary);
+    }
+
+    .toast.error {
+      border-left: 4px solid var(--kds-rose);
+    }
+
+    @keyframes toast-in {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .btn-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(6, 78, 59, 0.3);
+      border-top-color: #064E3B;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+      .kds-navbar {
+        padding: 10px 14px;
+      }
+      .kds-main {
+        padding: 14px 14px 40px;
+      }
+      .kds-clock {
+        display: none;
+      }
+      .kds-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Top KDS Navigation Bar -->
+  <header class="kds-navbar">
+    <div class="kds-brand">
+      <img src="AU-dark.svg" alt="AOLA KDS Logo" class="kds-brand-logo" onerror="this.style.display='none'">
+      <div>
+        <div class="kds-brand-title">
+          <span id="kds-shop-name">Kitchen Display</span>
+          <span class="kds-status-pill">
+            <span class="kds-status-dot"></span>
+            <span id="kds-realtime-status">Live KDS</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="kds-header-center">
+      <div class="kds-queue-counter">
+        <i data-lucide="chef-hat" style="width:18px;height:18px;color:var(--kds-amber);"></i>
+        <span>Queue:</span>
+        <span class="kds-queue-badge" id="kds-count-pending">0</span>
+      </div>
+      <div class="kds-clock" id="kds-live-clock">--:--:--</div>
+    </div>
+
+    <div class="kds-header-actions">
+      <button class="btn-kds-control active" id="btn-toggle-sound" title="Toggle Audio Notification Chime">
+        <i data-lucide="volume-2" style="width:16px;height:16px;" id="icon-sound"></i>
+        <span id="text-sound">Chime: ON</span>
+      </button>
+
+      <button class="btn-kds-control" id="btn-toggle-fullscreen" title="Toggle Fullscreen Kiosk Mode">
+        <i data-lucide="maximize" style="width:16px;height:16px;"></i>
+        <span>Fullscreen</span>
+      </button>
+
+      <button class="btn-kds-control" id="btn-refresh" title="Manually Sync Active Orders">
+        <i data-lucide="refresh-cw" style="width:15px;height:15px;"></i>
+      </button>
+
+      <a href="owner.html" class="btn-kds-control" id="link-cashier-portal" title="Open Cashier &amp; Billing Portal">
+        <i data-lucide="receipt" style="width:15px;height:15px;color:var(--kds-blue);"></i>
+        <span>Cashier Portal</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Main KDS Orders Viewport -->
+  <main class="kds-main">
+    <section class="kds-grid" id="kds-ticket-grid">
+      <!-- Dynamically filled with pending kitchen order cards -->
+    </section>
+  </main>
+
+  <!-- Audio unlock helper modal (if browser blocked autoplay) -->
+  <div id="audio-unlock-overlay" style="display:none; position:fixed; bottom:20px; left:20px; z-index:100; background:#1E293B; border:1px solid var(--kds-primary); padding:10px 16px; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.5); cursor:pointer;">
+    <div style="display:flex; align-items:center; gap:8px; color:var(--kds-primary); font-size:0.82rem; font-weight:700;">
+      <i data-lucide="volume-2" style="width:16px;height:16px;"></i>
+      <span>Tap anywhere to enable kitchen order chime</span>
+    </div>
+  </div>
+
+  <!-- Global scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/logger.js"></script>
+  <script src="js/api.js"></script>
+
+  <script>
+    (function() {
+      "use strict";
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const shopId = (urlParams.get("shop") || localStorage.getItem("AOLA_KITCHEN_SHOP") || "bismillah").toLowerCase().trim();
+      localStorage.setItem("AOLA_KITCHEN_SHOP", shopId);
+
+      // Update link to cashier portal
+      const cashierLink = document.getElementById("link-cashier-portal");
+      if (cashierLink) cashierLink.href = `owner.html?shop=${encodeURIComponent(shopId)}`;
+
+      let state = {
+        shopId: shopId,
+        shopName: "Kitchen",
+        orders: [],
+        soundEnabled: true,
+        audioContext: null,
+        audioUnlocked: false,
+        realtimeChannel: null,
+        timerInterval: null
+      };
+
+      const el = {
+        grid: document.getElementById("kds-ticket-grid"),
+        countPending: document.getElementById("kds-count-pending"),
+        shopName: document.getElementById("kds-shop-name"),
+        clock: document.getElementById("kds-live-clock"),
+        btnSound: document.getElementById("btn-toggle-sound"),
+        iconSound: document.getElementById("icon-sound"),
+        textSound: document.getElementById("text-sound"),
+        btnFullscreen: document.getElementById("btn-toggle-fullscreen"),
+        btnRefresh: document.getElementById("btn-refresh"),
+        realtimeStatus: document.getElementById("kds-realtime-status"),
+        audioUnlockOverlay: document.getElementById("audio-unlock-overlay")
+      };
+
+      // ── Web Audio API Two-Tone Chime Generator ──
+      function initAudio() {
+        if (!state.audioContext) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) {
+            state.audioContext = new AudioCtx();
+          }
+        }
+        if (state.audioContext && state.audioContext.state === "suspended") {
+          state.audioContext.resume().then(() => {
+            state.audioUnlocked = true;
+            if (el.audioUnlockOverlay) el.audioUnlockOverlay.style.display = "none";
+          }).catch(() => {});
+        } else if (state.audioContext) {
+          state.audioUnlocked = true;
+          if (el.audioUnlockOverlay) el.audioUnlockOverlay.style.display = "none";
+        }
+      }
+
+      function playKitchenChime() {
+        if (!state.soundEnabled) return;
+        initAudio();
+        if (!state.audioContext) return;
+
+        try {
+          const ctx = state.audioContext;
+          const now = ctx.currentTime;
+
+          // Note 1: D5 (587.33 Hz)
+          const osc1 = ctx.createOscillator();
+          const gain1 = ctx.createGain();
+          osc1.type = "sine";
+          osc1.frequency.setValueAtTime(587.33, now);
+          gain1.gain.setValueAtTime(0.4, now);
+          gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+          osc1.connect(gain1);
+          gain1.connect(ctx.destination);
+          osc1.start(now);
+          osc1.stop(now + 0.3);
+
+          // Note 2: A5 (880 Hz) — distinct two-tone restaurant bell
+          const osc2 = ctx.createOscillator();
+          const gain2 = ctx.createGain();
+          osc2.type = "sine";
+          osc2.frequency.setValueAtTime(880, now + 0.15);
+          gain2.gain.setValueAtTime(0.5, now + 0.15);
+          gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+          osc2.connect(gain2);
+          gain2.connect(ctx.destination);
+          osc2.start(now + 0.15);
+          osc2.stop(now + 0.65);
+        } catch (e) {
+          console.warn("[Kitchen KDS] Audio playback exception:", e);
+        }
+      }
+
+      // Unlock audio on first touch/click
+      document.addEventListener("click", function unlockAudioOnFirstClick() {
+        initAudio();
+        document.removeEventListener("click", unlockAudioOnFirstClick);
+      }, { once: true });
+
+      // Live Digital Clock
+      function startClock() {
+        function tick() {
+          if (el.clock) {
+            const now = new Date();
+            el.clock.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          }
+        }
+        tick();
+        setInterval(tick, 1000);
+      }
+
+      // Safe HTML escaping
+      function escapeHtml(str) {
+        if (!str) return "";
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      // Parse individual dish string into items
+      function parseDishList(rawItems) {
+        if (!rawItems) return [];
+        if (Array.isArray(rawItems)) {
+          return rawItems.map(it => ({
+            name: it.name || it.dishName || "Item",
+            qty: it.qty || it.quantity || 1,
+            note: it.note || it.instructions || ""
+          }));
+        }
+
+        const str = String(rawItems).trim();
+        if (str.startsWith("[") || str.startsWith("{")) {
+          try {
+            const parsed = JSON.parse(str);
+            if (Array.isArray(parsed)) {
+              return parsed.map(it => ({
+                name: it.name || it.dishName || "Item",
+                qty: it.qty || it.quantity || 1,
+                note: it.note || it.instructions || ""
+              }));
+            }
+          } catch (e) {}
+        }
+
+        // Text parsing: e.g. "2x Chicken Dum Biryani, 1x Butter Naan"
+        return str.split(/,\s*/).map(part => {
+          part = part.trim();
+          let qty = 1;
+          let name = part;
+          let note = "";
+
+          // Extract note [Note: ...]
+          const noteMatch = name.match(/\[(?:Notes?|Note|Instructions?):\s*([^\]]+)\]/i);
+          if (noteMatch) {
+            note = noteMatch[1].trim();
+            name = name.replace(noteMatch[0], "").trim();
+          }
+
+          // Strip price in parentheses: (₹250)
+          name = name.replace(/\s*\([^)]*\)\s*$/, "").trim();
+
+          // Extract quantity prefix: 2x or 2 ×
+          const qtyMatch = name.match(/^(\d+)\s*[x×]\s*(.*)$/i);
+          if (qtyMatch) {
+            qty = parseInt(qtyMatch[1], 10) || 1;
+            name = qtyMatch[2].trim();
+          }
+
+          return { name, qty, note };
+        }).filter(d => d.name.length > 0);
+      }
+
+      // Elapsed time calculation
+      function getElapsedMeta(timestamp) {
+        if (!timestamp) return { text: "Just now", class: "kds-timer-normal", isRush: false };
+        const created = new Date(timestamp).getTime();
+        const diffMs = Math.max(0, Date.now() - created);
+        const mins = Math.floor(diffMs / 60000);
+        const secs = Math.floor((diffMs % 60000) / 1000);
+
+        const timeStr = `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
+
+        if (mins >= 12) {
+          return { text: `🔥 ${timeStr} - RUSH`, class: "kds-timer-rush", isRush: true };
+        } else if (mins >= 5) {
+          return { text: `⏱ ${timeStr}`, class: "kds-timer-warning", isRush: false };
+        }
+        return { text: `⏱ ${timeStr}`, class: "kds-timer-normal", isRush: false };
+      }
+
+      // Render all pending tickets
+      function renderTickets() {
+        if (!el.grid) return;
+
+        const pending = state.orders.filter(o => {
+          const s = String(o.status || "pending").toLowerCase().trim();
+          return s === "pending" || s === "new";
+        });
+
+        if (el.countPending) el.countPending.textContent = pending.length;
+
+        if (pending.length === 0) {
+          el.grid.innerHTML = `
+            <div class="kds-empty-state">
+              <div class="kds-empty-icon">
+                <i data-lucide="check-check" style="width:40px;height:40px;"></i>
+              </div>
+              <h2 class="kds-empty-title">All Caught Up, Chef! 👨‍🍳</h2>
+              <p class="kds-empty-desc">
+                No pending orders in the kitchen queue. When customers or cashiers place an order, it will appear here immediately with an audible chime.
+              </p>
+            </div>
+          `;
+          if (window.lucide) lucide.createIcons();
+          return;
+        }
+
+        el.grid.innerHTML = "";
+
+        pending.forEach(ord => {
+          const dishList = parseDishList(ord.items);
+          const elapsed = getElapsedMeta(ord.timestamp);
+          const card = document.createElement("article");
+          card.className = `kds-card ${elapsed.isRush ? "urgent" : ""}`;
+          card.id = `kds-card-${ord.orderId}`;
+
+          card.innerHTML = `
+            <div class="kds-card-header">
+              <div>
+                <span class="kds-table-badge">TABLE ${escapeHtml(ord.tableNumber || "1")}</span>
+                <div style="font-size:0.75rem; color:var(--kds-dim); margin-top:4px; font-weight:700;">
+                  ${escapeHtml(ord.orderSource || "QR")} ORDER
+                </div>
+              </div>
+              <div class="kds-order-meta">
+                <span class="kds-order-id">#${escapeHtml(ord.orderId)}</span>
+                <span class="kds-timer-badge ${elapsed.class}" id="timer-${ord.orderId}">
+                  ${elapsed.text}
+                </span>
+              </div>
+            </div>
+
+            <ul class="kds-dish-list">
+              ${dishList.map((dish, idx) => `
+                <li class="kds-dish-item" onclick="this.classList.toggle('plated')" title="Tap to cross off when plated">
+                  <div class="kds-dish-qty">${dish.qty}×</div>
+                  <div class="kds-dish-details">
+                    <div class="kds-dish-name">${escapeHtml(dish.name)}</div>
+                    ${dish.note ? `<span class="kds-dish-note"><i data-lucide="info" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> ${escapeHtml(dish.note)}</span>` : ""}
+                  </div>
+                </li>
+              `).join("")}
+            </ul>
+
+            ${ord.customerNotes ? `
+              <div class="kds-notes-box">
+                <i data-lucide="message-square" style="width:16px;height:16px;flex-shrink:0;color:var(--kds-amber);"></i>
+                <div>
+                  <strong style="color:#FFFFFF;display:block;margin-bottom:2px;">Special Instructions:</strong>
+                  <span>${escapeHtml(ord.customerNotes)}</span>
+                </div>
+              </div>
+            ` : ""}
+
+            <button class="btn-mark-ready" data-id="${escapeHtml(ord.orderId)}">
+              <i data-lucide="check-circle-2" style="width:18px;height:18px;"></i>
+              <span>MARK AS READY</span>
+            </button>
+          `;
+
+          el.grid.appendChild(card);
+        });
+
+        // Bind Mark as Ready actions
+        el.grid.querySelectorAll(".btn-mark-ready").forEach(btn => {
+          btn.addEventListener("click", function(e) {
+            e.stopPropagation();
+            const orderId = this.dataset.id;
+            markOrderReady(orderId, this);
+          });
+        });
+
+        if (window.lucide) lucide.createIcons();
+      }
+
+      // Update elapsed timers every second
+      function startElapsedTimer() {
+        if (state.timerInterval) clearInterval(state.timerInterval);
+        state.timerInterval = setInterval(() => {
+          state.orders.forEach(ord => {
+            const timerEl = document.getElementById(`timer-${ord.orderId}`);
+            if (timerEl) {
+              const meta = getElapsedMeta(ord.timestamp);
+              timerEl.className = `kds-timer-badge ${meta.class}`;
+              timerEl.textContent = meta.text;
+
+              const cardEl = document.getElementById(`kds-card-${ord.orderId}`);
+              if (cardEl) {
+                if (meta.isRush) cardEl.classList.add("urgent");
+                else cardEl.classList.remove("urgent");
+              }
+            }
+          });
+        }, 1000);
+      }
+
+      // Action: Mark Order as Ready
+      async function markOrderReady(orderId, buttonEl) {
+        if (!orderId) return;
+
+        if (buttonEl) {
+          buttonEl.disabled = true;
+          buttonEl.innerHTML = `<span class="btn-spinner"></span><span>Marking Ready...</span>`;
+        }
+
+        try {
+          const res = await AOLA_API.post("update_order_status", {
+            shop_id: state.shopId,
+            order_id: orderId,
+            status: "ready"
+          });
+
+          if (!res || !res.success) {
+            showToast(res && res.error ? res.error : "Failed to update order status.", "error");
+            if (buttonEl) {
+              buttonEl.disabled = false;
+              buttonEl.innerHTML = `<i data-lucide="check-circle-2" style="width:18px;height:18px;"></i><span>MARK AS READY</span>`;
+              if (window.lucide) lucide.createIcons();
+            }
+            return;
+          }
+
+          // Smooth card removal animation
+          const cardEl = document.getElementById(`kds-card-${orderId}`);
+          if (cardEl) {
+            cardEl.classList.add("ready-animating");
+            setTimeout(() => {
+              state.orders = state.orders.filter(o => String(o.orderId) !== String(orderId));
+              renderTickets();
+            }, 250);
+          } else {
+            state.orders = state.orders.filter(o => String(o.orderId) !== String(orderId));
+            renderTickets();
+          }
+
+          showToast(`Order #${orderId} marked READY for Cashier Billing!`, "success");
+        } catch (err) {
+          console.error("[KDS Mark Ready Error]:", err);
+          showToast("Network error updating order status.", "error");
+          if (buttonEl) {
+            buttonEl.disabled = false;
+            buttonEl.innerHTML = `<i data-lucide="check-circle-2" style="width:18px;height:18px;"></i><span>MARK AS READY</span>`;
+            if (window.lucide) lucide.createIcons();
+          }
+        }
+      }
+
+      // Fetch pending orders from Supabase via AOLA_API
+      async function fetchKitchenOrders(silent = false) {
+        if (!silent && el.btnRefresh) {
+          el.btnRefresh.innerHTML = `<span class="btn-spinner" style="border-top-color:#fff;border-color:rgba(255,255,255,0.3);"></span>`;
+        }
+
+        try {
+          const res = await AOLA_API.get("get_kitchen_orders", {
+            shop_id: state.shopId
+          });
+
+          if (res && res.success) {
+            if (res.shopName) {
+              state.shopName = res.shopName;
+              if (el.shopName) el.shopName.textContent = `${res.shopName} · Kitchen`;
+            }
+
+            const incomingOrders = res.orders || [];
+            
+            // Check if brand new orders arrived during polling to play chime
+            if (silent && incomingOrders.length > state.orders.length) {
+              playKitchenChime();
+            }
+
+            state.orders = incomingOrders;
+            renderTickets();
+          } else {
+            console.warn("[KDS Fetch Note]:", res && res.error);
+          }
+        } catch (e) {
+          console.error("[KDS Fetch Exception]:", e);
+        } finally {
+          if (el.btnRefresh) {
+            el.btnRefresh.innerHTML = `<i data-lucide="refresh-cw" style="width:15px;height:15px;"></i>`;
+            if (window.lucide) lucide.createIcons();
+          }
+        }
+      }
+
+      // Subscribe to Supabase Realtime for instant ticket push
+      function setupRealtime() {
+        if (AOLA_API && typeof AOLA_API.subscribeToOrders === "function") {
+          state.realtimeChannel = AOLA_API.subscribeToOrders(state.shopId, {
+            onInsert: (newOrder) => {
+              console.log("🔥 [KDS Realtime] New Order Placed:", newOrder);
+              const orderStatus = String(newOrder.status || "pending").toLowerCase();
+              if (orderStatus === "pending" || orderStatus === "new") {
+                playKitchenChime();
+                showToast(`🔔 New Order Table ${newOrder.table_number || "1"} received!`, "success");
+                fetchKitchenOrders(true);
+              }
+            },
+            onUpdate: (updatedOrder) => {
+              console.log("⚡ [KDS Realtime] Order Status Updated:", updatedOrder);
+              const st = String(updatedOrder.status || "").toLowerCase();
+              // If order was cancelled or marked ready from another kitchen screen
+              if (st !== "pending" && st !== "new") {
+                state.orders = state.orders.filter(o => String(o.orderId) !== String(updatedOrder.id));
+                renderTickets();
+              }
+            },
+            onDelete: (deletedOrder) => {
+              state.orders = state.orders.filter(o => String(o.orderId) !== String(deletedOrder.id));
+              renderTickets();
+            }
+          });
+        }
+      }
+
+      // UI Controls: Sound Toggle
+      if (el.btnSound) {
+        el.btnSound.onclick = () => {
+          state.soundEnabled = !state.soundEnabled;
+          if (state.soundEnabled) {
+            initAudio();
+            el.btnSound.classList.add("active");
+            if (el.iconSound) el.iconSound.setAttribute("data-lucide", "volume-2");
+            if (el.textSound) el.textSound.textContent = "Chime: ON";
+            showToast("Audio chime enabled.", "success");
+          } else {
+            el.btnSound.classList.remove("active");
+            if (el.iconSound) el.iconSound.setAttribute("data-lucide", "volume-x");
+            if (el.textSound) el.textSound.textContent = "Chime: OFF";
+            showToast("Audio chime muted.", "info");
+          }
+          if (window.lucide) lucide.createIcons();
+        };
+      }
+
+      // UI Controls: Fullscreen Toggle
+      if (el.btnFullscreen) {
+        el.btnFullscreen.onclick = () => {
+          if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => {});
+          } else {
+            if (document.exitFullscreen) document.exitFullscreen();
+          }
+        };
+      }
+
+      // UI Controls: Manual Refresh
+      if (el.btnRefresh) {
+        el.btnRefresh.onclick = () => fetchKitchenOrders(false);
+      }
+
+      // Initialization on Load
+      window.addEventListener("DOMContentLoaded", () => {
+        startClock();
+        fetchKitchenOrders(false);
+        setupRealtime();
+        startElapsedTimer();
+
+        // 25-second failover polling in case of network blips
+        setInterval(() => fetchKitchenOrders(true), 25000);
+      });
+
+    })();
+  </script>
+</body>
+</html>

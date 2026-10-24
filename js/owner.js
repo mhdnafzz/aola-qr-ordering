@@ -10,7 +10,7 @@
     orders: [],
     expenses: [],
     totalExpenses: 0,
-    activeTab: "pending", // "pending" | "completed"
+    activeTab: "ready", // "ready" (ready for billing) | "pending" (in kitchen prep)
     currentView: "orders", // "orders" | "history" | "menu" | "expenses" | "trends"
     historySubtab: "all", // "all" | "completed" | "voided"
     trendTimeframe: "daily", // "daily" | "weekly" | "monthly" | "yearly"
@@ -111,7 +111,7 @@
     sectionTrendsView: document.getElementById("section-trends-view"),
     countMenuItems: document.getElementById("count-menu-items"),
 
-    // Kitchen Tickets View
+    // Kitchen Tickets View & KDS Billing Queue
     tabPending: document.getElementById("tab-pending"),
     tabCompleted: document.getElementById("tab-completed"),
     countPending: document.getElementById("count-pending"),
@@ -119,6 +119,15 @@
     ticketGrid: document.getElementById("ticket-grid"),
     chkAudio: document.getElementById("chk-audio"),
     btnTogglePinVisibility: document.getElementById("btn-toggle-pin-visibility"),
+    billingQueueHeading: document.getElementById("billing-queue-heading"),
+    billingQueueSubtitle: document.getElementById("billing-queue-subtitle"),
+    badgeReadyCount: document.getElementById("badge-ready-count"),
+    paidOrdersSection: document.getElementById("paid-orders-section"),
+    paidOrdersTable: document.getElementById("paid-orders-table"),
+    paidOrdersTbody: document.getElementById("paid-orders-tbody"),
+    paidOrdersEmpty: document.getElementById("paid-orders-empty"),
+    paidOrdersCountBadge: document.getElementById("paid-orders-count-badge"),
+    btnQuickToHistory: document.getElementById("btn-quick-to-history"),
 
     // Historical Reconciliation View & Metrics
     metricTotalRevenue: document.getElementById("metric-total-revenue"),
@@ -1613,20 +1622,30 @@
       el.settingsForm.onsubmit = handleSaveSettingsSubmit;
     }
 
-    // Orders Filter Tabs
-    el.tabPending.onclick = () => {
-      state.activeTab = "pending";
-      el.tabPending.classList.add("active");
-      el.tabCompleted.classList.remove("active");
-      renderTickets();
-    };
+    // Orders Filter Tabs (Ready to Bill vs In Kitchen Prep)
+    if (el.tabPending) {
+      el.tabPending.onclick = () => {
+        state.activeTab = "ready";
+        el.tabPending.classList.add("active");
+        if (el.tabCompleted) el.tabCompleted.classList.remove("active");
+        renderTickets();
+      };
+    }
 
-    el.tabCompleted.onclick = () => {
-      state.activeTab = "completed";
-      el.tabCompleted.classList.add("active");
-      el.tabPending.classList.remove("active");
-      renderTickets();
-    };
+    if (el.tabCompleted) {
+      el.tabCompleted.onclick = () => {
+        state.activeTab = "pending";
+        el.tabCompleted.classList.add("active");
+        if (el.tabPending) el.tabPending.classList.remove("active");
+        renderTickets();
+      };
+    }
+
+    if (el.btnQuickToHistory) {
+      el.btnQuickToHistory.onclick = () => {
+        if (el.viewTabHistory) el.viewTabHistory.click();
+      };
+    }
 
     // Thermal Paper Width Selection (58mm vs 80mm)
     if (el.btnPaper58mm) {
@@ -1678,11 +1697,21 @@
     if (el.ticketGrid && !el.ticketGrid._hasDelegatedListeners) {
       el.ticketGrid._hasDelegatedListeners = true;
       el.ticketGrid.addEventListener("click", (e) => {
-        const completeBtn = e.target.closest(".btn-complete-order");
-        if (completeBtn && completeBtn.dataset.id) {
+        // Checkout / Pay button
+        const payBtn = e.target.closest(".btn-pay-order") || e.target.closest(".btn-complete-order");
+        if (payBtn && payBtn.dataset.id) {
           e.preventDefault();
           e.stopPropagation();
-          completeOrder(completeBtn.dataset.id, completeBtn);
+          payOrder(payBtn.dataset.id, payBtn);
+          return;
+        }
+
+        // Mark Ready button (expedite from owner screen)
+        const readyBtn = e.target.closest(".btn-mark-ready");
+        if (readyBtn && readyBtn.dataset.id) {
+          e.preventDefault();
+          e.stopPropagation();
+          markOrderReady(readyBtn.dataset.id, readyBtn);
           return;
         }
 
@@ -1983,9 +2012,19 @@
     if (!state.shopId) return;
 
     if (AOLA_API && typeof AOLA_API.subscribeToOrders === 'function') {
-      state.realtimeChannel = AOLA_API.subscribeToOrders(state.shopId, (newOrder) => {
-        playNewOrderSound();
-        showToast("🔔 New Kitchen Order Received!", "success");
+      state.realtimeChannel = AOLA_API.subscribeToOrders(state.shopId, (orderPayload, eventType, oldPayload) => {
+        const orderStatus = (orderPayload?.status || "").toLowerCase();
+
+        // Realtime UPDATE: When the kitchen changes an order to 'ready', play notification audio and render
+        if (orderStatus === "ready" || (eventType === "UPDATE" && orderStatus === "ready")) {
+          playNewOrderSound();
+          showToast(`🍽️ Order #${orderPayload.id || orderPayload.order_id || ""} is READY from Kitchen! Bill now.`, "success");
+        } else if (eventType === "INSERT") {
+          showToast(`📋 New order placed for Table ${orderPayload.table_number || "1"} (In Kitchen Prep)`, "info");
+        } else if (orderStatus === "paid") {
+          showToast(`💰 Order #${orderPayload.id || orderPayload.order_id || ""} settled & paid!`, "info");
+        }
+
         fetchOrders(false);
       });
     }
@@ -2048,42 +2087,55 @@
       customerNotes: String(o.customerNotes || o.customer_notes || o.notes || "").trim()
     }));
 
-    let hasNewPendingOrder = false;
+    let hasNewReadyOrder = false;
     state.orders.forEach((o) => {
-      const isPending = o.status.toLowerCase() === "pending" || o.status.toLowerCase() === "new";
-      if (isPending) {
-        if (!state.knownOrderIds.has(o.orderId)) {
+      const isReady = (o.status || "").toLowerCase() === "ready";
+      if (isReady) {
+        if (!state.knownOrderIds.has(o.orderId + "_ready")) {
           if (!state.isInitialLoad) {
-            hasNewPendingOrder = true;
+            hasNewReadyOrder = true;
           }
         }
+        state.knownOrderIds.add(o.orderId + "_ready");
       }
       state.knownOrderIds.add(o.orderId);
     });
 
     state.isInitialLoad = false;
 
-    if (hasNewPendingOrder) {
+    if (hasNewReadyOrder) {
       playNewOrderSound();
-      showToast("🔔 New Kitchen Order Received!", "success");
+      showToast("🍽️ Order is Ready from Kitchen! Ready for Billing.", "success");
     }
 
     updateCounts();
     renderTickets();
+    renderPaidOrdersTable();
     if (state.currentView === "history") {
       renderHistoryView();
     }
   }
 
   function updateCounts() {
-    const pendingCount = state.orders.filter((o) => {
-      const s = o.status.toLowerCase();
+    const readyCount = state.orders.filter((o) => {
+      const s = (o.status || "").toLowerCase();
+      return s === "ready";
+    }).length;
+
+    const prepCount = state.orders.filter((o) => {
+      const s = (o.status || "").toLowerCase();
       return s === "pending" || s === "new";
     }).length;
-    const completedCount = state.orders.filter((o) => o.status.toLowerCase() === "completed").length;
 
-    el.countPending.textContent = pendingCount;
-    el.countCompleted.textContent = completedCount;
+    const paidCount = state.orders.filter((o) => {
+      const s = (o.status || "").toLowerCase();
+      return s === "paid" || s === "completed";
+    }).length;
+
+    if (el.countPending) el.countPending.textContent = readyCount;
+    if (el.countCompleted) el.countCompleted.textContent = prepCount;
+    if (el.badgeReadyCount) el.badgeReadyCount.textContent = `${readyCount} Ready to Bill`;
+    if (el.paidOrdersCountBadge) el.paidOrdersCountBadge.textContent = `${paidCount} Paid`;
   }
 
   /**
@@ -2169,10 +2221,18 @@
    * Render Ticket Cards (Optimized with Rush-Hour Bullet Points & Check-off)
    */
   function renderTickets() {
+    // If activeTab is 'ready', show 'ready' orders (primary cashier queue)
+    // If activeTab is 'pending', show 'pending' / 'new' orders (in kitchen prep)
     const filtered = state.orders.filter((o) => {
-      const isPending = o.status.toLowerCase() === "pending" || o.status.toLowerCase() === "new";
-      return state.activeTab === "pending" ? isPending : !isPending;
+      const s = (o.status || "").toLowerCase();
+      if (state.activeTab === "ready") {
+        return s === "ready";
+      } else {
+        return s === "pending" || s === "new";
+      }
     });
+
+    const isReadyTab = state.activeTab === "ready";
 
     if (filtered.length === 0) {
       el.ticketGrid.innerHTML = `
@@ -2180,9 +2240,11 @@
           <div class="empty-state-icon" style="color:var(--accent-emerald);">
             <i data-lucide="check-check" style="width:40px;height:40px;"></i>
           </div>
-          <h3 style="color:var(--brand-navy); font-size:1.1rem;">No ${state.activeTab} orders right now</h3>
+          <h3 style="color:var(--brand-navy); font-size:1.1rem;">
+            ${isReadyTab ? "No orders waiting for billing" : "No orders in kitchen prep"}
+          </h3>
           <p style="font-size:0.86rem;color:var(--text-muted);margin-top:6px;">
-            ${state.activeTab === "pending" ? "All clear! New QR orders will appear here automatically." : "No completed orders recorded yet."}
+            ${isReadyTab ? "All caught up! When the kitchen finishes cooking and marks an order as ready, it will instantly alert and appear here for checkout." : "Chefs are caught up! New customer orders will appear here automatically."}
           </p>
         </div>
       `;
@@ -2192,17 +2254,26 @@
 
     el.ticketGrid.innerHTML = "";
     filtered.forEach((ord) => {
-      const isPending = ord.status.toLowerCase() === "pending" || ord.status.toLowerCase() === "new";
+      const s = (ord.status || "").toLowerCase();
+      const isReady = s === "ready";
+      const isPending = s === "pending" || s === "new";
       const dishList = parseOrderDishItems(ord.items);
       const totalQty = dishList.reduce((sum, d) => sum + (d.qty || 1), 0);
 
       const card = document.createElement("article");
-      card.className = `ticket-card ${isPending ? "pending" : "completed"}`;
+      card.className = `ticket-card ${isReady ? "ready" : "pending"}`;
+      card.style.borderTop = isReady ? "4px solid #059669" : "4px solid #F59E0B";
 
       card.innerHTML = `
         <div class="ticket-header">
           <div>
-            <span class="ticket-table-badge">TABLE ${escapeHtml(ord.tableNumber)}</span>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="ticket-table-badge">TABLE ${escapeHtml(ord.tableNumber)}</span>
+              ${isReady 
+                ? `<span style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:999px; background:#D1FAE5; color:#065F46; font-size:0.72rem; font-weight:700;"><i data-lucide="bell" style="width:11px;height:11px;"></i> READY TO BILL</span>` 
+                : `<span style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:999px; background:#FEF3C7; color:#92400E; font-size:0.72rem; font-weight:700;"><i data-lucide="chef-hat" style="width:11px;height:11px;"></i> PREPARING</span>`
+              }
+            </div>
             <div style="font-size:0.75rem; color:var(--text-dim); margin-top:4px; font-family:monospace; font-weight:600;">ID: ${escapeHtml(ord.orderId)}</div>
           </div>
           <span class="ticket-time">
@@ -2217,12 +2288,11 @@
               <i data-lucide="shopping-bag" style="width:13px;height:13px;"></i>
               <span>${totalQty} ${totalQty === 1 ? "Item" : "Items"} (${dishList.length} ${dishList.length === 1 ? "dish" : "dishes"})</span>
             </span>
-            ${isPending ? `<span class="ticket-rush-hint">Tap item when plated</span>` : ""}
           </div>
 
           <ul class="ticket-bullet-list">
             ${dishList.map((dish) => `
-              <li class="ticket-bullet-item ${!isPending ? 'dish-prepared' : ''}" ${isPending ? 'onclick="this.classList.toggle(\'dish-prepared\')"' : ''} title="${isPending ? 'Tap to mark plated' : ''}">
+              <li class="ticket-bullet-item ${isReady ? 'dish-prepared' : ''}">
                 <div class="ticket-dish-bullet-left">
                   <span class="ticket-dish-qty-badge ${dish.qty > 1 ? 'multi-qty' : ''}">${dish.qty}×</span>
                   <div class="ticket-dish-title-wrap">
@@ -2248,7 +2318,7 @@
 
         <div class="ticket-footer">
           <div class="ticket-price">${formatCurrency(ord.totalPrice)}</div>
-          <div style="display:flex; gap:6px; align-items:center;">
+          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
             <button class="btn-secondary btn-open-bill" data-id="${escapeHtml(ord.orderId)}" title="Generate Customer Bill &amp; Print" style="padding:6px 10px; display:inline-flex; align-items:center; gap:5px; font-weight:600; font-size:0.8rem; border-color:var(--border-subtle); color:var(--brand-navy);">
               <i data-lucide="receipt" style="width:14px;height:14px;color:var(--accent-emerald);"></i>
               <span>Bill</span>
@@ -2256,19 +2326,23 @@
             <button class="btn-secondary btn-quick-kot" data-id="${escapeHtml(ord.orderId)}" title="Instant Print Kitchen KOT" style="padding:6px 8px; border-color:var(--border-subtle);">
               <i data-lucide="printer" style="width:14px;height:14px;"></i>
             </button>
+            <button class="btn-void-ticket" data-id="${escapeHtml(ord.orderId)}" title="Void / Cancel Order" style="padding:6px 8px; font-size:0.78rem;">
+              <i data-lucide="trash-2" style="width:13px;height:13px;"></i>
+            </button>
             ${
-              isPending
+              isReady
                 ? `
-                  <button class="btn-void-ticket" data-id="${escapeHtml(ord.orderId)}" title="Void / Cancel Order">
-                    <i data-lucide="trash-2" style="width:13px;height:13px;"></i>
-                    <span>Void</span>
-                  </button>
-                  <button class="btn-emerald btn-complete-order" data-id="${escapeHtml(ord.orderId)}" style="padding:6px 12px; font-size:0.8rem;">
-                    <i data-lucide="check-circle-2" style="width:14px;height:14px;"></i>
-                    <span>Complete</span>
+                  <button class="btn-emerald btn-pay-order" data-id="${escapeHtml(ord.orderId)}" style="padding:6px 14px; font-size:0.82rem; font-weight:700; display:inline-flex; align-items:center; gap:6px; background:linear-gradient(135deg, #059669 0%, #047857 100%); color:#FFFFFF; border-radius:var(--radius-sm); border:none; box-shadow:0 2px 6px rgba(5,150,105,0.25);">
+                    <i data-lucide="credit-card" style="width:14px;height:14px;"></i>
+                    <span>Checkout / Pay</span>
                   </button>
                 `
-                : `<span class="status-badge active"><i data-lucide="check" style="width:13px;height:13px;"></i> Done</span>`
+                : `
+                  <button class="btn-secondary btn-mark-ready" data-id="${escapeHtml(ord.orderId)}" style="padding:6px 10px; font-size:0.8rem; font-weight:600; color:#D97706; border-color:#FDE68A; background:#FFFBEB;" title="Mark ready if prepared">
+                    <i data-lucide="check" style="width:13px;height:13px;"></i>
+                    <span>Mark Ready</span>
+                  </button>
+                `
             }
           </div>
         </div>
@@ -2284,10 +2358,17 @@
       };
     });
 
-    el.ticketGrid.querySelectorAll(".btn-complete-order").forEach((b) => {
+    el.ticketGrid.querySelectorAll(".btn-pay-order").forEach((b) => {
       b.onclick = (e) => {
         if (e && e.stopPropagation) e.stopPropagation();
-        completeOrder(b.dataset.id, b);
+        payOrder(b.dataset.id, b);
+      };
+    });
+
+    el.ticketGrid.querySelectorAll(".btn-mark-ready").forEach((b) => {
+      b.onclick = (e) => {
+        if (e && e.stopPropagation) e.stopPropagation();
+        markOrderReady(b.dataset.id, b);
       };
     });
 
@@ -2514,55 +2595,174 @@
   }
 
   /**
-   * Action: Mark Order as Complete (Instant 1-Click Fast Kitchen Execution)
+   * Cashier Billing Action: Checkout / Pay
+   * Updates Supabase order status to 'paid', moves order out of live queue and into Paid History
    */
-  async function completeOrder(orderId, buttonEl) {
+  async function payOrder(orderId, buttonEl) {
     if (buttonEl) {
       buttonEl.disabled = true;
-      buttonEl.innerHTML = `<span class="btn-spinner"></span><span>Updating...</span>`;
+      buttonEl.innerHTML = `<span class="btn-spinner"></span><span>Settling...</span>`;
     }
 
     try {
       const activeShop = state.shopId || sessionStorage.getItem("AOLA_OWNER_SHOP") || "bismillah";
       const activePin = state.pin || sessionStorage.getItem("AOLA_OWNER_PIN") || "1234";
 
-      const response = await AOLA_API.post("complete_order", {
+      const response = await AOLA_API.post("update_order_status", {
         shop_id: activeShop,
         pin: activePin,
-        order_id: orderId
+        order_id: orderId,
+        status: "paid"
       });
 
       if (!response.success) {
-        showToast(response.error || "Failed to update order status.", "error");
+        showToast(response.error || "Failed to update payment status.", "error");
         if (buttonEl) {
           buttonEl.disabled = false;
-          buttonEl.innerHTML = `<i data-lucide="check-circle-2" style="width:14px;height:14px;"></i><span>Complete</span>`;
+          buttonEl.innerHTML = `<i data-lucide="credit-card" style="width:14px;height:14px;"></i><span>Checkout / Pay</span>`;
           if (window.lucide) lucide.createIcons();
         }
         return;
       }
 
-      showToast(`Order #${orderId} marked as completed!`, "success");
+      showToast(`💰 Order #${orderId} marked as PAID & moved to history!`, "success");
 
       const ord = state.orders.find((o) => String(o.orderId) === String(orderId));
       if (ord) {
-        ord.status = "Completed";
+        ord.status = "paid";
       }
 
       updateCounts();
       renderTickets();
+      renderPaidOrdersTable();
       if (state.currentView === "history") {
         renderHistoryView();
       }
     } catch (err) {
-      console.error("[Complete Order Error]:", err);
+      console.error("[Pay Order Error]:", err);
       showToast("Error communicating with server.", "error");
       if (buttonEl) {
         buttonEl.disabled = false;
-        buttonEl.innerHTML = `<i data-lucide="check-circle-2" style="width:14px;height:14px;"></i><span>Complete</span>`;
+        buttonEl.innerHTML = `<i data-lucide="credit-card" style="width:14px;height:14px;"></i><span>Checkout / Pay</span>`;
         if (window.lucide) lucide.createIcons();
       }
     }
+  }
+
+  // Alias for backward compatibility
+  function completeOrder(orderId, buttonEl) {
+    return payOrder(orderId, buttonEl);
+  }
+
+  /**
+   * Action: Expedite / Mark Order as Ready directly from Owner Dashboard
+   */
+  async function markOrderReady(orderId, buttonEl) {
+    if (buttonEl) {
+      buttonEl.disabled = true;
+      buttonEl.innerHTML = `<span class="btn-spinner"></span>`;
+    }
+
+    try {
+      const activeShop = state.shopId || sessionStorage.getItem("AOLA_OWNER_SHOP") || "bismillah";
+      const activePin = state.pin || sessionStorage.getItem("AOLA_OWNER_PIN") || "1234";
+
+      const response = await AOLA_API.post("update_order_status", {
+        shop_id: activeShop,
+        pin: activePin,
+        order_id: orderId,
+        status: "ready"
+      });
+
+      if (!response.success) {
+        showToast(response.error || "Failed to mark order ready.", "error");
+        if (buttonEl) {
+          buttonEl.disabled = false;
+          buttonEl.innerHTML = `<i data-lucide="check" style="width:13px;height:13px;"></i><span>Mark Ready</span>`;
+          if (window.lucide) lucide.createIcons();
+        }
+        return;
+      }
+
+      showToast(`🍽️ Order #${orderId} marked ready for billing!`, "success");
+
+      const ord = state.orders.find((o) => String(o.orderId) === String(orderId));
+      if (ord) {
+        ord.status = "ready";
+      }
+
+      updateCounts();
+      renderTickets();
+    } catch (err) {
+      console.error("[Mark Ready Error]:", err);
+      showToast("Error communicating with server.", "error");
+      if (buttonEl) {
+        buttonEl.disabled = false;
+        buttonEl.innerHTML = `<i data-lucide="check" style="width:13px;height:13px;"></i><span>Mark Ready</span>`;
+        if (window.lucide) lucide.createIcons();
+      }
+    }
+  }
+
+  /**
+   * Render Completed / Settled Orders Table (True History below live ticket queue)
+   */
+  function renderPaidOrdersTable() {
+    if (!el.paidOrdersTbody) return;
+
+    // Filter orders where status is 'paid' (or legacy 'completed')
+    const paidOrders = state.orders.filter((o) => {
+      const s = (o.status || "").toLowerCase();
+      return s === "paid" || s === "completed";
+    });
+
+    if (el.paidOrdersCountBadge) {
+      el.paidOrdersCountBadge.textContent = `${paidOrders.length} Paid`;
+    }
+
+    if (paidOrders.length === 0) {
+      el.paidOrdersTbody.innerHTML = "";
+      if (el.paidOrdersTable) el.paidOrdersTable.style.display = "none";
+      if (el.paidOrdersEmpty) el.paidOrdersEmpty.style.display = "block";
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
+
+    if (el.paidOrdersTable) el.paidOrdersTable.style.display = "table";
+    if (el.paidOrdersEmpty) el.paidOrdersEmpty.style.display = "none";
+
+    el.paidOrdersTbody.innerHTML = paidOrders.map((ord) => {
+      const dishList = parseOrderDishItems(ord.items);
+      const itemsSummary = dishList.map((d) => `${d.qty}x ${escapeHtml(d.name)}`).join(", ");
+      const timeStr = formatTicketTime(ord.timestamp);
+
+      return `
+        <tr>
+          <td style="font-family: monospace; font-weight: 700; color: var(--brand-navy);">#${escapeHtml(ord.orderId)}</td>
+          <td style="font-size: 0.82rem; color: var(--text-muted);">${escapeHtml(timeStr)}</td>
+          <td><span class="ticket-table-badge" style="font-size: 0.75rem; padding: 2px 7px;">T-${escapeHtml(ord.tableNumber)}</span></td>
+          <td style="max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.84rem; font-weight: 500;" title="${itemsSummary}">${itemsSummary || "Items"}</td>
+          <td style="font-weight: 700; color: #047857;">${formatCurrency(ord.totalPrice)}</td>
+          <td><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.78rem; font-weight: 600; color: #1E40AF; background: #DBEAFE; padding: 2px 8px; border-radius: 4px;">Settled</span></td>
+          <td><span class="status-badge active" style="font-size: 0.76rem;"><i data-lucide="check" style="width: 12px; height: 12px;"></i> Paid</span></td>
+          <td style="text-align: right;">
+            <button class="btn-secondary btn-table-reprint" data-id="${escapeHtml(ord.orderId)}" style="padding: 4px 8px; font-size: 0.76rem; display: inline-flex; align-items: center; gap: 4px;" title="Reprint Thermal Receipt">
+              <i data-lucide="printer" style="width: 12px; height: 12px;"></i>
+              <span>Receipt</span>
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    // Bind reprint buttons
+    el.paidOrdersTbody.querySelectorAll(".btn-table-reprint").forEach((btn) => {
+      btn.onclick = () => {
+        openBillModal(btn.dataset.id, false);
+      };
+    });
+
+    if (window.lucide) lucide.createIcons();
   }
 
   // =========================================================================
@@ -3040,13 +3240,15 @@
       const status = (order.status || "Pending").toLowerCase();
 
       // 0. Sub-tab Filter (All vs Completed vs Voided Audit Trail)
-      if (state.historySubtab === "completed" && status !== "completed") return false;
+      if (state.historySubtab === "completed" && status !== "completed" && status !== "paid") return false;
       if (state.historySubtab === "voided" && status !== "deleted" && status !== "voided") return false;
 
       // 1. Status Dropdown Filter
       if (state.historyFilter.status !== "all") {
         const filterStatus = state.historyFilter.status.toLowerCase();
-        if (filterStatus === "completed" && status !== "completed") return false;
+        if (filterStatus === "completed" && status !== "completed" && status !== "paid") return false;
+        if (filterStatus === "paid" && status !== "paid") return false;
+        if (filterStatus === "ready" && status !== "ready") return false;
         if (filterStatus === "pending" && status !== "pending" && status !== "new") return false;
         if ((filterStatus === "deleted" || filterStatus === "voided") && status !== "deleted" && status !== "voided") return false;
         if (filterStatus === "cancelled" && status !== "cancelled") return false;
@@ -3107,7 +3309,10 @@
 
     // Subtab counts
     const allCount = state.orders.length;
-    const compCount = state.orders.filter(o => (o.status || "").toLowerCase() === "completed").length;
+    const compCount = state.orders.filter(o => {
+      const s = (o.status || "").toLowerCase();
+      return s === "completed" || s === "paid";
+    }).length;
     const voidCount = state.orders.filter(o => {
       const s = (o.status || "").toLowerCase();
       return s === "deleted" || s === "voided" || s === "cancelled";
@@ -3123,7 +3328,7 @@
 
     filtered.forEach((o) => {
       const s = (o.status || "").toLowerCase();
-      if (s === "completed") {
+      if (s === "completed" || s === "paid") {
         totalRevenue += Number(o.totalPrice) || 0;
         servedCount++;
       } else if (s === "cancelled" || s === "deleted" || s === "voided") {
@@ -3168,7 +3373,8 @@
     el.historyTbody.innerHTML = filtered.map((order) => {
       const s = (order.status || "Pending").toLowerCase();
       let statusClass = "pending";
-      if (s === "completed") statusClass = "completed";
+      if (s === "completed" || s === "paid") statusClass = "completed";
+      else if (s === "ready") statusClass = "active";
       else if (s === "cancelled" || s === "deleted" || s === "voided") statusClass = "deleted";
       else if (s === "refunded") statusClass = "refunded";
 
@@ -3206,7 +3412,7 @@
           </td>
           <td>
             <span class="status-badge ${statusClass}">
-              ${s === "deleted" || s === "voided" ? '<i data-lucide="shield-alert" style="width:12px;height:12px;"></i> Voided' : escapeHtml(order.status || "Pending")}
+              ${s === "paid" ? '<i data-lucide="check-check" style="width:12px;height:12px;"></i> Paid' : (s === "ready" ? '<i data-lucide="bell" style="width:12px;height:12px;"></i> Ready' : (s === "deleted" || s === "voided" ? '<i data-lucide="shield-alert" style="width:12px;height:12px;"></i> Voided' : escapeHtml(order.status || "Pending")))}
             </span>
           </td>
           <td style="font-size: 0.8rem; color: var(--text-muted); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(order.customerNotes || '')}">
@@ -3440,8 +3646,11 @@
   function renderExpensesView() {
     if (!el.expensesTbody) return;
 
-    // Financial calculations: Subtract total expenses from gross completed revenue to display Net Profit
-    const completedOrders = state.orders.filter(o => (o.status || "").toLowerCase() === "completed");
+    // Financial calculations: Subtract total expenses from gross completed/paid revenue to display Net Profit
+    const completedOrders = state.orders.filter(o => {
+      const s = (o.status || "").toLowerCase();
+      return s === "completed" || s === "paid";
+    });
     const grossRevenue = completedOrders.reduce((sum, o) => sum + (Number(o.totalPrice) || 0), 0);
     const totalOutflow = state.expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
     const netProfit = grossRevenue - totalOutflow;
@@ -3627,7 +3836,7 @@
 
     const completedOrders = state.orders.filter(o => {
       const s = (o.status || "").toLowerCase();
-      return s === "completed";
+      return s === "completed" || s === "paid";
     });
 
     const tf = state.trendTimeframe || "daily";
@@ -4499,6 +4708,8 @@
     openBill: (id) => openBillModal(id, false),
     openKot: (id) => openBillModal(id, true),
     quickPrintKot: (id) => quickPrintKot(id),
+    payOrder: (id, btn) => payOrder(id, btn),
+    markOrderReady: (id, btn) => markOrderReady(id, btn),
     completeOrder: (id, btn) => completeOrder(id, btn),
     voidOrder: (id, btn) => openVoidModal(id, btn),
     openPos: () => openPosModal(),

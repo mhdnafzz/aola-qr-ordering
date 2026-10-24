@@ -54,8 +54,8 @@ CREATE TABLE IF NOT EXISTS public.orders (
     items          JSONB NOT NULL DEFAULT '[]'::jsonb,
     items_summary  TEXT DEFAULT '',
     total_price    NUMERIC(10,2) NOT NULL DEFAULT 0.00,
-    status         TEXT NOT NULL DEFAULT 'New'
-        CHECK (status IN ('New','Completed','Deleted','Voided')),
+    status         TEXT NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'ready', 'paid', 'New', 'Completed', 'Deleted', 'Voided')),
     customer_notes TEXT DEFAULT '',
     order_source   TEXT DEFAULT 'QR',
     created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -359,7 +359,7 @@ BEGIN
     v_order_id := 'ORD-' || LPAD(FLOOR(RANDOM()*9000+1000)::text, 4, '0');
 
     INSERT INTO public.orders (id, shop_id, table_number, items, items_summary, total_price, status, customer_notes, order_source)
-    VALUES (v_order_id, v_shop_id, v_table_number, v_verified, v_summary, v_grand_total, 'New', v_notes, v_source);
+    VALUES (v_order_id, v_shop_id, v_table_number, v_verified, v_summary, v_grand_total, 'pending', v_notes, v_source);
 
     RETURN jsonb_build_object(
         'success',            true,

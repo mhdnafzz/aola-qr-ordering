@@ -461,6 +461,7 @@
         table_number: tableNumber,
         items: itemsPayload,
         customer_notes: notes,
+        status: "pending",
         customer_fax: honeypotVal // Pass honeypot for double verification
       });
 
