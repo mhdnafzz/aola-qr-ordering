@@ -32,6 +32,7 @@
     modalCartItems: document.getElementById("modal-cart-items"),
     summarySubtotal: document.getElementById("summary-subtotal"),
     summaryTotal: document.getElementById("summary-total"),
+    orderForm: document.getElementById("order-form"),
     orderTableInput: document.getElementById("order-table-input"),
     orderNotesInput: document.getElementById("order-notes-input"),
     customerFax: document.getElementById("customer_fax"),
@@ -102,6 +103,7 @@
 
     // 2. Bind Event Listeners
     setupEventListeners();
+    setupCookieConsent();
 
     // 3. Fetch Branding & Menu
     await loadMenu();
@@ -207,7 +209,7 @@
       if (state.shopData.logoUrl) {
         el.brandLogoContainer.innerHTML = `<img src="${escapeHtml(state.shopData.logoUrl)}" alt="${escapeHtml(state.shopData.name)} logo">`;
       } else {
-        el.brandLogoContainer.innerHTML = `<img src="AU-dark-icon.svg" alt="AOLA Logo" style="width:100%;height:100%;object-fit:contain;padding:8px;">`;
+        el.brandLogoContainer.innerHTML = `<img src="AU-dark-icon.svg" alt="AOLA Smart QR Ordering Emblem" style="width:100%;height:100%;object-fit:contain;padding:8px;">`;
       }
 
       // Render Categories & Menu Feed
@@ -563,6 +565,13 @@
 
     el.btnSubmitOrder.onclick = submitOrder;
 
+    if (el.orderForm) {
+      el.orderForm.onsubmit = (e) => {
+        e.preventDefault();
+        submitOrder();
+      };
+    }
+
     el.btnOrderMore.onclick = () => {
       closeSuccessModal();
     };
@@ -575,6 +584,41 @@
         el.orderTableInput.value = state.tableNumber;
       }
     };
+  }
+
+  /**
+   * Setup Cookie & Storage Consent Banner
+   */
+  function setupCookieConsent() {
+    const banner = document.getElementById("aola-cookie-banner");
+    if (!banner) return;
+
+    const consent = localStorage.getItem("AOLA_COOKIE_CONSENT");
+    if (!consent) {
+      setTimeout(() => {
+        banner.style.display = "block";
+      }, 600);
+    }
+
+    const btnAccept = document.getElementById("btn-accept-cookies");
+    const btnEssential = document.getElementById("btn-essential-cookies");
+
+    const closeBanner = (type) => {
+      try {
+        localStorage.setItem("AOLA_COOKIE_CONSENT", type);
+      } catch (e) {}
+      banner.classList.add("hidden");
+      setTimeout(() => {
+        banner.style.display = "none";
+      }, 350);
+    };
+
+    if (btnAccept) {
+      btnAccept.onclick = () => closeBanner("all");
+    }
+    if (btnEssential) {
+      btnEssential.onclick = () => closeBanner("essential");
+    }
   }
 
   // Expose methods for stepper buttons rendered in modal

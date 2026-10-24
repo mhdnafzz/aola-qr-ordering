@@ -35,7 +35,7 @@
     <!-- Hero / Restaurant Branding -->
     <header class="brand-hero" id="brand-hero">
       <div class="brand-logo-wrap" id="brand-logo-container">
-        <img src="AU-dark-icon.svg" alt="Restaurant Logo" style="width:100%;height:100%;object-fit:contain;padding:8px;">
+        <img src="AU-dark-icon.svg" alt="Dining Restaurant Brand Logo" style="width:100%;height:100%;object-fit:contain;padding:8px;">
       </div>
       <h1 class="brand-title" id="restaurant-name">Bismillah Biryani &amp; Grill</h1>
       <div class="brand-meta">
@@ -198,7 +198,7 @@
     <div class="aola-footer-container">
       <div class="aola-footer-brand">
         <a href="https://wa.me/919847054970?text=Hi%20AOLA%20Team,%20I%20saw%20your%20QR%20Ordering%20system%20and%20want%20this%20for%20my%20restaurant" target="_blank" rel="noopener noreferrer" class="aola-brand-pill" title="Get AOLA Smart QR Ordering for your restaurant">
-          <img src="AU-dark-icon.svg" alt="AOLA" class="aola-pill-logo">
+          <img src="AU-dark-icon.svg" alt="AOLA Brand Emblem" class="aola-pill-logo">
           <span>Powered by <strong class="aola-brand-name">AOLA</strong> — Smart QR Ordering</span>
           <span class="aola-brand-tag">Get for your restaurant &rarr;</span>
         </a>
@@ -218,6 +218,8 @@
         <span class="aola-legal-dot" aria-hidden="true">&bull;</span>
         <a href="privacy.html" class="aola-legal-link">Privacy Policy</a>
         <span class="aola-legal-dot" aria-hidden="true">&bull;</span>
+        <a href="cookie.html" class="aola-legal-link">Cookie Policy</a>
+        <span class="aola-legal-dot" aria-hidden="true">&bull;</span>
         <a href="refunds.html" class="aola-legal-link">Refund &amp; Cancellation Policy</a>
       </nav>
       <p class="aola-footer-subtext">
@@ -225,6 +227,30 @@
       </p>
     </div>
   </footer>
+
+  <!-- Cookie & Storage Consent Banner (Accessible & Non-Intrusive) -->
+  <aside id="aola-cookie-banner" class="cookie-banner" role="region" aria-label="Cookie and storage preferences" style="display:none;">
+    <div class="cookie-banner-inner">
+      <div class="cookie-banner-text">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span style="font-size:1.1rem;" aria-hidden="true">🍪</span>
+          <strong style="font-size:0.9rem;color:var(--text-main);">Dining Experience &amp; Storage Preferences</strong>
+        </div>
+        <p style="margin:0;font-size:0.8rem;color:var(--text-muted);line-height:1.45;">
+          AOLA uses local storage to maintain your active dining table and cart items without requiring app downloads. 
+          Read our <a href="cookie.html" style="color:var(--primary);text-decoration:underline;">Cookie Policy</a> and <a href="privacy.html" style="color:var(--primary);text-decoration:underline;">Privacy Policy</a>.
+        </p>
+      </div>
+      <div class="cookie-banner-actions">
+        <button id="btn-accept-cookies" class="btn-primary" style="padding:8px 16px;font-size:0.8rem;white-space:nowrap;">
+          Accept All
+        </button>
+        <button id="btn-essential-cookies" class="btn-secondary" style="padding:8px 14px;font-size:0.8rem;white-space:nowrap;">
+          Essential Only
+        </button>
+      </div>
+    </div>
+  </aside>
 
   <!-- Scripts -->
   <script src="js/api.js?v=3.4"></script>

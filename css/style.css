@@ -3358,3 +3358,103 @@ body > main {
     display: none !important;
   }
 }
+
+/* ==========================================================================
+   Accessibility (a11y) Focus Ring & Usability Guidelines
+   ========================================================================== */
+*:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.btn-close-modal:focus,
+.btn-close-modal:focus-visible {
+  outline: 2.5px solid var(--primary);
+  outline-offset: 2px;
+  background: var(--bg-subtle);
+  border-radius: 6px;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+}
+
+/* ==========================================================================
+   AOLA Cookie & Storage Consent Banner
+   ========================================================================== */
+.cookie-banner {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(0);
+  width: calc(100% - 32px);
+  max-width: 680px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  z-index: 9999;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slideUpCookie 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideUpCookie {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.cookie-banner.hidden {
+  opacity: 0;
+  transform: translateX(-50%) translateY(24px);
+  pointer-events: none;
+}
+
+.cookie-banner-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.cookie-banner-text {
+  flex: 1;
+  min-width: 240px;
+}
+
+.cookie-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 600px) {
+  .cookie-banner {
+    bottom: 12px;
+    width: calc(100% - 20px);
+    padding: 14px 16px;
+  }
+  .cookie-banner-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+  .cookie-banner-actions button {
+    flex: 1;
+  }
+}

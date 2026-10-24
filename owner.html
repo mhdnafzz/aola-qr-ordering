@@ -39,7 +39,7 @@
   <!-- Quick Portal Switcher & Navigation Header -->
   <header class="portal-nav-bar" id="portal-bar">
     <div class="portal-brand-wrap">
-      <img src="AU-dark.svg" alt="AOLA Logo" class="portal-brand-logo">
+      <img src="AU-dark.svg" alt="AOLA Merchant Kitchen Portal Logo" class="portal-brand-logo">
       <span>Kitchen Ticket Display</span>
     </div>
     <nav class="portal-nav-links">
@@ -61,7 +61,7 @@
   <!-- Login Overlay (Required Auth with Shop ID + PIN) -->
   <div class="modal-backdrop open" id="login-overlay" role="dialog" aria-modal="true">
     <div class="modal-popup" style="max-width: 420px; text-align: center;">
-      <img src="AU-dark.svg" alt="AOLA Logo" class="auth-modal-logo" style="height:44px;margin-bottom:14px;">
+      <img src="AU-dark.svg" alt="AOLA Merchant Access Authentication Logo" class="auth-modal-logo" style="height:44px;margin-bottom:14px;">
       <h2 style="font-size: 1.35rem; font-weight: 700; color: var(--brand-navy); margin-bottom: 6px;">Kitchen Login</h2>
       <p style="color: var(--text-muted); font-size: 0.86rem; margin-bottom: 20px;">
         Enter your Restaurant ID and 4-digit security PIN to access live kitchen orders.
@@ -814,7 +814,7 @@
     <div class="modal-popup" style="max-width: 480px;">
       <div class="modal-header">
         <h2 class="modal-title" id="dish-modal-title">Add New Dish</h2>
-        <button class="btn-close-modal" id="btn-close-dish-modal">&times;</button>
+        <button class="btn-close-modal" id="btn-close-dish-modal" aria-label="Close dish editor modal">&times;</button>
       </div>
 
       <form id="dish-form" onsubmit="return false;">
@@ -899,7 +899,7 @@
             Official tax receipt or kitchen order ticket (KOT)
           </p>
         </div>
-        <button class="btn-close-modal" id="btn-close-bill-modal">&times;</button>
+        <button class="btn-close-modal" id="btn-close-bill-modal" aria-label="Close billing invoice modal">&times;</button>
       </div>
 
       <!-- Bill Controls: Mode Switcher, Paper Format & Adjustments -->
@@ -1017,7 +1017,7 @@
           </svg>
           <h2 class="modal-title" style="font-size:1.15rem;">Send WhatsApp Invoice</h2>
         </div>
-        <button class="btn-close-modal" id="btn-close-wa-consent">&times;</button>
+        <button class="btn-close-modal" id="btn-close-wa-consent" aria-label="Close WhatsApp receipt modal">&times;</button>
       </div>
 
       <form id="wa-consent-form" onsubmit="return false;" style="margin-top:12px;">
@@ -1067,7 +1067,7 @@
           <i data-lucide="alert-triangle" style="width: 20px; height: 20px; color: #dc2626;"></i>
           <span>Void Kitchen Order</span>
         </h2>
-        <button class="btn-close-modal" id="btn-close-void-modal">&times;</button>
+        <button class="btn-close-modal" id="btn-close-void-modal" aria-label="Close void confirmation modal">&times;</button>
       </div>
       <p style="font-size: 0.88rem; color: var(--text-sub); line-height: 1.5; margin-bottom: 14px;">
         Are you sure you want to void <strong id="void-order-modal-id" style="color: var(--brand-navy);">Order</strong>?
@@ -1104,7 +1104,7 @@
               and printer details</div>
           </div>
         </div>
-        <button class="btn-close-modal" id="btn-close-settings">&times;</button>
+        <button class="btn-close-modal" id="btn-close-settings" aria-label="Close store profile settings modal">&times;</button>
       </div>
 
       <form id="settings-form" onsubmit="return false;" style="margin-top: 14px;">
@@ -1173,7 +1173,7 @@
     <div class="modal-popup" style="max-width: 380px;">
       <div class="modal-header">
         <h2 class="modal-title">Change Security PIN</h2>
-        <button class="btn-close-modal" id="btn-close-change-pin">&times;</button>
+        <button class="btn-close-modal" id="btn-close-change-pin" aria-label="Close change PIN modal">&times;</button>
       </div>
 
       <form id="change-pin-form" onsubmit="return false;">
@@ -1418,7 +1418,7 @@
         <a href="https://wa.me/919847054970?text=Hi%20AOLA%20Team,%20I%20saw%20your%20QR%20Ordering%20system%20and%20want%20this%20for%20my%20restaurant"
           target="_blank" rel="noopener noreferrer" class="aola-brand-pill"
           title="Get AOLA Smart QR Ordering for your restaurant">
-          <img src="AU-dark-icon.svg" alt="AOLA" class="aola-pill-logo">
+          <img src="AU-dark-icon.svg" alt="AOLA Brand Emblem" class="aola-pill-logo">
           <span>Powered by <strong class="aola-brand-name">AOLA</strong> — Smart QR Ordering</span>
           <span class="aola-brand-tag">Get for your restaurant &rarr;</span>
         </a>
@@ -1444,6 +1444,8 @@
         <a href="terms.html" class="aola-legal-link">Terms &amp; Conditions</a>
         <span class="aola-legal-dot" aria-hidden="true">&bull;</span>
         <a href="privacy.html" class="aola-legal-link">Privacy Policy</a>
+        <span class="aola-legal-dot" aria-hidden="true">&bull;</span>
+        <a href="cookie.html" class="aola-legal-link">Cookie Policy</a>
         <span class="aola-legal-dot" aria-hidden="true">&bull;</span>
         <a href="refunds.html" class="aola-legal-link">Refund &amp; Cancellation Policy</a>
       </nav>

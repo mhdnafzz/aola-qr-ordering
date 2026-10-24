@@ -1109,7 +1109,7 @@
             <div style="width:38px;height:38px;border-radius:var(--radius-sm);background:var(--bg-subtle);border:1px solid var(--border-subtle);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
               ${
                 shop.logoUrl
-                  ? `<img src="${escapeHtml(shop.logoUrl)}" alt="Logo" style="width:100%;height:100%;object-fit:cover;">`
+                  ? `<img src="${escapeHtml(shop.logoUrl)}" alt="${escapeHtml(shop.shopName || 'Franchise Client')} Brand Logo" style="width:100%;height:100%;object-fit:cover;">`
                   : `<i data-lucide="store" style="width:18px;height:18px;color:var(--text-muted);"></i>`
               }
             </div>

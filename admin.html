@@ -34,7 +34,7 @@
   <!-- Quick Portal Switcher & Navigation Header -->
   <header class="portal-nav-bar" id="portal-bar">
     <div class="portal-brand-wrap">
-      <img src="AU-dark.svg" alt="AOLA Logo" class="portal-brand-logo">
+      <img src="AU-dark.svg" alt="AOLA Franchise HQ Master Portal Logo" class="portal-brand-logo">
       <span>Agency Master Console (HQ)</span>
     </div>
     <nav class="portal-nav-links">
@@ -56,7 +56,7 @@
   <!-- Admin Master PIN Login Overlay -->
   <div class="modal-backdrop open" id="admin-login-overlay" role="dialog" aria-modal="true">
     <div class="modal-popup" style="max-width: 400px; text-align: center;">
-      <img src="AU-dark.svg" alt="AOLA Logo" class="auth-modal-logo" style="height:46px;margin-bottom:14px;">
+      <img src="AU-dark.svg" alt="AOLA HQ Master Security Access Logo" class="auth-modal-logo" style="height:46px;margin-bottom:14px;">
       <h2 style="font-size: 1.35rem; font-weight: 700; color: var(--brand-navy); margin-bottom: 6px;">Agency Master Admin</h2>
       <p style="color: var(--text-muted); font-size: 0.86rem; margin-bottom: 20px;">
         Enter master agency PIN to manage client sheets, onboarding, and access control.
@@ -92,7 +92,7 @@
     <header class="owner-header">
       <div>
         <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-          <img src="AU-dark.svg" alt="AOLA Logo" style="height:30px;width:auto;object-fit:contain;">
+          <img src="AU-dark.svg" alt="AOLA Franchise Management Logo" style="height:30px;width:auto;object-fit:contain;">
           <h1 style="font-size: 1.55rem; font-weight: 700; color: var(--brand-navy);">AOLA Franchise HQ Console</h1>
           <span class="status-badge active" style="font-size: 0.72rem;">Master View</span>
         </div>
@@ -686,7 +686,7 @@
     <div class="modal-popup" style="max-width: 520px;">
       <div class="modal-header">
         <h2 class="modal-title" id="onboard-modal-title">Onboard New Restaurant</h2>
-        <button class="btn-close-modal" id="btn-close-onboard">&times;</button>
+        <button class="btn-close-modal" id="btn-close-onboard" aria-label="Close client onboard modal">&times;</button>
       </div>
 
       <form id="onboard-form" onsubmit="return false;">
@@ -740,7 +740,7 @@
     <div class="modal-popup" style="max-width: 480px;">
       <div class="modal-header">
         <h2 class="modal-title">Apps Script Web App Config</h2>
-        <button class="btn-close-modal" id="btn-close-backend">&times;</button>
+        <button class="btn-close-modal" id="btn-close-backend" aria-label="Close backend database config modal">&times;</button>
       </div>
 
       <div style="font-size: 0.86rem; color: var(--text-muted); margin-bottom: 16px;">
@@ -769,7 +769,7 @@
     <div class="modal-popup" style="max-width: 420px; text-align: center;">
       <div class="modal-header">
         <h2 class="modal-title" id="qr-modal-shop-name">Table QR Code</h2>
-        <button class="btn-close-modal" id="btn-close-qr">&times;</button>
+        <button class="btn-close-modal" id="btn-close-qr" aria-label="Close table QR code modal">&times;</button>
       </div>
 
       <div style="margin: 10px 0;">
@@ -786,7 +786,7 @@
 
       <!-- Live QR Display -->
       <div id="qr-image-container" style="background:#fff; padding:16px; border-radius:var(--radius-md); border:1px solid var(--border-subtle); display:inline-block; margin-bottom:14px; box-shadow:var(--shadow-md);">
-        <img id="qr-image" src="" alt="Table QR Code" style="width:200px; height:200px; display:block;">
+        <img id="qr-image" src="" alt="Generated Restaurant Table QR Code for Dining Ordering" style="width:200px; height:200px; display:block;">
       </div>
 
       <p style="font-size: 0.8rem; color: var(--text-muted); word-break: break-all; margin-bottom: 16px;" id="qr-target-url">
@@ -811,7 +811,7 @@
     <div class="modal-popup" style="max-width: 380px;">
       <div class="modal-header">
         <h2 class="modal-title">Change Master Admin PIN</h2>
-        <button class="btn-close-modal" id="btn-close-master-pin">&times;</button>
+        <button class="btn-close-modal" id="btn-close-master-pin" aria-label="Close master security PIN modal">&times;</button>
       </div>
 
       <form id="master-pin-form" onsubmit="return false;">
@@ -843,7 +843,7 @@
     <div class="aola-footer-container">
       <div class="aola-footer-brand">
         <a href="https://wa.me/919847054970?text=Hi%20AOLA%20Team,%20I%20saw%20your%20QR%20Ordering%20system%20and%20want%20this%20for%20my%20restaurant" target="_blank" rel="noopener noreferrer" class="aola-brand-pill" title="Get AOLA Smart QR Ordering for your restaurant">
-          <img src="AU-dark-icon.svg" alt="AOLA" class="aola-pill-logo">
+          <img src="AU-dark-icon.svg" alt="AOLA Brand Emblem" class="aola-pill-logo">
           <span>Powered by <strong class="aola-brand-name">AOLA</strong> — Smart QR Ordering</span>
           <span class="aola-brand-tag">Get for your restaurant &rarr;</span>
         </a>
@@ -862,6 +862,8 @@
         <a href="terms.html" class="aola-legal-link">Terms &amp; Conditions</a>
         <span class="aola-legal-dot" aria-hidden="true">&bull;</span>
         <a href="privacy.html" class="aola-legal-link">Privacy Policy</a>
+        <span class="aola-legal-dot" aria-hidden="true">&bull;</span>
+        <a href="cookie.html" class="aola-legal-link">Cookie Policy</a>
         <span class="aola-legal-dot" aria-hidden="true">&bull;</span>
         <a href="refunds.html" class="aola-legal-link">Refund &amp; Cancellation Policy</a>
       </nav>
