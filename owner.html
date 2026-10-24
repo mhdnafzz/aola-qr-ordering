@@ -716,6 +716,51 @@
               </div>
             </div>
 
+            <!-- Interactive Date Search & Day Navigation Bar -->
+            <div id="trend-date-toolbar"
+              style="background: #FFFFFF; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 12px 18px; margin-top: 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; box-shadow: var(--shadow-xs);">
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <span style="font-size: 0.82rem; font-weight: 700; color: var(--brand-navy); display: flex; align-items: center; gap: 6px;">
+                  <i data-lucide="calendar" style="width: 15px; height: 15px; color: var(--accent-indigo);"></i>
+                  <span>Find Day's Graph:</span>
+                </span>
+
+                <!-- Quick Day Navigation Controls -->
+                <div style="display: flex; align-items: center; gap: 4px;">
+                  <button type="button" class="btn-secondary" id="trend-btn-prev-day" title="Previous Day"
+                    style="padding: 6px 9px; font-size: 0.8rem; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center;">
+                    <i data-lucide="chevron-left" style="width: 14px; height: 14px;"></i>
+                  </button>
+                  <input type="date" id="trend-date-input" class="form-input"
+                    style="padding: 6px 12px; font-size: 0.84rem; font-weight: 600; color: var(--brand-navy); background: #F8FAFC; border: 1.5px solid var(--border-color); border-radius: 6px; cursor: pointer; width: auto;"
+                    title="Select any date to view its hour-by-hour sales graph">
+                  <button type="button" class="btn-secondary" id="trend-btn-next-day" title="Next Day"
+                    style="padding: 6px 9px; font-size: 0.8rem; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center;">
+                    <i data-lucide="chevron-right" style="width: 14px; height: 14px;"></i>
+                  </button>
+                </div>
+
+                <!-- Quick Day Preset Buttons -->
+                <div style="display: flex; gap: 6px;">
+                  <button type="button" class="date-pill active" id="trend-btn-today" style="padding: 5px 12px; font-size: 0.78rem;">Today</button>
+                  <button type="button" class="date-pill" id="trend-btn-yesterday" style="padding: 5px 12px; font-size: 0.78rem;">Yesterday</button>
+                </div>
+              </div>
+
+              <!-- Live Selected Day Status Badge -->
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="status-badge active" id="trend-selected-day-badge"
+                  style="background: #EEF2FF; color: #4F46E5; border: 1px solid #C7D2FE; font-size: 0.8rem; font-weight: 600; padding: 4px 12px; border-radius: 20px; display: inline-flex; align-items: center; gap: 6px;">
+                  <i data-lucide="calendar" style="width: 13px; height: 13px;"></i>
+                  <span id="trend-selected-day-text">Today</span>
+                </span>
+                <span id="trend-day-order-count-badge"
+                  style="font-size: 0.76rem; color: var(--text-muted); font-weight: 600; background: var(--bg-subtle); padding: 3px 8px; border-radius: 12px; border: 1px solid var(--border-subtle);">
+                  0 Orders
+                </span>
+              </div>
+            </div>
+
             <!-- Key Insight Metric Cards -->
             <div class="history-metrics-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 0;">
               <div class="history-metric-card">

@@ -14,6 +14,7 @@
     currentView: "orders", // "orders" | "history" | "menu" | "expenses" | "trends"
     historySubtab: "all", // "all" | "completed" | "voided"
     trendTimeframe: "daily", // "daily" | "weekly" | "monthly" | "yearly"
+    trendSelectedDate: "",
     trendsChartInstance: null,
     breakdownChartInstance: null,
     menu: [],
@@ -166,6 +167,14 @@
     btnTrendWeekly: document.getElementById("btn-trend-weekly"),
     btnTrendMonthly: document.getElementById("btn-trend-monthly"),
     btnTrendYearly: document.getElementById("btn-trend-yearly"),
+    trendDateToolbar: document.getElementById("trend-date-toolbar"),
+    trendDateInput: document.getElementById("trend-date-input"),
+    trendBtnPrevDay: document.getElementById("trend-btn-prev-day"),
+    trendBtnNextDay: document.getElementById("trend-btn-next-day"),
+    trendBtnToday: document.getElementById("trend-btn-today"),
+    trendBtnYesterday: document.getElementById("trend-btn-yesterday"),
+    trendSelectedDayText: document.getElementById("trend-selected-day-text"),
+    trendDayOrderCountBadge: document.getElementById("trend-day-order-count-badge"),
     trendMetricRevenue: document.getElementById("trend-metric-revenue"),
     trendMetricPeak: document.getElementById("trend-metric-peak"),
     trendMetricOrders: document.getElementById("trend-metric-orders"),
@@ -1482,11 +1491,63 @@
       el.expenseSearchInput.oninput = renderExpensesView;
     }
 
-    // Sales Trends Timeframe Switcher
+    // Sales Trends Timeframe Switcher & Date Search Controls
     if (el.btnTrendDaily) el.btnTrendDaily.onclick = () => setTrendTimeframe("daily");
     if (el.btnTrendWeekly) el.btnTrendWeekly.onclick = () => setTrendTimeframe("weekly");
     if (el.btnTrendMonthly) el.btnTrendMonthly.onclick = () => setTrendTimeframe("monthly");
     if (el.btnTrendYearly) el.btnTrendYearly.onclick = () => setTrendTimeframe("yearly");
+
+    if (el.trendDateInput) {
+      el.trendDateInput.onchange = () => {
+        if (el.trendDateInput.value) {
+          state.trendSelectedDate = el.trendDateInput.value;
+          state.trendTimeframe = "daily";
+          setTrendTimeframe("daily");
+        }
+      };
+    }
+    if (el.trendBtnToday) {
+      el.trendBtnToday.onclick = () => {
+        state.trendSelectedDate = toDateInputValue(new Date());
+        state.trendTimeframe = "daily";
+        setTrendTimeframe("daily");
+      };
+    }
+    if (el.trendBtnYesterday) {
+      el.trendBtnYesterday.onclick = () => {
+        const y = new Date();
+        y.setDate(y.getDate() - 1);
+        state.trendSelectedDate = toDateInputValue(y);
+        state.trendTimeframe = "daily";
+        setTrendTimeframe("daily");
+      };
+    }
+    if (el.trendBtnPrevDay) {
+      el.trendBtnPrevDay.onclick = () => {
+        const base = state.trendSelectedDate || toDateInputValue(new Date());
+        const parts = base.split("-");
+        const cur = (parts.length === 3)
+          ? new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10))
+          : new Date();
+        cur.setDate(cur.getDate() - 1);
+        state.trendSelectedDate = toDateInputValue(cur);
+        state.trendTimeframe = "daily";
+        setTrendTimeframe("daily");
+      };
+    }
+    if (el.trendBtnNextDay) {
+      el.trendBtnNextDay.onclick = () => {
+        const base = state.trendSelectedDate || toDateInputValue(new Date());
+        const parts = base.split("-");
+        const cur = (parts.length === 3)
+          ? new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10))
+          : new Date();
+        cur.setDate(cur.getDate() + 1);
+        state.trendSelectedDate = toDateInputValue(cur);
+        state.trendTimeframe = "daily";
+        setTrendTimeframe("daily");
+      };
+    }
 
     // Menu Actions
     if (el.btnRefreshMenu) {
@@ -3536,6 +3597,16 @@
     return new Date();
   }
 
+  function toDateInputValue(d) {
+    if (!d) return "";
+    const date = (d instanceof Date) ? d : new Date(d);
+    if (isNaN(date.getTime())) return "";
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
   function setTrendTimeframe(tf) {
     state.trendTimeframe = tf;
     if (el.btnTrendDaily) el.btnTrendDaily.classList.toggle("active", tf === "daily");
@@ -3560,6 +3631,39 @@
     });
 
     const tf = state.trendTimeframe || "daily";
+    if (!state.trendSelectedDate) {
+      state.trendSelectedDate = toDateInputValue(new Date());
+    }
+    const targetDateStr = state.trendSelectedDate;
+
+    if (el.trendDateInput && document.activeElement !== el.trendDateInput) {
+      el.trendDateInput.value = targetDateStr;
+    }
+
+    const todayStr = toDateInputValue(new Date());
+    const yDate = new Date();
+    yDate.setDate(yDate.getDate() - 1);
+    const yesterdayStr = toDateInputValue(yDate);
+
+    const isToday = (targetDateStr === todayStr);
+    const isYesterday = (targetDateStr === yesterdayStr);
+
+    const parts = targetDateStr.split("-");
+    const targetD = (parts.length === 3)
+      ? new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10))
+      : new Date();
+    const weekdayLong = targetD.toLocaleDateString("en-IN", { weekday: "long" });
+    const dateFormatted = targetD.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+
+    let dayLabel = `${weekdayLong}, ${dateFormatted}`;
+    if (isToday) dayLabel = `Today (${dateFormatted})`;
+    else if (isYesterday) dayLabel = `Yesterday (${dateFormatted})`;
+
+    if (el.trendSelectedDayText) {
+      el.trendSelectedDayText.textContent = dayLabel;
+    }
+    if (el.trendBtnToday) el.trendBtnToday.classList.toggle("active", isToday && tf === "daily");
+    if (el.trendBtnYesterday) el.trendBtnYesterday.classList.toggle("active", isYesterday && tf === "daily");
 
     let labels = [];
     let dataPoints = [];
@@ -3568,11 +3672,25 @@
     let chartSubtitle = "Visualizing sales hour-by-hour (00:00 to 23:00)";
     let peakLabel = "-";
     let maxVal = -1;
+    let activeOrders = completedOrders;
 
     if (tf === "daily") {
       chartType = "line";
-      chartTitle = "Daily Sales: Hour-by-Hour Curve";
-      chartSubtitle = "Tracking peak lunchtime and dinner rush transaction volumes";
+      chartTitle = `Daily Sales: Hour-by-Hour Curve — ${dayLabel}`;
+
+      const dayOrders = completedOrders.filter(ord => {
+        const d = parseDateSafe(ord.timestamp);
+        return toDateInputValue(d) === targetDateStr;
+      });
+      activeOrders = dayOrders;
+
+      if (el.trendDayOrderCountBadge) {
+        el.trendDayOrderCountBadge.textContent = `${dayOrders.length} Order${dayOrders.length === 1 ? '' : 's'}`;
+      }
+
+      chartSubtitle = dayOrders.length > 0
+        ? `Tracking peak lunchtime & dinner rush volumes for ${dayLabel}`
+        : `No completed orders recorded on ${dayLabel}. Use the date picker above to search other days.`;
 
       labels = [
         "12 AM", "1 AM", "2 AM", "3 AM", "4 AM", "5 AM",
@@ -3582,7 +3700,7 @@
       ];
       dataPoints = new Array(24).fill(0);
 
-      completedOrders.forEach(ord => {
+      dayOrders.forEach(ord => {
         const d = parseDateSafe(ord.timestamp);
         const hour = d.getHours();
         if (hour >= 0 && hour < 24) {
@@ -3591,28 +3709,61 @@
       });
     } else if (tf === "weekly") {
       chartType = "bar";
-      chartTitle = "Weekly Sales: Day-by-Day Volume";
-      chartSubtitle = "Aggregating revenue across Monday through Sunday";
+      // Anchor week around selected date
+      const d = new Date(targetDateStr + "T00:00:00");
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      const mon = new Date(d.setDate(diff));
+      mon.setHours(0, 0, 0, 0);
+      const sun = new Date(mon);
+      sun.setDate(sun.getDate() + 6);
+      sun.setHours(23, 59, 59, 999);
+
+      const weekStartStr = mon.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+      const weekEndStr = sun.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+      chartTitle = `Weekly Sales: Day-by-Day Volume (${weekStartStr} - ${weekEndStr})`;
+      chartSubtitle = `Aggregating revenue across Monday through Sunday for selected week`;
+
+      const weekOrders = completedOrders.filter(ord => {
+        const od = parseDateSafe(ord.timestamp);
+        return od >= mon && od <= sun;
+      });
+      activeOrders = weekOrders;
+
+      if (el.trendDayOrderCountBadge) {
+        el.trendDayOrderCountBadge.textContent = `${weekOrders.length} Order${weekOrders.length === 1 ? '' : 's'}`;
+      }
 
       labels = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
       dataPoints = [0, 0, 0, 0, 0, 0, 0];
 
-      completedOrders.forEach(ord => {
-        const d = parseDateSafe(ord.timestamp);
-        const dayIdx = (d.getDay() + 6) % 7; // Convert to 0=Mon, 6=Sun
+      weekOrders.forEach(ord => {
+        const od = parseDateSafe(ord.timestamp);
+        const dayIdx = (od.getDay() + 6) % 7; // Convert to 0=Mon, 6=Sun
         dataPoints[dayIdx] += Number(ord.totalPrice) || 0;
       });
     } else if (tf === "monthly") {
       chartType = "line"; // Area chart
-      chartTitle = "Monthly Sales Growth (Jan - Dec)";
-      chartSubtitle = "Cumulative monthly revenue progression";
+      const year = targetD.getFullYear();
+      chartTitle = `Monthly Sales Growth (${year})`;
+      chartSubtitle = `Cumulative monthly revenue progression for ${year}`;
+
+      const yearOrders = completedOrders.filter(ord => {
+        const od = parseDateSafe(ord.timestamp);
+        return od.getFullYear() === year;
+      });
+      activeOrders = yearOrders;
+
+      if (el.trendDayOrderCountBadge) {
+        el.trendDayOrderCountBadge.textContent = `${yearOrders.length} Order${yearOrders.length === 1 ? '' : 's'}`;
+      }
 
       labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       dataPoints = new Array(12).fill(0);
 
-      completedOrders.forEach(ord => {
-        const d = parseDateSafe(ord.timestamp);
-        const month = d.getMonth();
+      yearOrders.forEach(ord => {
+        const od = parseDateSafe(ord.timestamp);
+        const month = od.getMonth();
         if (month >= 0 && month < 12) {
           dataPoints[month] += Number(ord.totalPrice) || 0;
         }
@@ -3624,8 +3775,8 @@
 
       const yearMap = {};
       completedOrders.forEach(ord => {
-        const d = parseDateSafe(ord.timestamp);
-        const y = d.getFullYear() || 2026;
+        const od = parseDateSafe(ord.timestamp);
+        const y = od.getFullYear() || 2026;
         yearMap[y] = (yearMap[y] || 0) + (Number(ord.totalPrice) || 0);
       });
 
@@ -3648,12 +3799,12 @@
     });
 
     const totalWindowRevenue = dataPoints.reduce((sum, v) => sum + v, 0);
-    const windowOrderCount = completedOrders.length;
+    const windowOrderCount = activeOrders.length;
     const windowAov = windowOrderCount > 0 ? totalWindowRevenue / windowOrderCount : 0;
 
     // Update KPI summary cards
     if (el.trendMetricRevenue) el.trendMetricRevenue.textContent = formatCurrency(totalWindowRevenue);
-    if (el.trendMetricPeak) el.trendMetricPeak.textContent = peakLabel !== "-" ? peakLabel : "No Data Yet";
+    if (el.trendMetricPeak) el.trendMetricPeak.textContent = (maxVal > 0) ? peakLabel : (windowOrderCount === 0 ? "No Orders on Day" : "-");
     if (el.trendMetricOrders) el.trendMetricOrders.textContent = windowOrderCount;
     if (el.trendMetricAov) el.trendMetricAov.textContent = formatCurrency(windowAov);
 
@@ -3753,7 +3904,7 @@
       }
 
       const catCount = {};
-      completedOrders.forEach(ord => {
+      activeOrders.forEach(ord => {
         const dishList = parseOrderDishItems(ord.items);
         dishList.forEach(dish => {
           const menuItem = state.menu.find(m => m.name.toLowerCase() === dish.name.toLowerCase());
@@ -3766,11 +3917,13 @@
       let bValues = Object.values(catCount);
 
       if (bLabels.length === 0) {
-        bLabels = ["Biryani", "Starters", "Curries", "Breads", "Beverages"];
-        bValues = [12, 8, 6, 9, 4];
+        bLabels = ["No Orders on Day"];
+        bValues = [1];
       }
 
-      const palette = ["#059669", "#4F46E5", "#D97706", "#E11D48", "#2563EB", "#8B5CF6", "#0D9488"];
+      const palette = bLabels[0] === "No Orders on Day"
+        ? ["#CBD5E1"]
+        : ["#059669", "#4F46E5", "#D97706", "#E11D48", "#2563EB", "#8B5CF6", "#0D9488"];
 
       state.breakdownChartInstance = new Chart(bCtx, {
         type: "doughnut",
@@ -3802,7 +3955,9 @@
               padding: 10,
               cornerRadius: 8,
               callbacks: {
-                label: (ctx) => ` ${ctx.label}: ${ctx.raw} items ordered`
+                label: (ctx) => (bLabels[0] === "No Orders on Day")
+                  ? " No dishes ordered on this date"
+                  : ` ${ctx.label}: ${ctx.raw} items ordered`
               }
             }
           }
