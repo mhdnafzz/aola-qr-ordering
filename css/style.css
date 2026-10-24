@@ -84,6 +84,29 @@
   --max-w-app: 1200px;
 }
 
+/* ==========================================================================
+   AOLA DARK MODE TOKENS & HIGH-CONTRAST KITCHEN THEME
+   ========================================================================== */
+body.dark-mode, [data-theme="dark"] {
+  --bg-page: #090D16;
+  --bg-surface: #0F172A;
+  --bg-card: #182234;
+  --bg-card-hover: #1E293B;
+  --bg-subtle: #0F172A;
+  --bg-elevated: #1E293B;
+  --bg-input: #0F172A;
+  --border-subtle: #2D3748;
+  --border-card: #334155;
+  --border-focus: #10B981;
+  --text-main: #F8FAFC;
+  --text-muted: #94A3B8;
+  --text-dim: #64748B;
+  --brand-navy: #FFFFFF;
+  --brand-navy-light: #F1F5F9;
+  --glass-bg: rgba(15, 23, 42, 0.94);
+  --glass-border: 1px solid rgba(51, 65, 85, 0.9);
+}
+
 /* ==========================================
    BASE & RESET
    ========================================== */
@@ -1164,7 +1187,7 @@ button, input, select, textarea {
 }
 
 .ticket-card {
-  background: #FFFFFF;
+  background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   padding: 20px;
@@ -1174,6 +1197,7 @@ button, input, select, textarea {
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   position: relative;
   overflow: hidden;
+  color: var(--text-main);
 }
 
 .ticket-card:hover {
@@ -1185,10 +1209,61 @@ button, input, select, textarea {
   border-top: 4px solid var(--accent-emerald);
 }
 
+.ticket-card.ready {
+  border-top: 4px solid #059669;
+}
+
+.ticket-card.urgent {
+  border-color: var(--accent-rose);
+  box-shadow: 0 0 16px rgba(225, 29, 72, 0.2);
+}
+
 .ticket-card.completed {
   border-top: 4px solid #CBD5E1;
   opacity: 0.75;
-  background: #F8FAFC;
+  background: var(--bg-subtle);
+}
+
+.ticket-card.ready-animating {
+  transform: scale(0.92) translateY(-10px);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* KDS Elapsed Prep Timers */
+.kds-timer-badge {
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.kds-timer-normal {
+  background: rgba(5, 150, 105, 0.12);
+  color: #059669;
+  border: 1px solid rgba(5, 150, 105, 0.25);
+}
+
+.kds-timer-warning {
+  background: rgba(217, 119, 6, 0.12);
+  color: #D97706;
+  border: 1px solid rgba(217, 119, 6, 0.3);
+}
+
+.kds-timer-rush {
+  background: rgba(225, 29, 72, 0.15);
+  color: #E11D48;
+  border: 1px solid rgba(225, 29, 72, 0.35);
+  animation: rush-glow 1.2s infinite alternate;
+}
+
+@keyframes rush-glow {
+  from { box-shadow: 0 0 4px rgba(225, 29, 72, 0.3); }
+  to { box-shadow: 0 0 12px rgba(225, 29, 72, 0.6); }
 }
 
 .ticket-header {
@@ -1283,23 +1358,24 @@ button, input, select, textarea {
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
-  background: #FFFFFF;
+  background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: 6px;
   cursor: pointer;
   user-select: none;
   transition: all 0.15s ease;
+  color: var(--text-main);
 }
 
 .ticket-bullet-item:hover {
   border-color: #CBD5E1;
-  background: #F8FAFC;
+  background: var(--bg-card-hover);
 }
 
 .ticket-bullet-item.dish-prepared {
   opacity: 0.45;
   text-decoration: line-through;
-  background: #F1F5F9;
+  background: var(--bg-subtle);
 }
 
 .ticket-dish-bullet-left {
