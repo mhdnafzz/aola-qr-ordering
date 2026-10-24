@@ -97,7 +97,7 @@
           <span class="status-badge active" style="font-size: 0.72rem;">Master View</span>
         </div>
         <p style="font-size: 0.84rem; color: var(--text-muted); margin-top: 4px;">
-          Zero-Cost Serverless QR SaaS &bull; Powered by Google Sheets &amp; Apps Script
+          Real-Time Cloud QR SaaS &bull; Powered by Supabase PostgreSQL Engine
         </p>
       </div>
 
@@ -251,7 +251,7 @@
           <div>
             <h2 style="font-size: 1.15rem; font-weight: 700; color: var(--brand-navy);">Client Restaurants (AOLA_Master_DB)</h2>
             <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">
-              Branding, Google Sheet IDs, and Client PINs are synchronized with your Master Google Sheet.
+              Branding, credentials, and merchant databases are managed directly in Supabase Cloud.
             </p>
           </div>
           <button class="btn-secondary" id="btn-refresh-clients">
@@ -289,7 +289,7 @@
               <tr>
                 <th style="width: 24%;">Restaurant</th>
                 <th style="width: 11%;">Shop ID</th>
-                <th style="width: 14%;">Sheet ID</th>
+                <th style="width: 14%;">Database Engine</th>
                 <th style="width: 11%;">Owner PIN</th>
                 <th style="width: 13%;">Sync Health</th>
                 <th style="width: 9%;">Status</th>
@@ -324,7 +324,7 @@
           <div>
             <div class="metric-label">Total Franchise Outflows</div>
             <h3 class="metric-value" style="color: var(--accent-rose);" id="hq-exp-total-expenses">₹12,500</h3>
-            <span style="font-size: 0.74rem; color: var(--text-muted);">Recorded In Google Sheet</span>
+            <span style="font-size: 0.74rem; color: var(--text-muted);">Synchronized with Supabase DB</span>
           </div>
           <div class="metric-icon-wrap rose">
             <i data-lucide="arrow-down-right" style="width:20px;height:20px;"></i>
@@ -355,7 +355,7 @@
               <span>Log Franchise &amp; Agency Expense</span>
             </h2>
             <p style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">
-              Record operational outflows (servers, gateways, field agent payouts, standees). Saved to Google Sheet <code>Expenses</code> tab.
+              Record operational outflows (servers, gateways, field agent payouts, standees). Synchronized in real-time with Supabase Expenses database.
             </p>
           </div>
         </div>
@@ -397,7 +397,7 @@
           <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
             <button type="submit" class="btn-primary" id="btn-save-hq-expense-submit" style="width: auto; padding: 10px 24px;">
               <i data-lucide="check" style="width:16px;height:16px;"></i>
-              <span>Record Expense to Google Sheet</span>
+              <span>Record Expense to Database</span>
             </button>
           </div>
         </form>
@@ -701,17 +701,37 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="form-logo-url">Logo Image URL (Optional)</label>
-          <input type="url" id="form-logo-url" class="form-input" placeholder="https://example.com/logo.png">
-        </div>
+          <label class="form-label" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>Restaurant Brand Logo</span>
+            <span style="font-size: 0.72rem; font-weight: 500; color: var(--text-muted);">PNG, JPG, SVG, WebP</span>
+          </label>
+          
+          <div style="background: #F8FAFC; border: 1.5px dashed var(--border-color); border-radius: var(--radius-md); padding: 12px; display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <div id="form-logo-preview-wrap" style="width: 58px; height: 58px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: #FFFFFF; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+                <img id="form-logo-preview" src="AU-dark-icon.svg" alt="Restaurant Logo Preview" style="width: 100%; height: 100%; object-fit: contain; padding: 4px;">
+              </div>
 
-        <div class="form-group">
-          <label class="form-label" for="form-sheet-id">Client Google Sheet ID (Optional)</label>
-          <input type="text" id="form-sheet-id" class="form-input" placeholder="Leave blank to AUTO-CLONE template sheet">
-          <small style="color:var(--accent-emerald);font-size:0.78rem;margin-top:4px;display:flex;align-items:center;gap:4px;">
-            <i data-lucide="sparkles" style="width:13px;height:13px;"></i>
-            <span><strong>Auto-Clone:</strong> Leave blank and AOLA will automatically create a new Google Sheet!</span>
-          </small>
+              <div style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <input type="file" id="form-logo-file" accept="image/png, image/jpeg, image/jpg, image/webp, image/svg+xml" style="display: none;">
+                  <button type="button" class="btn-secondary" id="btn-choose-logo-file" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 0.8rem; font-weight: 600; cursor: pointer; border-radius: 6px;">
+                    <i data-lucide="upload" style="width: 14px; height: 14px;"></i>
+                    <span>Upload Logo Image</span>
+                  </button>
+                  <button type="button" class="btn-ghost" id="btn-reset-logo" style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; font-size: 0.76rem; color: var(--text-muted); cursor: pointer; border-radius: 6px;" title="Reset to default brand emblem">
+                    <i data-lucide="rotate-ccw" style="width: 13px; height: 13px;"></i>
+                    <span>Default</span>
+                  </button>
+                </div>
+                <span style="font-size: 0.72rem; color: var(--text-dim);">Upload from device or enter image URL below</span>
+              </div>
+            </div>
+
+            <div>
+              <input type="text" id="form-logo-url" class="form-input" placeholder="Image URL (e.g. AU-dark-icon.svg or https://...)" style="font-size: 0.82rem; padding: 7px 10px; background: #FFFFFF;">
+            </div>
+          </div>
         </div>
 
         <div class="form-group">

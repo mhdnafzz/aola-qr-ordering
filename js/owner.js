@@ -2556,7 +2556,7 @@
     } finally {
       if (isManual && el.btnRefreshMenu) {
         el.btnRefreshMenu.disabled = false;
-        el.btnRefreshMenu.innerHTML = `<i data-lucide="refresh-cw" style="width:14px;height:14px;"></i><span>Sync Google Sheet</span>`;
+        el.btnRefreshMenu.innerHTML = `<i data-lucide="refresh-cw" style="width:14px;height:14px;"></i><span>Sync Database</span>`;
         if (window.lucide) lucide.createIcons();
       }
     }
@@ -2839,7 +2839,7 @@
       await fetchOwnerMenu(false);
     } catch (err) {
       console.error("[Save Dish Error]:", err);
-      showToast("Error saving dish to Google Sheet.", "error");
+      showToast("Error saving dish to database.", "error");
     } finally {
       el.btnSaveDishSubmit.disabled = false;
       el.btnSaveDishSubmit.innerHTML = `<span>Save Dish</span>`;
@@ -3278,7 +3278,7 @@
         if (state.currentView === "history") {
           renderHistoryView();
         }
-        if (showFeedback) showToast("Expenses synced from Google Sheet.", "success");
+        if (showFeedback) showToast("Expenses synced from database.", "success");
       } else {
         if (showFeedback) showToast(response.error || "Failed to load expenses.", "error");
       }
@@ -3344,7 +3344,7 @@
         return;
       }
 
-      showToast("Expense logged to Google Sheet!", "success");
+      showToast("Expense logged to database!", "success");
       if (el.ownerExpenseForm) el.ownerExpenseForm.reset();
       if (el.expenseDate) el.expenseDate.valueAsDate = new Date();
       fetchExpenses(false);

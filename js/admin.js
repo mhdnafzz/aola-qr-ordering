@@ -55,7 +55,10 @@
     formShopId: document.getElementById("form-shop-id"),
     formShopName: document.getElementById("form-shop-name"),
     formLogoUrl: document.getElementById("form-logo-url"),
-    formSheetId: document.getElementById("form-sheet-id"),
+    formLogoFile: document.getElementById("form-logo-file"),
+    btnChooseLogoFile: document.getElementById("btn-choose-logo-file"),
+    btnResetLogo: document.getElementById("btn-reset-logo"),
+    formLogoPreview: document.getElementById("form-logo-preview"),
     formOwnerPin: document.getElementById("form-owner-pin"),
     formStatus: document.getElementById("form-status"),
     btnSaveShopSubmit: document.getElementById("btn-save-shop-submit"),
@@ -221,9 +224,37 @@
     el.btnOpenOnboardModal.onclick = () => {
       el.onboardForm.reset();
       el.formShopId.readOnly = false;
+      if (el.formLogoUrl) el.formLogoUrl.value = "AU-dark-icon.svg";
+      if (el.formLogoFile) el.formLogoFile.value = "";
+      updateLogoPreview("AU-dark-icon.svg");
       document.getElementById("onboard-modal-title").textContent = "Onboard New Restaurant";
       el.onboardModal.classList.add("open");
+      if (window.lucide) lucide.createIcons();
     };
+
+    // Logo Upload & Preview Event Listeners
+    if (el.btnChooseLogoFile && el.formLogoFile) {
+      el.btnChooseLogoFile.onclick = () => el.formLogoFile.click();
+    }
+    if (el.formLogoFile) {
+      el.formLogoFile.onchange = (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) handleLogoFileSelection(file);
+      };
+    }
+    if (el.btnResetLogo) {
+      el.btnResetLogo.onclick = () => {
+        if (el.formLogoUrl) el.formLogoUrl.value = "AU-dark-icon.svg";
+        if (el.formLogoFile) el.formLogoFile.value = "";
+        updateLogoPreview("AU-dark-icon.svg");
+        showToast("Reset to default brand emblem.", "info");
+      };
+    }
+    if (el.formLogoUrl) {
+      el.formLogoUrl.oninput = () => {
+        updateLogoPreview(el.formLogoUrl.value);
+      };
+    }
 
     el.btnCloseOnboard.onclick = () => {
       el.onboardModal.classList.remove("open");
@@ -614,7 +645,7 @@
         if (state.activeTab === "trends") {
           renderHqBreakdownChart();
         }
-        if (showFeedback) showToast("Expenses synchronized with Google Sheet.", "success");
+        if (showFeedback) showToast("Expenses synchronized with Supabase Database.", "success");
       }
     } catch (err) {
       console.warn("Could not fetch HQ expenses:", err);
@@ -670,10 +701,10 @@
       el.hqExpenseForm.reset();
       await fetchHqExpenses(false);
     } catch (err) {
-      showToast("Error saving expense to Google Sheet.", "error");
+      showToast("Error saving expense to database.", "error");
     } finally {
       el.btnSaveHqExpenseSubmit.disabled = false;
-      el.btnSaveHqExpenseSubmit.innerHTML = `<i data-lucide="check" style="width:16px;height:16px;"></i><span>Record Expense to Google Sheet</span>`;
+      el.btnSaveHqExpenseSubmit.innerHTML = `<i data-lucide="check" style="width:16px;height:16px;"></i><span>Record Expense to Database</span>`;
       if (window.lucide) lucide.createIcons();
     }
   }
@@ -1070,8 +1101,7 @@
       const q = state.searchQuery;
       filtered = filtered.filter((s) => 
         (s.shopName && s.shopName.toLowerCase().includes(q)) ||
-        (s.shopId && s.shopId.toLowerCase().includes(q)) ||
-        (s.sheetId && s.sheetId.toLowerCase().includes(q))
+        (s.shopId && s.shopId.toLowerCase().includes(q))
       );
     }
 
@@ -1125,9 +1155,9 @@
           </code>
         </td>
         <td>
-          <span title="${escapeHtml(shop.sheetId)}" style="font-family:monospace;font-size:0.8rem;color:var(--text-muted);cursor:pointer;display:inline-flex;align-items:center;gap:4px;" onclick="navigator.clipboard.writeText('${escapeHtml(shop.sheetId)}');showToast('Sheet ID copied!','info');">
-            <span>${escapeHtml(shop.sheetId.slice(0, 10))}...</span>
-            <i data-lucide="copy" style="width:12px;height:12px;"></i>
+          <span class="status-badge" style="background:#ECFDF5;color:#059669;border-color:#A7F3D0;display:inline-flex;align-items:center;gap:5px;font-size:0.75rem;font-weight:600;padding:3px 8px;border-radius:20px;">
+            <i data-lucide="database" style="width:12px;height:12px;"></i>
+            <span>Supabase Cloud</span>
           </span>
         </td>
         <td>
@@ -1293,6 +1323,81 @@
   }
 
   /**
+   * Update Restaurant Logo Preview
+   */
+  function updateLogoPreview(src) {
+    const preview = el.formLogoPreview || document.getElementById("form-logo-preview");
+    if (!preview) return;
+    const fallback = "AU-dark-icon.svg";
+    const clean = (src || "").trim();
+    preview.onerror = () => {
+      preview.src = fallback;
+    };
+    preview.src = clean || fallback;
+  }
+
+  /**
+   * Handle Logo File Selection & Dynamic Compression
+   */
+  function handleLogoFileSelection(file) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      showToast("Please choose an image file (PNG, JPG, SVG, WebP).", "error");
+      return;
+    }
+
+    if (file.type === "image/svg+xml") {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const dataUrl = evt.target.result;
+        if (el.formLogoUrl) el.formLogoUrl.value = dataUrl;
+        updateLogoPreview(dataUrl);
+        showToast("SVG Logo uploaded & preview ready!", "success");
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let w = img.width;
+        let h = img.height;
+        const maxDim = 400;
+
+        if (w > h && w > maxDim) {
+          h = Math.round((h * maxDim) / w);
+          w = maxDim;
+        } else if (h > maxDim) {
+          w = Math.round((w * maxDim) / h);
+          h = maxDim;
+        }
+
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+
+        const compressedDataUrl = canvas.toDataURL("image/webp", 0.85).length < canvas.toDataURL("image/png").length
+          ? canvas.toDataURL("image/webp", 0.85)
+          : canvas.toDataURL("image/png");
+
+        if (el.formLogoUrl) el.formLogoUrl.value = compressedDataUrl;
+        updateLogoPreview(compressedDataUrl);
+        showToast("Shop logo selected & preview updated!", "success");
+      };
+      img.onerror = () => {
+        if (el.formLogoUrl) el.formLogoUrl.value = evt.target.result;
+        updateLogoPreview(evt.target.result);
+      };
+      img.src = evt.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  /**
    * Edit Shop Modal
    */
   function openEditShop(shopId) {
@@ -1302,8 +1407,9 @@
     el.formShopId.value = shop.shopId;
     el.formShopId.readOnly = true; // Primary key cannot be mutated
     el.formShopName.value = shop.shopName;
-    el.formLogoUrl.value = shop.logoUrl || "";
-    el.formSheetId.value = shop.sheetId;
+    if (el.formLogoUrl) el.formLogoUrl.value = shop.logoUrl || "";
+    if (el.formLogoFile) el.formLogoFile.value = "";
+    updateLogoPreview(shop.logoUrl || "AU-dark-icon.svg");
     el.formOwnerPin.value = shop.ownerPin;
     el.formStatus.value = shop.status;
 
@@ -1318,19 +1424,11 @@
   async function handleSaveShopSubmit(e) {
     if (e && e.preventDefault) e.preventDefault();
 
-    let rawSheetId = el.formSheetId.value.trim();
-    // Auto-extract Sheet ID if full Google Sheets URL was pasted
-    const match = rawSheetId.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-    if (match && match[1]) {
-      rawSheetId = match[1];
-    }
-
     const payload = {
       admin_pin: state.adminPin,
       shop_id: el.formShopId.value.trim().toLowerCase().replace(/\s+/g, ""),
       shop_name: el.formShopName.value.trim(),
-      logo_url: el.formLogoUrl.value.trim(),
-      sheet_id: rawSheetId,
+      logo_url: el.formLogoUrl ? el.formLogoUrl.value.trim() : "",
       owner_pin: el.formOwnerPin.value.trim(),
       status: el.formStatus.value
     };
