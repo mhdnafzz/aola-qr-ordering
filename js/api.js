@@ -202,7 +202,31 @@ const AOLA_API = {
           error = fb.error;
         }
 
-        if (error) throw error;
+        if (error) {
+          if (window.AOLA_LOGGER) {
+            window.AOLA_LOGGER.logOrderPlaced(false, {
+              shop_id: shopId,
+              tableNumber: rpcPayload.table_number,
+              itemCount: rpcItems.length,
+              source: rpcPayload.order_source,
+              error: error.message,
+              errorObject: error
+            });
+          }
+          throw error;
+        }
+
+        if (window.AOLA_LOGGER) {
+          window.AOLA_LOGGER.logOrderPlaced(true, {
+            orderId: data.order_id,
+            shop_id: shopId,
+            tableNumber: rpcPayload.table_number,
+            totalPrice: data.total_price,
+            itemCount: rpcItems.length,
+            source: rpcPayload.order_source
+          });
+        }
+
         return data;
       }
 
@@ -217,7 +241,15 @@ const AOLA_API = {
         if (adminPin) {
           const { data: configRows } = await sb.from('config').select('value').eq('key', 'master_admin_pin');
           const masterPin = configRows && configRows.length ? configRows[0].value : "998877";
-          if (adminPin !== masterPin) return { success: false, error: "Unauthorized: Invalid Agency Admin PIN." };
+          if (adminPin !== masterPin) {
+            if (window.AOLA_LOGGER) {
+              window.AOLA_LOGGER.logLogin(false, { role: "admin", error: "Unauthorized: Invalid Agency Admin PIN." });
+            }
+            return { success: false, error: "Unauthorized: Invalid Agency Admin PIN." };
+          }
+          if (window.AOLA_LOGGER) {
+            window.AOLA_LOGGER.logLogin(true, { role: "admin" });
+          }
 
           if (!targetShopId) {
             const { data: allShops } = await sb.from('shops').select('id,name,currency').limit(1);
@@ -235,11 +267,19 @@ const AOLA_API = {
           });
           if (authErr) throw authErr;
           if (!authResult || !authResult.valid) {
-            return { success: false, error: (authResult && authResult.error) || "Invalid Security PIN." };
+            const errStr = (authResult && authResult.error) || "Invalid Security PIN.";
+            if (window.AOLA_LOGGER) {
+              window.AOLA_LOGGER.logLogin(false, { shopId, role: "owner", error: errStr });
+            }
+            return { success: false, error: errStr };
           }
           shopName = authResult.shop.name;
           currency = authResult.shop.currency;
           targetShopId = authResult.shop.id;
+
+          if (window.AOLA_LOGGER) {
+            window.AOLA_LOGGER.logLogin(true, { shopId: targetShopId, shopName, role: "owner" });
+          }
         }
 
         if (!shopName && targetShopId) {
@@ -298,6 +338,11 @@ const AOLA_API = {
           .eq('id', orderId);
 
         if (updateErr) throw updateErr;
+
+        if (window.AOLA_LOGGER) {
+          window.AOLA_LOGGER.logOrderCompleted(orderId, { shop_id: shopId });
+        }
+
         return { success: true, order_id: orderId, message: "Order marked as Completed." };
       }
 
@@ -336,6 +381,11 @@ const AOLA_API = {
           .eq('id', orderId);
 
         if (updateErr) throw updateErr;
+
+        if (window.AOLA_LOGGER) {
+          window.AOLA_LOGGER.logOrderVoided(orderId, reason, { shop_id: shopId });
+        }
+
         return {
           success: true,
           order_id: orderId,
@@ -618,6 +668,16 @@ const AOLA_API = {
         const { error: insErr } = await sb.from('expenses').insert(expenseRow);
         if (insErr) throw insErr;
 
+        if (window.AOLA_LOGGER) {
+          window.AOLA_LOGGER.logExpense("add", {
+            expenseId: expenseId,
+            shop_id: targetScope,
+            category: expenseRow.category,
+            amount: amount,
+            description: expenseRow.description
+          });
+        }
+
         return {
           success: true,
           message: "Expense logged successfully.",
@@ -636,7 +696,16 @@ const AOLA_API = {
         const { data: cfg } = await sb.from('config').select('value').eq('key', 'master_admin_pin');
         const masterPin = cfg && cfg.length ? cfg[0].value : "998877";
         const inputPin = String(params.admin_pin || params.pin || "").trim();
-        if (inputPin !== masterPin) return { success: false, error: "Unauthorized: Invalid Agency Admin PIN." };
+        if (inputPin !== masterPin) {
+          if (window.AOLA_LOGGER) {
+            window.AOLA_LOGGER.logLogin(false, { role: "admin", error: "Unauthorized: Invalid Agency Admin PIN." });
+          }
+          return { success: false, error: "Unauthorized: Invalid Agency Admin PIN." };
+        }
+
+        if (window.AOLA_LOGGER) {
+          window.AOLA_LOGGER.logLogin(true, { role: "admin" });
+        }
         return { success: true, message: "Admin authenticated successfully." };
       }
 
@@ -739,6 +808,13 @@ const AOLA_API = {
 
       return { success: false, error: "Unrecognized API action: " + action };
     } catch (err) {
+      if (window.AOLA_LOGGER) {
+        window.AOLA_LOGGER.error("API_ACTION_FAILED", `API action '${action}' encountered an error: ${err.message}`, {
+          action: action,
+          shop_id: shopId,
+          params: params
+        }, err);
+      }
       console.error(`[AOLA Supabase Error - ${action}]:`, err);
       return { success: false, error: err.message || "Database request failed." };
     }

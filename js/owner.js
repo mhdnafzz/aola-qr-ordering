@@ -227,6 +227,22 @@
     btnCancelVoidModal: document.getElementById("btn-cancel-void-modal"),
     btnConfirmVoidModal: document.getElementById("btn-confirm-void-modal"),
 
+    // System Logs & Health Telemetry Modal
+    btnSidebarLogs: document.getElementById("btn-sidebar-logs"),
+    systemLogsModal: document.getElementById("system-logs-modal"),
+    btnCloseLogsModal: document.getElementById("btn-close-logs-modal"),
+    systemLogsContainer: document.getElementById("system-logs-container"),
+    btnExportLogs: document.getElementById("btn-export-logs"),
+    btnClearLocalLogs: document.getElementById("btn-clear-local-logs"),
+    btnFilterLogAll: document.getElementById("btn-filter-log-all"),
+    btnFilterLogError: document.getElementById("btn-filter-log-error"),
+    btnFilterLogWarn: document.getElementById("btn-filter-log-warn"),
+    btnFilterLogInfo: document.getElementById("btn-filter-log-info"),
+    logCountAll: document.getElementById("log-count-all"),
+    logCountError: document.getElementById("log-count-error"),
+    logCountWarn: document.getElementById("log-count-warn"),
+    logCountInfo: document.getElementById("log-count-info"),
+
     // Billing & Thermal Printing System
     printableReceiptWrapper: document.getElementById("printable-receipt-wrapper"),
     printableReceipt: document.getElementById("printable-receipt"),
@@ -1645,6 +1661,27 @@
       };
     }
 
+    // System Health & Telemetry Logs Modal Controls
+    if (el.btnSidebarLogs) el.btnSidebarLogs.onclick = openSystemLogsModal;
+    if (el.btnCloseLogsModal) el.btnCloseLogsModal.onclick = closeSystemLogsModal;
+    if (el.systemLogsModal) {
+      el.systemLogsModal.onclick = (e) => {
+        if (e.target === el.systemLogsModal) closeSystemLogsModal();
+      };
+    }
+    if (el.btnFilterLogAll) el.btnFilterLogAll.onclick = () => setLogFilter("ALL");
+    if (el.btnFilterLogError) el.btnFilterLogError.onclick = () => setLogFilter("ERROR");
+    if (el.btnFilterLogWarn) el.btnFilterLogWarn.onclick = () => setLogFilter("WARN");
+    if (el.btnFilterLogInfo) el.btnFilterLogInfo.onclick = () => setLogFilter("INFO");
+    if (el.btnExportLogs) el.btnExportLogs.onclick = exportSystemLogsJson;
+    if (el.btnClearLocalLogs) {
+      el.btnClearLocalLogs.onclick = () => {
+        if (window.AOLA_LOGGER) window.AOLA_LOGGER.clearLogs();
+        renderSystemLogsModal();
+        showToast("Local log buffer cleared.", "info");
+      };
+    }
+
     // Historical Reconciliation Controls
     if (el.btnExportCsv) {
       el.btnExportCsv.onclick = exportHistoryToCsv;
@@ -2236,6 +2273,104 @@
       el.voidOrderModal.style.display = "none";
       el.voidOrderModal.classList.remove("open");
     }
+  }
+
+  // ── SYSTEM TELEMETRY & AUDIT LOGS MODAL ──────────────────────────────
+  let activeLogFilter = "ALL";
+
+  function openSystemLogsModal() {
+    renderSystemLogsModal();
+    if (el.systemLogsModal) {
+      el.systemLogsModal.style.display = "flex";
+      el.systemLogsModal.classList.add("open");
+    }
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function closeSystemLogsModal() {
+    if (el.systemLogsModal) {
+      el.systemLogsModal.style.display = "none";
+      el.systemLogsModal.classList.remove("open");
+    }
+  }
+
+  function setLogFilter(level) {
+    activeLogFilter = level;
+    renderSystemLogsModal();
+  }
+
+  function renderSystemLogsModal() {
+    if (!el.systemLogsContainer) return;
+    const logs = (window.AOLA_LOGGER && window.AOLA_LOGGER.getLogs()) || [];
+
+    const errCount = logs.filter(l => l.level === "ERROR" || l.level === "CRITICAL").length;
+    const warnCount = logs.filter(l => l.level === "WARN").length;
+    const infoCount = logs.filter(l => l.level === "INFO").length;
+
+    if (el.logCountAll) el.logCountAll.textContent = logs.length;
+    if (el.logCountError) el.logCountError.textContent = errCount;
+    if (el.logCountWarn) el.logCountWarn.textContent = warnCount;
+    if (el.logCountInfo) el.logCountInfo.textContent = infoCount;
+
+    let filtered = logs;
+    if (activeLogFilter === "ERROR") {
+      filtered = logs.filter(l => l.level === "ERROR" || l.level === "CRITICAL");
+    } else if (activeLogFilter === "WARN") {
+      filtered = logs.filter(l => l.level === "WARN");
+    } else if (activeLogFilter === "INFO") {
+      filtered = logs.filter(l => l.level === "INFO");
+    }
+
+    if (filtered.length === 0) {
+      el.systemLogsContainer.innerHTML = `
+        <div style="padding: 28px 12px; text-align: center; color: #94a3b8;">
+          <div style="font-size: 1.5rem; margin-bottom: 6px;">🛡️</div>
+          <div style="font-weight: 600; color: #e2e8f0; margin-bottom: 4px;">No ${activeLogFilter} Logs Recorded</div>
+          <div style="font-size: 0.74rem;">System telemetry is active. All components healthy.</div>
+        </div>
+      `;
+      return;
+    }
+
+    const levelColors = {
+      CRITICAL: "#ef4444",
+      ERROR: "#f87171",
+      WARN: "#fbbf24",
+      INFO: "#38bdf8",
+      DEBUG: "#94a3b8"
+    };
+
+    el.systemLogsContainer.innerHTML = filtered.slice().reverse().map(l => {
+      const time = l.created_at ? l.created_at.slice(11, 19) : "";
+      const col = levelColors[l.level] || "#94a3b8";
+      const metaStr = l.meta && Object.keys(l.meta).length > 0 ? JSON.stringify(l.meta) : "";
+      const errStr = l.error_details && l.error_details.message ? `${l.error_details.name || 'Error'}: ${l.error_details.message}` : "";
+      return `
+        <div style="padding: 6px 0; border-bottom: 1px solid #1e293b; line-height: 1.45;">
+          <span style="color:#64748b;">[${time}]</span>
+          <span style="color:${col}; font-weight:700;">[${escapeHtml(l.level)}]</span>
+          <span style="color:#a5b4fc; font-weight:600;">[${escapeHtml(l.action)}]</span>
+          <span style="color:#cbd5e1;">${escapeHtml(l.message)}</span>
+          ${metaStr ? `<div style="color:#64748b; font-size:0.71rem; margin-left:14px; word-break:break-all;">meta: ${escapeHtml(metaStr)}</div>` : ''}
+          ${errStr ? `<div style="color:#f87171; font-size:0.71rem; margin-left:14px; word-break:break-all;">err: ${escapeHtml(errStr)}</div>` : ''}
+        </div>
+      `;
+    }).join("");
+  }
+
+  function exportSystemLogsJson() {
+    if (!window.AOLA_LOGGER) return;
+    const jsonStr = window.AOLA_LOGGER.exportLogsJson();
+    const blob = new Blob([jsonStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `aola_logs_${state.shopId || 'system'}_${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast("Downloaded sanitized system logs JSON.", "success");
   }
 
   /**

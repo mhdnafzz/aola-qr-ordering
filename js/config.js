@@ -24,7 +24,16 @@ const AOLA_CONFIG = {
   ENABLE_MOCK_FALLBACK: false,
 
   // Live Production domain for customer QR codes and shareable links
-  PRODUCTION_URL: "https://aola-blue.vercel.app"
+  PRODUCTION_URL: "https://aola-blue.vercel.app",
+
+  // ── Production Logging & Error Tracking ────────────────────────────────
+  LOGGING: {
+    ENABLED: true,
+    PERSIST_TO_SUPABASE: true, // Stores errors and milestone events to Supabase system_logs
+    LOG_TABLE: "system_logs",
+    SENTRY_DSN: "", // Optional Sentry DSN if user configures external Sentry project
+    BUFFER_SIZE: 100 // Local circular log buffer size
+  }
 };
 
 /**

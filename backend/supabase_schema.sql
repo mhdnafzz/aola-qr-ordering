@@ -96,23 +96,45 @@ CREATE TABLE IF NOT EXISTS public.orders_archive (
     archived_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- 2h. System Logs — persistent 30-day telemetry, security audit trail, and error tracking
+CREATE TABLE IF NOT EXISTS public.system_logs (
+    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    shop_id        TEXT NOT NULL DEFAULT 'system',
+    session_id     TEXT DEFAULT '',
+    user_role      TEXT DEFAULT 'guest',
+    level          TEXT NOT NULL DEFAULT 'INFO'
+                   CHECK (level IN ('DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL')),
+    action         TEXT NOT NULL,
+    message        TEXT NOT NULL,
+    page           TEXT DEFAULT '',
+    user_agent     TEXT DEFAULT '',
+    meta           JSONB NOT NULL DEFAULT '{}'::jsonb,
+    error_details  JSONB NOT NULL DEFAULT '{}'::jsonb
+);
+
 -- =====================================================================
 -- SECTION 3: INDEXES (fast lookups for production)
 -- =====================================================================
-CREATE INDEX IF NOT EXISTS idx_menu_shop       ON public.menu(shop_id);
-CREATE INDEX IF NOT EXISTS idx_orders_shop     ON public.orders(shop_id);
-CREATE INDEX IF NOT EXISTS idx_orders_status   ON public.orders(status);
-CREATE INDEX IF NOT EXISTS idx_orders_created  ON public.orders(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_expenses_shop   ON public.expenses(shop_id);
-CREATE INDEX IF NOT EXISTS idx_expenses_date   ON public.expenses(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_settings_shop   ON public.settings(shop_id);
-CREATE INDEX IF NOT EXISTS idx_archive_shop    ON public.orders_archive(shop_id);
-CREATE INDEX IF NOT EXISTS idx_archive_date    ON public.orders_archive(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_menu_shop         ON public.menu(shop_id);
+CREATE INDEX IF NOT EXISTS idx_orders_shop       ON public.orders(shop_id);
+CREATE INDEX IF NOT EXISTS idx_orders_status     ON public.orders(status);
+CREATE INDEX IF NOT EXISTS idx_orders_created    ON public.orders(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_expenses_shop     ON public.expenses(shop_id);
+CREATE INDEX IF NOT EXISTS idx_expenses_date     ON public.expenses(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_settings_shop     ON public.settings(shop_id);
+CREATE INDEX IF NOT EXISTS idx_archive_shop      ON public.orders_archive(shop_id);
+CREATE INDEX IF NOT EXISTS idx_archive_date      ON public.orders_archive(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_logs_created_at   ON public.system_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_logs_shop_created ON public.system_logs(shop_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_logs_level_created ON public.system_logs(level, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_logs_action       ON public.system_logs(action);
 
 -- =====================================================================
 -- SECTION 4: ROW LEVEL SECURITY (RLS)
 -- =====================================================================
 ALTER TABLE public.config          ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.system_logs     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.shops           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.menu            ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orders          ENABLE ROW LEVEL SECURITY;
@@ -178,6 +200,23 @@ CREATE POLICY "anon_all_settings"  ON public.settings FOR ALL    USING (true);
 -- Archive policies
 CREATE POLICY "anon_read_archive"  ON public.orders_archive FOR SELECT USING (true);
 CREATE POLICY "anon_all_archive"   ON public.orders_archive FOR ALL    USING (true);
+
+-- System Logs policies (safe frontend logging & dashboard viewing)
+DROP POLICY IF EXISTS "anon_insert_logs" ON public.system_logs;
+DROP POLICY IF EXISTS "anon_read_logs"   ON public.system_logs;
+CREATE POLICY "anon_insert_logs"   ON public.system_logs FOR INSERT WITH CHECK (true);
+CREATE POLICY "anon_read_logs"     ON public.system_logs FOR SELECT USING (true);
+
+-- 30-Day Retention Cleanup Function
+CREATE OR REPLACE FUNCTION public.cleanup_old_logs(p_retention_days INT DEFAULT 30)
+RETURNS INT LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE deleted_count INT;
+BEGIN
+    DELETE FROM public.system_logs WHERE created_at < NOW() - (p_retention_days || ' days')::INTERVAL;
+    GET DIAGNOSTICS deleted_count = ROW_COUNT;
+    RETURN deleted_count;
+END;
+$$;
 
 -- =====================================================================
 -- SECTION 5: REALTIME SUBSCRIPTIONS (instant kitchen alerts)
