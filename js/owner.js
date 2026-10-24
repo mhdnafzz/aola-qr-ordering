@@ -219,6 +219,14 @@
     settingsFooterMessage: document.getElementById("settings-footer-message"),
     btnSaveSettings: document.getElementById("btn-save-settings"),
 
+    // Void Order Modal
+    voidOrderModal: document.getElementById("void-order-modal"),
+    voidOrderModalId: document.getElementById("void-order-modal-id"),
+    voidOrderReasonInput: document.getElementById("void-order-reason-input"),
+    btnCloseVoidModal: document.getElementById("btn-close-void-modal"),
+    btnCancelVoidModal: document.getElementById("btn-cancel-void-modal"),
+    btnConfirmVoidModal: document.getElementById("btn-confirm-void-modal"),
+
     // Billing & Thermal Printing System
     printableReceiptWrapper: document.getElementById("printable-receipt-wrapper"),
     printableReceipt: document.getElementById("printable-receipt"),
@@ -598,8 +606,15 @@
     const receiptHtml = buildThermalReceiptHtml(billState.order, billState.isKot, billState);
 
     try {
-      const frame = el.isolatedPrintFrame;
-      if (frame) {
+      let frame = el.isolatedPrintFrame || document.getElementById("isolated-print-frame");
+      if (!frame) {
+        frame = document.createElement("iframe");
+        frame.id = "isolated-print-frame";
+        frame.style.cssText = "position:fixed; left:0; top:0; width:1px; height:1px; opacity:0.01; pointer-events:none; border:none;";
+        document.body.appendChild(frame);
+      }
+
+      if (frame && frame.contentWindow) {
         const doc = frame.contentWindow.document;
         doc.open();
         doc.write(`
@@ -666,8 +681,13 @@
         doc.close();
 
         setTimeout(() => {
-          frame.contentWindow.focus();
-          frame.contentWindow.print();
+          try {
+            frame.contentWindow.focus();
+            frame.contentWindow.print();
+          } catch (pe) {
+            console.warn("[iframe print error]:", pe);
+            window.print();
+          }
         }, 200);
         return;
       }
@@ -1100,9 +1120,9 @@
     }
     billState.order = order;
     billState.isKot = true;
-    updateBillPreview();
+    openBillModal(orderId, true);
     triggerPrintReceipt();
-    showToast("Printing Kitchen KOT for Table " + order.tableNumber + "...", "info");
+    showToast("Kitchen KOT ready for Table " + order.tableNumber, "info");
   }
 
   /**
@@ -1574,6 +1594,54 @@
       el.waConsentForm.onsubmit = (e) => {
         if (e && e.preventDefault) e.preventDefault();
         handleWhatsAppDispatch();
+      };
+    }
+
+    // Robust Event Delegation for Kitchen Ticket Action Buttons
+    if (el.ticketGrid && !el.ticketGrid._hasDelegatedListeners) {
+      el.ticketGrid._hasDelegatedListeners = true;
+      el.ticketGrid.addEventListener("click", (e) => {
+        const completeBtn = e.target.closest(".btn-complete-order");
+        if (completeBtn && completeBtn.dataset.id) {
+          e.preventDefault();
+          e.stopPropagation();
+          completeOrder(completeBtn.dataset.id, completeBtn);
+          return;
+        }
+
+        const voidBtn = e.target.closest(".btn-void-ticket");
+        if (voidBtn && voidBtn.dataset.id) {
+          e.preventDefault();
+          e.stopPropagation();
+          openVoidModal(voidBtn.dataset.id, voidBtn);
+          return;
+        }
+
+        const quickKotBtn = e.target.closest(".btn-quick-kot");
+        if (quickKotBtn && quickKotBtn.dataset.id) {
+          e.preventDefault();
+          e.stopPropagation();
+          quickPrintKot(quickKotBtn.dataset.id);
+          return;
+        }
+
+        const openBillBtn = e.target.closest(".btn-open-bill");
+        if (openBillBtn && openBillBtn.dataset.id) {
+          e.preventDefault();
+          e.stopPropagation();
+          openBillModal(openBillBtn.dataset.id, false);
+          return;
+        }
+      });
+    }
+
+    // Void Order In-App Modal Controls
+    if (el.btnCloseVoidModal) el.btnCloseVoidModal.onclick = closeVoidModal;
+    if (el.btnCancelVoidModal) el.btnCancelVoidModal.onclick = closeVoidModal;
+    if (el.btnConfirmVoidModal) el.btnConfirmVoidModal.onclick = handleConfirmVoid;
+    if (el.voidOrderModal) {
+      el.voidOrderModal.onclick = (e) => {
+        if (e.target === el.voidOrderModal) closeVoidModal();
       };
     }
 
@@ -2112,45 +2180,95 @@
     });
 
     el.ticketGrid.querySelectorAll(".btn-void-ticket").forEach((b) => {
-      b.onclick = () => voidOrder(b.dataset.id, b);
+      b.onclick = (e) => {
+        if (e && e.stopPropagation) e.stopPropagation();
+        openVoidModal(b.dataset.id, b);
+      };
     });
 
     el.ticketGrid.querySelectorAll(".btn-complete-order").forEach((b) => {
-      b.onclick = () => completeOrder(b.dataset.id, b);
+      b.onclick = (e) => {
+        if (e && e.stopPropagation) e.stopPropagation();
+        completeOrder(b.dataset.id, b);
+      };
     });
 
     el.ticketGrid.querySelectorAll(".btn-open-bill").forEach((b) => {
-      b.onclick = () => openBillModal(b.dataset.id, false);
+      b.onclick = (e) => {
+        if (e && e.stopPropagation) e.stopPropagation();
+        openBillModal(b.dataset.id, false);
+      };
     });
 
     el.ticketGrid.querySelectorAll(".btn-quick-kot").forEach((b) => {
-      b.onclick = () => quickPrintKot(b.dataset.id);
+      b.onclick = (e) => {
+        if (e && e.stopPropagation) e.stopPropagation();
+        quickPrintKot(b.dataset.id);
+      };
     });
 
     if (window.lucide) lucide.createIcons();
   }
 
-  /**
-   * Action: Soft-Delete / Void Order (Audit Trail Protocol)
-   */
-  async function voidOrder(orderId, buttonEl) {
-    const reason = prompt(
-      `Void Order #${orderId}?\n\nThis order will NOT be deleted permanently. It will be moved to the Voided Orders audit trail.\n\nPlease enter cancellation reason:`,
-      "Customer requested cancellation"
-    );
-    if (reason === null) return; // user hit cancel
+  // State for in-app Void Confirmation Modal
+  let pendingVoidOrderId = null;
+  let pendingVoidButtonEl = null;
 
+  function openVoidModal(orderId, buttonEl) {
+    pendingVoidOrderId = orderId;
+    pendingVoidButtonEl = buttonEl;
+    if (el.voidOrderModalId) el.voidOrderModalId.textContent = `#${orderId}`;
+    if (el.voidOrderReasonInput) el.voidOrderReasonInput.value = "Customer requested cancellation";
+    if (el.voidOrderModal) {
+      el.voidOrderModal.style.display = "flex";
+      el.voidOrderModal.classList.add("open");
+    }
+    if (el.voidOrderReasonInput) {
+      setTimeout(() => el.voidOrderReasonInput.focus(), 100);
+    }
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function closeVoidModal() {
+    pendingVoidOrderId = null;
+    pendingVoidButtonEl = null;
+    if (el.voidOrderModal) {
+      el.voidOrderModal.style.display = "none";
+      el.voidOrderModal.classList.remove("open");
+    }
+  }
+
+  /**
+   * Action: Confirmed Soft-Delete / Void Order (Audit Trail Protocol)
+   */
+  async function handleConfirmVoid() {
+    const orderId = pendingVoidOrderId;
+    const buttonEl = pendingVoidButtonEl;
+    if (!orderId) {
+      closeVoidModal();
+      return;
+    }
+
+    const reason = (el.voidOrderReasonInput && el.voidOrderReasonInput.value.trim()) || "Customer requested cancellation";
+
+    if (el.btnConfirmVoidModal) {
+      el.btnConfirmVoidModal.disabled = true;
+      el.btnConfirmVoidModal.textContent = "Voiding...";
+    }
     if (buttonEl) {
       buttonEl.disabled = true;
       buttonEl.textContent = "Voiding...";
     }
 
     try {
+      const activeShop = state.shopId || sessionStorage.getItem("AOLA_OWNER_SHOP") || "bismillah";
+      const activePin = state.pin || sessionStorage.getItem("AOLA_OWNER_PIN") || "1234";
+
       const response = await AOLA_API.post("delete_order", {
-        shop_id: state.shopId,
-        pin: state.pin,
+        shop_id: activeShop,
+        pin: activePin,
         order_id: orderId,
-        reason: reason.trim() || "Voided from Kitchen Console"
+        reason: reason
       });
 
       if (!response.success) {
@@ -2168,7 +2286,71 @@
       const ord = state.orders.find((o) => String(o.orderId) === String(orderId));
       if (ord) {
         ord.status = "Deleted";
-        ord.customerNotes = (ord.customerNotes ? ord.customerNotes + " | " : "") + `[VOIDED: ${reason.trim() || "Kitchen action"}]`;
+        ord.customerNotes = (ord.customerNotes ? ord.customerNotes + " | " : "") + `[VOIDED: ${reason}]`;
+      }
+
+      closeVoidModal();
+      updateCounts();
+      renderTickets();
+      if (state.currentView === "history") {
+        renderHistoryView();
+      }
+    } catch (err) {
+      console.error("[Void Order Error]:", err);
+      showToast("Error communicating with server.", "error");
+      if (buttonEl) {
+        buttonEl.disabled = false;
+        buttonEl.innerHTML = `<i data-lucide="trash-2" style="width:13px;height:13px;"></i><span>Void</span>`;
+        if (window.lucide) lucide.createIcons();
+      }
+    } finally {
+      if (el.btnConfirmVoidModal) {
+        el.btnConfirmVoidModal.disabled = false;
+        el.btnConfirmVoidModal.innerHTML = `<i data-lucide="trash-2" style="width:14px;height:14px;"></i><span>Void Order</span>`;
+        if (window.lucide) lucide.createIcons();
+      }
+    }
+  }
+
+  // Alias for backward compatibility
+  function voidOrder(orderId, buttonEl) {
+    openVoidModal(orderId, buttonEl);
+  }
+
+  /**
+   * Action: Mark Order as Complete (Instant 1-Click Fast Kitchen Execution)
+   */
+  async function completeOrder(orderId, buttonEl) {
+    if (buttonEl) {
+      buttonEl.disabled = true;
+      buttonEl.innerHTML = `<span>Updating...</span>`;
+    }
+
+    try {
+      const activeShop = state.shopId || sessionStorage.getItem("AOLA_OWNER_SHOP") || "bismillah";
+      const activePin = state.pin || sessionStorage.getItem("AOLA_OWNER_PIN") || "1234";
+
+      const response = await AOLA_API.post("complete_order", {
+        shop_id: activeShop,
+        pin: activePin,
+        order_id: orderId
+      });
+
+      if (!response.success) {
+        showToast(response.error || "Failed to update order status.", "error");
+        if (buttonEl) {
+          buttonEl.disabled = false;
+          buttonEl.innerHTML = `<i data-lucide="check-circle-2" style="width:14px;height:14px;"></i><span>Complete</span>`;
+          if (window.lucide) lucide.createIcons();
+        }
+        return;
+      }
+
+      showToast(`Order #${orderId} marked as completed!`, "success");
+
+      const ord = state.orders.find((o) => String(o.orderId) === String(orderId));
+      if (ord) {
+        ord.status = "Completed";
       }
 
       updateCounts();
@@ -2177,56 +2359,12 @@
         renderHistoryView();
       }
     } catch (err) {
+      console.error("[Complete Order Error]:", err);
       showToast("Error communicating with server.", "error");
       if (buttonEl) {
         buttonEl.disabled = false;
-        buttonEl.innerHTML = `<i data-lucide="trash-2" style="width:13px;height:13px;"></i><span>Void</span>`;
+        buttonEl.innerHTML = `<i data-lucide="check-circle-2" style="width:14px;height:14px;"></i><span>Complete</span>`;
         if (window.lucide) lucide.createIcons();
-      }
-    }
-  }
-
-  /**
-   * Action: Mark Order as Complete
-   */
-  async function completeOrder(orderId, buttonEl) {
-    if (!confirm(`Mark Order #${orderId} as Completed?`)) return;
-
-    if (buttonEl) {
-      buttonEl.disabled = true;
-      buttonEl.textContent = "Updating...";
-    }
-
-    try {
-      const response = await AOLA_API.post("complete_order", {
-        shop_id: state.shopId,
-        pin: state.pin,
-        order_id: orderId
-      });
-
-      if (!response.success) {
-        showToast(response.error || "Failed to update order status.", "error");
-        if (buttonEl) {
-          buttonEl.disabled = false;
-          buttonEl.textContent = "✓ Mark Complete";
-        }
-        return;
-      }
-
-      showToast(`Order #${orderId} marked as completed!`, "success");
-
-      const ord = state.orders.find((o) => o.orderId === orderId);
-      if (ord) {
-        ord.status = "Completed";
-      }
-
-      updateCounts();
-      renderTickets();
-    } catch (err) {
-      showToast("Error communicating with server.", "error");
-      if (buttonEl) {
-        buttonEl.disabled = false;
-        buttonEl.textContent = "✓ Mark Complete";
       }
     }
   }
@@ -4053,6 +4191,8 @@
     openBill: (id) => openBillModal(id, false),
     openKot: (id) => openBillModal(id, true),
     quickPrintKot: (id) => quickPrintKot(id),
+    completeOrder: (id, btn) => completeOrder(id, btn),
+    voidOrder: (id, btn) => openVoidModal(id, btn),
     openPos: () => openPosModal(),
     openWhatsApp: (id) => {
       const order = state.orders.find((o) => String(o.orderId) === String(id));

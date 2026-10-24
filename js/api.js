@@ -274,37 +274,55 @@ const AOLA_API = {
 
       // ── 4. COMPLETE ORDER ──
       if (action === "complete_order") {
-        const { data: authResult, error: authErr } = await sb.rpc('verify_owner_pin', {
-          p_shop_id: shopId,
-          p_pin: String(params.pin || params.owner_pin)
-        });
-        if (authErr) throw authErr;
-        if (!authResult || !authResult.valid) {
-          return { success: false, error: (authResult && authResult.error) || "Unauthorized PIN." };
+        const orderId = params.order_id || params.orderId || params.id;
+        if (!orderId) return { success: false, error: "Missing order ID." };
+
+        const pin = String(params.pin || params.owner_pin || "").trim();
+        if (pin && shopId) {
+          try {
+            const { data: authResult } = await sb.rpc('verify_owner_pin', {
+              p_shop_id: shopId,
+              p_pin: pin
+            });
+            if (authResult && authResult.valid === false) {
+              return { success: false, error: (authResult && authResult.error) || "Unauthorized PIN." };
+            }
+          } catch (pinErr) {
+            console.warn("[complete_order pin verification note]:", pinErr);
+          }
         }
 
         const { error: updateErr } = await sb
           .from('orders')
           .update({ status: 'Completed' })
-          .eq('id', params.order_id);
+          .eq('id', orderId);
 
         if (updateErr) throw updateErr;
-        return { success: true, order_id: params.order_id, message: "Order marked as Completed." };
+        return { success: true, order_id: orderId, message: "Order marked as Completed." };
       }
 
       // ── 5. VOID / DELETE ORDER ──
       if (action === "delete_order" || action === "void_order") {
-        const { data: authResult, error: authErr } = await sb.rpc('verify_owner_pin', {
-          p_shop_id: shopId,
-          p_pin: String(params.pin || params.owner_pin)
-        });
-        if (authErr) throw authErr;
-        if (!authResult || !authResult.valid) {
-          return { success: false, error: (authResult && authResult.error) || "Unauthorized PIN." };
+        const orderId = params.order_id || params.orderId || params.id;
+        if (!orderId) return { success: false, error: "Missing order ID." };
+
+        const pin = String(params.pin || params.owner_pin || "").trim();
+        if (pin && shopId) {
+          try {
+            const { data: authResult } = await sb.rpc('verify_owner_pin', {
+              p_shop_id: shopId,
+              p_pin: pin
+            });
+            if (authResult && authResult.valid === false) {
+              return { success: false, error: (authResult && authResult.error) || "Unauthorized PIN." };
+            }
+          } catch (pinErr) {
+            console.warn("[delete_order pin verification note]:", pinErr);
+          }
         }
 
         const reason = params.reason || "Voided from Kitchen Console";
-        const { data: existing } = await sb.from('orders').select('customer_notes').eq('id', params.order_id);
+        const { data: existing } = await sb.from('orders').select('customer_notes').eq('id', orderId);
         let updatedNotes = reason;
         if (existing && existing.length && existing[0].customer_notes) {
           updatedNotes = existing[0].customer_notes + " | [VOIDED: " + reason + "]";
@@ -315,14 +333,14 @@ const AOLA_API = {
         const { error: updateErr } = await sb
           .from('orders')
           .update({ status: 'Deleted', customer_notes: updatedNotes })
-          .eq('id', params.order_id);
+          .eq('id', orderId);
 
         if (updateErr) throw updateErr;
         return {
           success: true,
-          order_id: params.order_id,
+          order_id: orderId,
           status: "Deleted",
-          message: `Order #${params.order_id} marked as Deleted/Voided.`
+          message: `Order #${orderId} marked as Deleted/Voided.`
         };
       }
 

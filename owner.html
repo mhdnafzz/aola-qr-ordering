@@ -1054,8 +1054,38 @@
   </div>
 
   <!-- Dedicated Isolated Iframe for Zero-Margin Thermal Printing -->
-  <iframe id="isolated-print-frame" style="position:fixed; right:100vw; bottom:100vh; width:0; height:0; border:0;"
+  <iframe id="isolated-print-frame" style="position:fixed; left:0; top:0; width:1px; height:1px; opacity:0.01; pointer-events:none; border:none;"
     aria-hidden="true"></iframe>
+
+  <!-- Modal: Void Order Confirmation Dialog -->
+  <div class="modal-backdrop" id="void-order-modal" role="dialog" aria-modal="true" style="display:none;">
+    <div class="modal-popup" style="max-width: 440px; text-align: left; padding: 24px;">
+      <div class="modal-header" style="margin-bottom: 14px;">
+        <h2 class="modal-title" style="color: #dc2626; display: flex; align-items: center; gap: 8px; font-size: 1.15rem;">
+          <i data-lucide="alert-triangle" style="width: 20px; height: 20px; color: #dc2626;"></i>
+          <span>Void Kitchen Order</span>
+        </h2>
+        <button class="btn-close-modal" id="btn-close-void-modal">&times;</button>
+      </div>
+      <p style="font-size: 0.88rem; color: var(--text-sub); line-height: 1.5; margin-bottom: 14px;">
+        Are you sure you want to void <strong id="void-order-modal-id" style="color: var(--brand-navy);">Order</strong>?
+        This order will be moved to the <strong>Voided Orders</strong> audit trail.
+      </p>
+      <div style="margin-bottom: 18px;">
+        <label for="void-order-reason-input" style="display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 6px; color: var(--text-main);">
+          Cancellation Reason:
+        </label>
+        <input type="text" id="void-order-reason-input" class="form-input" value="Customer requested cancellation" placeholder="Enter reason..." style="width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: 8px; font-size: 0.88rem;">
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" class="btn-secondary" id="btn-cancel-void-modal" style="padding: 8px 16px; font-weight: 600;">Keep Order</button>
+        <button type="button" id="btn-confirm-void-modal" style="padding: 8px 18px; background: #dc2626; color: #ffffff; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+          <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+          <span>Void Order</span>
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- Store Profile & Thermal Header Settings Modal -->
   <div class="modal-backdrop" id="settings-modal" role="dialog" aria-modal="true">
@@ -1477,9 +1507,9 @@
   </script>
 
   <!-- Scripts -->
-  <script src="js/config.js?v=3.1"></script>
-  <script src="js/api.js?v=3.1"></script>
-  <script src="js/owner.js?v=3.1"></script>
+  <script src="js/config.js?v=3.3"></script>
+  <script src="js/api.js?v=3.3"></script>
+  <script src="js/owner.js?v=3.3"></script>
   <script>
     // Self-initialize Lucide Icons
     if (window.lucide) {
