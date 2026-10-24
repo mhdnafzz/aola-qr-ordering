@@ -253,6 +253,21 @@ button, input, select, textarea {
   padding: 28px 24px 80px;
 }
 
+/* Fluid responsive container for Owner & Kitchen Display to utilize all screen sizes */
+.owner-dashboard-container {
+  width: 100% !important;
+  max-width: 1920px !important;
+  margin: 0 auto !important;
+  padding: 16px clamp(12px, 2vw, 32px) 60px !important;
+  box-sizing: border-box !important;
+}
+
+@media (max-width: 768px) {
+  .owner-dashboard-container {
+    padding: 12px 10px 40px !important;
+  }
+}
+
 /* ==========================================
    HEADER & RESTAURANT BRANDING (CUSTOMER MENU)
    ========================================== */
@@ -1076,11 +1091,48 @@ button, input, select, textarea {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 0;
-  margin-bottom: 24px;
+  padding: 16px 0;
+  margin-bottom: 20px;
   border-bottom: 1px solid var(--border-subtle);
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 12px;
+}
+
+.owner-header .btn-primary,
+.owner-header .btn-secondary,
+.owner-header .btn-danger {
+  width: auto !important;
+  padding: 7px 14px;
+  font-size: 0.84rem;
+}
+
+@media (max-width: 860px) {
+  .owner-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px 0;
+  }
+  .owner-header > div:first-child {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .owner-header > div:last-child {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .owner-header .btn-secondary,
+  .owner-header .btn-primary,
+  .owner-header .btn-danger {
+    flex: 1 1 auto;
+    font-size: 0.78rem;
+    padding: 7px 10px;
+    justify-content: center;
+  }
 }
 
 .live-indicator {
@@ -1107,8 +1159,8 @@ button, input, select, textarea {
 
 .ticket-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 18px;
 }
 
 .ticket-card {
@@ -1337,14 +1389,60 @@ button, input, select, textarea {
    ========================================== */
 .kds-split-layout {
   display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 24px;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: clamp(14px, 1.6vw, 24px);
   align-items: start;
+  width: 100%;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1140px) {
   .kds-split-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 14px;
+  }
+}
+
+@media (max-width: 920px) {
+  .kds-split-layout {
+    grid-template-columns: 100%;
+    gap: 14px;
+  }
+
+  .kds-sidebar {
+    position: static;
+    top: auto;
+    padding: 12px 14px;
+    gap: 12px;
+  }
+
+  .sidebar-nav-list {
+    flex-direction: row !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 8px !important;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+
+  .sidebar-nav-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .sidebar-nav-list .cat-chip {
+    width: auto !important;
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: 8px 14px !important;
+    font-size: 0.82rem;
+  }
+
+  #sidebar-order-filters > div:last-child {
+    flex-direction: row !important;
+  }
+
+  #sidebar-order-filters .cat-chip {
+    width: auto !important;
+    flex: 1;
   }
 }
 
@@ -2278,19 +2376,79 @@ body > main {
    ========================================================================= */
 .history-metrics-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
+  gap: 12px;
   margin-bottom: 20px;
+  width: 100%;
 }
 
-@media (max-width: 992px) {
-  .history-metrics-grid {
-    grid-template-columns: repeat(2, 1fr);
+.history-metrics-grid.metrics-cols-6 {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.history-metrics-grid.metrics-cols-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 1460px) {
+  .history-metrics-grid.metrics-cols-6 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 540px) {
-  .history-metrics-grid {
+@media (max-width: 1050px) {
+  .history-metrics-grid.metrics-cols-6 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .history-metrics-grid.metrics-cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .history-metrics-grid.metrics-cols-6 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .history-metrics-grid.metrics-cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .history-metric-card {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  .history-metric-icon {
+    width: 36px;
+    height: 36px;
+  }
+  .history-metric-val {
+    font-size: 1.15rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .history-metrics-grid.metrics-cols-6,
+  .history-metrics-grid.metrics-cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .history-metric-card {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+  .history-metric-icon {
+    width: 32px;
+    height: 32px;
+  }
+  .history-metric-label {
+    font-size: 0.68rem;
+  }
+  .history-metric-val {
+    font-size: 1.05rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .history-metrics-grid.metrics-cols-6,
+  .history-metrics-grid.metrics-cols-4 {
     grid-template-columns: 1fr;
   }
 }
@@ -2372,6 +2530,24 @@ body > main {
   justify-content: flex-end;
 }
 
+@media (max-width: 860px) {
+  .history-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px;
+  }
+  .history-filters-left {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .history-filters-right {
+    width: 100%;
+    max-width: 100%;
+    justify-content: space-between;
+  }
+}
+
 .date-range-pills {
   display: flex;
   background: var(--bg-subtle);
@@ -2379,6 +2555,33 @@ body > main {
   border-radius: var(--radius-full);
   padding: 3px;
   gap: 2px;
+  overflow-x: auto;
+  max-width: 100%;
+  scrollbar-width: none;
+}
+
+.date-range-pills::-webkit-scrollbar {
+  display: none;
+}
+
+#trend-date-toolbar {
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  #trend-date-toolbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  #trend-date-toolbar > div:first-child {
+    width: 100%;
+    justify-content: space-between;
+  }
+  #trend-date-toolbar > div:last-child {
+    width: 100%;
+    justify-content: space-between;
+  }
 }
 
 .date-pill {

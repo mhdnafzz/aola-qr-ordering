@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AOLA - Kitchen &amp; Owner Dashboard</title>
   <meta name="description" content="Real-time live kitchen display system and ticket manager for restaurant owners.">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=3.5">
   <link rel="icon" type="image/svg+xml" href="AU-dark-icon.svg">
   <!-- Lucide Vector Icons Library -->
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -110,7 +110,7 @@
   </div>
 
   <!-- Dashboard Main Layout -->
-  <main class="desktop-container" id="dashboard-container" style="display: none;">
+  <main class="desktop-container owner-dashboard-container" id="dashboard-container" style="display: none;">
 
     <!-- Top Header Bar -->
     <header class="owner-header">
@@ -129,7 +129,7 @@
 
       <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
         <button class="btn-primary" id="btn-header-pos" title="Punch Manual POS Order (Direct Cashier Entry)"
-          style="display: flex; align-items: center; gap: 6px; background: var(--brand-navy); color: #fff; font-weight: 600; box-shadow: 0 2px 8px rgba(15,23,42,0.18);">
+          style="display: inline-flex; width: auto; align-items: center; gap: 6px; background: var(--brand-navy); color: #fff; font-weight: 600; box-shadow: 0 2px 8px rgba(15,23,42,0.18);">
           <i data-lucide="calculator" style="width:15px;height:15px;color:#38BDF8;"></i>
           <span>New Order (POS)</span>
         </button>
@@ -167,7 +167,7 @@
             style="font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 8px;">
             Navigation Views
           </div>
-          <div style="display: flex; flex-direction: column; gap: 6px;">
+          <div class="sidebar-nav-list" id="sidebar-nav-list" style="display: flex; flex-direction: column; gap: 6px;">
             <button class="cat-chip" id="view-tab-pos"
               style="width: 100%; justify-content: flex-start; padding: 10px 14px; font-weight: 600; background: var(--primary-light); color: var(--primary); border: 1.5px solid var(--primary-border);">
               <i data-lucide="calculator" style="width:16px;height:16px;color:var(--primary);"></i>
@@ -324,7 +324,7 @@
         <!-- VIEW 3: Historical Order Ledger & Daily Reconciliation -->
         <div id="section-history-view" style="display: none;">
           <!-- Top Reconciliation Summary Metric Cards -->
-          <div class="history-metrics-grid" style="grid-template-columns: repeat(6, 1fr);">
+          <div class="history-metrics-grid metrics-cols-6">
             <div class="history-metric-card">
               <div class="history-metric-icon" style="background:#ECFDF5; color:#059669;">
                 <i data-lucide="indian-rupee" style="width:20px;height:20px;"></i>
@@ -495,7 +495,7 @@
         <!-- VIEW 4: Daily Expenses Ledger & Outflow Management -->
         <div id="section-expenses-view" style="display: none;">
           <!-- Top Financial Overview Summary Metric Cards -->
-          <div class="history-metrics-grid" style="grid-template-columns: repeat(4, 1fr);">
+          <div class="history-metrics-grid metrics-cols-4">
             <div class="history-metric-card">
               <div class="history-metric-icon" style="background:#ECFDF5; color:#059669;">
                 <i data-lucide="arrow-down-left" style="width:20px;height:20px;"></i>
@@ -762,7 +762,7 @@
             </div>
 
             <!-- Key Insight Metric Cards -->
-            <div class="history-metrics-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 0;">
+            <div class="history-metrics-grid metrics-cols-4" style="margin-bottom: 0;">
               <div class="history-metric-card">
                 <div class="history-metric-icon" style="background:#EEF2FF; color:#4F46E5;">
                   <i data-lucide="circle-dollar-sign" style="width:20px;height:20px;"></i>
