@@ -583,6 +583,10 @@
     decrement: decrementCart
   };
 
-  // Launch on DOM ready
-  document.addEventListener("DOMContentLoaded", init);
+  // Launch on DOM ready (safely handling already loaded documents)
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
 })();

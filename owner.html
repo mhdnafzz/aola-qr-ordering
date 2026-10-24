@@ -1465,18 +1465,21 @@
       }
     };
 
-    document.addEventListener('DOMContentLoaded', () => {
+    function startRealtimeIfReady() {
       const activeShop = sessionStorage.getItem("AOLA_OWNER_SHOP") || localStorage.getItem("AOLA_SHOP_ID");
-      if (activeShop) {
-        window.setupKitchenRealtime(activeShop);
-      }
-    });
+      if (activeShop) window.setupKitchenRealtime(activeShop);
+    }
+    if (document.readyState === "loading") {
+      document.addEventListener('DOMContentLoaded', startRealtimeIfReady);
+    } else {
+      startRealtimeIfReady();
+    }
   </script>
 
   <!-- Scripts -->
-  <script src="js/config.js?v=3.0"></script>
-  <script src="js/api.js?v=3.0"></script>
-  <script src="js/owner.js?v=3.0"></script>
+  <script src="js/config.js?v=3.1"></script>
+  <script src="js/api.js?v=3.1"></script>
+  <script src="js/owner.js?v=3.1"></script>
   <script>
     // Self-initialize Lucide Icons
     if (window.lucide) {
