@@ -117,14 +117,20 @@ CREATE TABLE IF NOT EXISTS public.system_logs (
 -- SECTION 3: INDEXES (fast lookups for production)
 -- =====================================================================
 CREATE INDEX IF NOT EXISTS idx_menu_shop         ON public.menu(shop_id);
+CREATE INDEX IF NOT EXISTS idx_menu_shop_stock   ON public.menu(shop_id, in_stock);
 CREATE INDEX IF NOT EXISTS idx_orders_shop       ON public.orders(shop_id);
 CREATE INDEX IF NOT EXISTS idx_orders_status     ON public.orders(status);
 CREATE INDEX IF NOT EXISTS idx_orders_created    ON public.orders(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_orders_shop_created ON public.orders(shop_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_orders_shop_status  ON public.orders(shop_id, status);
 CREATE INDEX IF NOT EXISTS idx_expenses_shop     ON public.expenses(shop_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_date     ON public.expenses(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_expenses_shop_created ON public.expenses(shop_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_settings_shop     ON public.settings(shop_id);
+CREATE INDEX IF NOT EXISTS idx_settings_shop_key ON public.settings(shop_id, key);
 CREATE INDEX IF NOT EXISTS idx_archive_shop      ON public.orders_archive(shop_id);
 CREATE INDEX IF NOT EXISTS idx_archive_date      ON public.orders_archive(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_archive_shop_created ON public.orders_archive(shop_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_logs_created_at   ON public.system_logs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_logs_shop_created ON public.system_logs(shop_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_logs_level_created ON public.system_logs(level, created_at DESC);

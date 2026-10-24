@@ -376,7 +376,7 @@
     }
 
     el.btnSubmitMasterPin.disabled = true;
-    el.btnSubmitMasterPin.textContent = "Updating PIN...";
+    el.btnSubmitMasterPin.innerHTML = `<span class="btn-spinner"></span><span>Updating Master PIN...</span>`;
 
     try {
       const response = await AOLA_API.post("admin_change_pin", {
@@ -433,7 +433,7 @@
 
     state.adminPin = pin;
     el.btnAdminLoginSubmit.disabled = true;
-    el.btnAdminLoginSubmit.innerHTML = `<span>Verifying...</span>`;
+    el.btnAdminLoginSubmit.innerHTML = `<span class="btn-spinner"></span><span>Verifying Master PIN...</span>`;
 
     try {
       await performLogin();
@@ -649,7 +649,7 @@
     }
 
     el.btnSaveHqExpenseSubmit.disabled = true;
-    el.btnSaveHqExpenseSubmit.textContent = "Recording...";
+    el.btnSaveHqExpenseSubmit.innerHTML = `<span class="btn-spinner"></span><span>Recording Outflow...</span>`;
 
     try {
       const res = await AOLA_API.post("add_expense", {
@@ -1341,9 +1341,7 @@
     }
 
     el.btnSaveShopSubmit.disabled = true;
-    el.btnSaveShopSubmit.innerHTML = payload.sheet_id 
-      ? `<span>Saving to Master DB...</span>` 
-      : `<span>Auto-Cloning Google Sheet...</span>`;
+    el.btnSaveShopSubmit.innerHTML = `<span class="btn-spinner"></span><span>Saving to Master DB...</span>`;
 
     try {
       const response = await AOLA_API.post("admin_save_shop", payload);

@@ -3458,3 +3458,36 @@ a:focus-visible {
     flex: 1;
   }
 }
+
+/* ==========================================================================
+   Button Loading Spinner (Prevents duplicate clicks & payments)
+   ========================================================================== */
+.btn-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-radius: 50%;
+  border-top-color: #ffffff;
+  animation: btn-spin 0.65s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+.btn-secondary .btn-spinner {
+  border-color: rgba(15, 23, 42, 0.2);
+  border-top-color: var(--brand-navy, #0f172a);
+}
+
+@keyframes btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+button[disabled] {
+  cursor: not-allowed !important;
+  opacity: 0.72 !important;
+  pointer-events: none;
+}

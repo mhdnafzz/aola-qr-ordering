@@ -1835,7 +1835,7 @@
     state.pin = pin;
 
     el.btnLoginSubmit.disabled = true;
-    el.btnLoginSubmit.innerHTML = `<span>Verifying Credentials...</span>`;
+    el.btnLoginSubmit.innerHTML = `<span class="btn-spinner"></span><span>Verifying Credentials...</span>`;
 
     try {
       await performLogin();
@@ -2388,11 +2388,11 @@
 
     if (el.btnConfirmVoidModal) {
       el.btnConfirmVoidModal.disabled = true;
-      el.btnConfirmVoidModal.textContent = "Voiding...";
+      el.btnConfirmVoidModal.innerHTML = `<span class="btn-spinner"></span><span>Voiding Order...</span>`;
     }
     if (buttonEl) {
       buttonEl.disabled = true;
-      buttonEl.textContent = "Voiding...";
+      buttonEl.innerHTML = `<span class="btn-spinner"></span><span>Voiding...</span>`;
     }
 
     try {
@@ -2458,7 +2458,7 @@
   async function completeOrder(orderId, buttonEl) {
     if (buttonEl) {
       buttonEl.disabled = true;
-      buttonEl.innerHTML = `<span>Updating...</span>`;
+      buttonEl.innerHTML = `<span class="btn-spinner"></span><span>Updating...</span>`;
     }
 
     try {
@@ -2809,7 +2809,7 @@
     }
 
     el.btnSaveDishSubmit.disabled = true;
-    el.btnSaveDishSubmit.innerHTML = `<span>Saving to Google Sheet...</span>`;
+    el.btnSaveDishSubmit.innerHTML = `<span class="btn-spinner"></span><span>Saving Dish to Supabase...</span>`;
 
     try {
       const response = await AOLA_API.post("owner_save_dish", {
@@ -2912,7 +2912,7 @@
     }
 
     el.btnSubmitChangePin.disabled = true;
-    el.btnSubmitChangePin.textContent = "Updating...";
+    el.btnSubmitChangePin.innerHTML = `<span class="btn-spinner"></span><span>Updating PIN...</span>`;
 
     try {
       const response = await AOLA_API.post("change_pin", {
@@ -3316,7 +3316,7 @@
 
     if (el.btnSubmitExpense) {
       el.btnSubmitExpense.disabled = true;
-      el.btnSubmitExpense.textContent = "Recording...";
+      el.btnSubmitExpense.innerHTML = `<span class="btn-spinner"></span><span>Recording Outflow...</span>`;
     }
 
     let timestamp = "";
@@ -4279,8 +4279,10 @@
     };
 
     // UI Loading state
-    if (el.btnPosSubmitOrder) el.btnPosSubmitOrder.disabled = true;
-    if (el.posSubmitText) el.posSubmitText.textContent = "Sending to Kitchen...";
+    if (el.btnPosSubmitOrder) {
+      el.btnPosSubmitOrder.disabled = true;
+      el.btnPosSubmitOrder.innerHTML = `<span class="btn-spinner"></span><span id="pos-submit-text">Sending to Kitchen...</span>`;
+    }
 
     try {
       const response = await AOLA_API.post("place_order", payload);
@@ -4314,9 +4316,11 @@
     } finally {
       if (el.btnPosSubmitOrder) {
         el.btnPosSubmitOrder.disabled = state.cashierCart.length === 0;
-      }
-      if (el.posSubmitText) {
-        el.posSubmitText.textContent = "Send to Kitchen";
+        el.btnPosSubmitOrder.innerHTML = `
+          <i data-lucide="send" style="width: 17px; height: 17px;"></i>
+          <span id="pos-submit-text">Send to Kitchen</span>
+        `;
+        if (window.lucide) lucide.createIcons();
       }
     }
   }

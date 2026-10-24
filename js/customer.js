@@ -453,7 +453,7 @@
 
     state.isSubmitting = true;
     el.btnSubmitOrder.disabled = true;
-    el.btnSubmitOrder.innerHTML = `<span>Placing Order...</span>`;
+    el.btnSubmitOrder.innerHTML = `<span class="btn-spinner"></span><span>Placing Order...</span>`;
 
     try {
       const response = await AOLA_API.post("place_order", {

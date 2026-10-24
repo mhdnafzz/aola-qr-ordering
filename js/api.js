@@ -108,9 +108,51 @@ const AOLA_API = {
   },
 
   /**
-   * Unified Action Handler executing direct Supabase PostgREST & RPC queries
+   * Unified Action Handler with strict network timeout protection
    */
   async handleAction(action, params = {}) {
+    const timeoutMs = typeof params._timeout === "number" ? params._timeout : 15000;
+    let timeoutId;
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error(`Database request for '${action}' timed out after ${timeoutMs / 1000}s. Please check your internet connection.`));
+      }, timeoutMs);
+    });
+
+    try {
+      return await Promise.race([
+        this._executeAction(action, params).finally(() => clearTimeout(timeoutId)),
+        timeoutPromise
+      ]);
+    } catch (err) {
+      clearTimeout(timeoutId);
+      const shopId = (params.shop || params.shop_id || "").toLowerCase().trim();
+      let friendlyError = err.message || "Database request failed.";
+
+      if (err.message && err.message.includes("timed out")) {
+        friendlyError = "Network connection timed out. Please check your internet connection and retry.";
+      } else if (err.message && (err.message.includes("Failed to fetch") || err.message.includes("NetworkError"))) {
+        friendlyError = "Unable to reach database server. Please check your network connection.";
+      } else if (err.code === "PGRST116") {
+        friendlyError = "Requested record was not found.";
+      }
+
+      if (window.AOLA_LOGGER) {
+        window.AOLA_LOGGER.error("API_ACTION_FAILED", `API action '${action}' encountered an error: ${friendlyError}`, {
+          action: action,
+          shop_id: shopId,
+          params: params
+        }, err);
+      }
+      console.error(`[AOLA Supabase Error - ${action}]:`, err);
+      return { success: false, error: friendlyError };
+    }
+  },
+
+  /**
+   * Execute direct Supabase PostgREST & RPC queries
+   */
+  async _executeAction(action, params = {}) {
     const sb = getSupabaseClient();
     if (!sb) {
       return { success: false, error: "Database client is not initialized. Please refresh." };
@@ -118,9 +160,8 @@ const AOLA_API = {
 
     const shopId = (params.shop || params.shop_id || "").toLowerCase().trim();
 
-    try {
-      // ── 1. GET MENU (Public - No Auth) ──
-      if (action === "get_menu") {
+    // ── 1. GET MENU (Public - No Auth) ──
+    if (action === "get_menu") {
         if (!shopId) return { success: false, error: "Missing restaurant shop ID." };
 
         // 1a. Validate restaurant tenant status
@@ -287,12 +328,35 @@ const AOLA_API = {
           if (s && s.length) { shopName = s[0].name; currency = s[0].currency; }
         }
 
-        // Fetch live orders
-        const { data: orders, error: ordersErr } = await sb
+        // Fetch orders with pagination & safety limit (default 150 latest)
+        let ordersQuery = sb
           .from('orders')
-          .select('*')
+          .select('id, created_at, table_number, items, items_summary, total_price, status, customer_notes')
           .eq('shop_id', targetShopId)
           .order('created_at', { ascending: false });
+
+        if (params.today_only) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          ordersQuery = ordersQuery.gte('created_at', today.toISOString());
+        } else if (params.date_from) {
+          ordersQuery = ordersQuery.gte('created_at', params.date_from);
+        }
+
+        if (params.status && params.status !== "all") {
+          ordersQuery = ordersQuery.eq('status', params.status);
+        }
+
+        if (typeof params.offset === "number" && typeof params.limit === "number") {
+          ordersQuery = ordersQuery.range(params.offset, params.offset + params.limit - 1);
+        } else if (params.range && Array.isArray(params.range)) {
+          ordersQuery = ordersQuery.range(params.range[0], params.range[1]);
+        } else {
+          const limitCount = parseInt(params.limit, 10) || 150;
+          ordersQuery = ordersQuery.limit(limitCount);
+        }
+
+        const { data: orders, error: ordersErr } = await ordersQuery;
 
         if (ordersErr) throw ordersErr;
 
@@ -616,11 +680,22 @@ const AOLA_API = {
           }
         }
 
-        const { data: expenses, error: expErr } = await sb
+        let expQuery = sb
           .from('expenses')
-          .select('*')
+          .select('id, created_at, category, description, amount')
           .eq('shop_id', targetScope)
           .order('created_at', { ascending: false });
+
+        if (typeof params.offset === "number" && typeof params.limit === "number") {
+          expQuery = expQuery.range(params.offset, params.offset + params.limit - 1);
+        } else if (params.range && Array.isArray(params.range)) {
+          expQuery = expQuery.range(params.range[0], params.range[1]);
+        } else {
+          const limitCount = parseInt(params.limit, 10) || 200;
+          expQuery = expQuery.limit(limitCount);
+        }
+
+        const { data: expenses, error: expErr } = await expQuery;
 
         if (expErr) throw expErr;
 
@@ -817,17 +892,6 @@ const AOLA_API = {
       }
 
       return { success: false, error: "Unrecognized API action: " + action };
-    } catch (err) {
-      if (window.AOLA_LOGGER) {
-        window.AOLA_LOGGER.error("API_ACTION_FAILED", `API action '${action}' encountered an error: ${err.message}`, {
-          action: action,
-          shop_id: shopId,
-          params: params
-        }, err);
-      }
-      console.error(`[AOLA Supabase Error - ${action}]:`, err);
-      return { success: false, error: err.message || "Database request failed." };
-    }
   },
 
   /**
