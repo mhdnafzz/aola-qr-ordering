@@ -2079,15 +2079,29 @@
    * Process updated orders list and trigger sound alerts
    */
   function handleOrdersUpdate(newOrders) {
-    state.orders = (newOrders || []).map((o, idx) => ({
-      orderId: String(o.orderId || o.order_id || o.id || `ORD-${idx + 1}`).trim(),
-      timestamp: String(o.timestamp || o.time || new Date().toLocaleTimeString()),
-      tableNumber: String(o.tableNumber || o.table_number || o.table || "1"),
-      items: String(o.items || o.itemsSummary || "Items ordered"),
-      totalPrice: Number(o.totalPrice || o.total_price || o.total) || 0,
-      status: String(o.status || "Pending").trim(),
-      customerNotes: String(o.customerNotes || o.customer_notes || o.notes || "").trim()
-    }));
+    state.orders = (newOrders || []).map((o, idx) => {
+      let rawNotes = String(o.customerNotes || o.customer_notes || o.notes || "").trim();
+      let status = String(o.status || "Pending").trim();
+      
+      // Dual-compatibility check: if notes contain [KDS:READY], classify as 'ready' and clean notes for UI
+      if (rawNotes.includes('[KDS:READY]')) {
+        const lower = status.toLowerCase();
+        if (lower === 'pending' || lower === 'new') {
+          status = 'ready';
+        }
+        rawNotes = rawNotes.replace(/\[KDS:READY\]/gi, '').trim();
+      }
+
+      return {
+        orderId: String(o.orderId || o.order_id || o.id || `ORD-${idx + 1}`).trim(),
+        timestamp: String(o.timestamp || o.time || new Date().toLocaleTimeString()),
+        tableNumber: String(o.tableNumber || o.table_number || o.table || "1"),
+        items: String(o.items || o.itemsSummary || "Items ordered"),
+        totalPrice: Number(o.totalPrice || o.total_price || o.total) || 0,
+        status: status,
+        customerNotes: rawNotes
+      };
+    });
 
     let hasNewReadyOrder = false;
     state.orders.forEach((o) => {
@@ -2677,7 +2691,11 @@
       });
 
       if (!response.success) {
-        showToast(response.error || "Failed to mark order ready.", "error");
+        if (response.error && response.error.includes("orders_status_check")) {
+          showToast("⚠️ Database status constraint: Please run backend/apply_kds_and_system_logs.sql in Supabase SQL Editor.", "warning");
+        } else {
+          showToast(response.error || "Failed to mark order ready.", "error");
+        }
         if (buttonEl) {
           buttonEl.disabled = false;
           buttonEl.innerHTML = `<i data-lucide="check" style="width:13px;height:13px;"></i><span>Mark Ready</span>`;
@@ -2691,6 +2709,9 @@
       const ord = state.orders.find((o) => String(o.orderId) === String(orderId));
       if (ord) {
         ord.status = "ready";
+        if (ord.customerNotes) {
+          ord.customerNotes = ord.customerNotes.replace(/\[KDS:READY\]/gi, '').trim();
+        }
       }
 
       updateCounts();

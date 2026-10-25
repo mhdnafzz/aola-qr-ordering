@@ -1518,23 +1518,44 @@
           .order("created_at", { ascending: false })
           .limit(150);
 
+        let logRows = null;
         if (!error && Array.isArray(data)) {
+          logRows = data;
+        } else if (error) {
+          console.warn("[AOLA Admin] system_logs table not found or query error:", error.message);
+          // Try fetching from emergency fallback in settings table
+          try {
+            const { data: fallbackRows } = await client
+              .from("settings")
+              .select("value")
+              .eq("key", "system_telemetry_latest")
+              .limit(1);
+            if (fallbackRows && fallbackRows.length && fallbackRows[0].value) {
+              const parsed = JSON.parse(fallbackRows[0].value);
+              if (Array.isArray(parsed)) {
+                logRows = parsed;
+              }
+            }
+          } catch (fbErr) {}
+        }
+
+        if (Array.isArray(logRows)) {
           // Merge Supabase logs with local logger logs
           const localLogs = window.AOLA_LOGGER && typeof window.AOLA_LOGGER.getLogs === 'function'
             ? window.AOLA_LOGGER.getLogs()
             : [];
 
           // Map cloud logs to uniform structure
-          const cloudMapped = data.map(row => ({
+          const cloudMapped = logRows.map(row => ({
             id: row.id,
-            created_at: row.created_at || new Date().toISOString(),
+            created_at: row.created_at || row.timestamp || new Date().toISOString(),
             level: (row.level || "info").toLowerCase(),
             action: row.action || "telemetry",
             shop_id: row.shop_id || "global",
             message: row.message || "",
-            data: row.metadata || null,
+            data: row.meta || row.metadata || null,
             error: row.error_details || null,
-            url: row.url || "",
+            url: row.page || row.url || "",
             isCloud: true
           }));
 
@@ -1556,13 +1577,21 @@
           state.logs = merged;
 
           if (showFeedback) {
-            showToast(`Synchronized ${data.length} logs from cloud database.`, "success");
+            showToast(`Synchronized ${logRows.length} logs from cloud database.`, "success");
           }
-        } else if (error) {
-          console.warn("[AOLA Admin] Supabase log fetch notice:", error.message);
-          if (showFeedback) showToast("Cloud logs table not reachable. Showing local buffer.", "info");
+        } else {
+          // Fall back to local logs if cloud table not yet migrated
+          if (window.AOLA_LOGGER && typeof window.AOLA_LOGGER.getLogs === 'function') {
+            state.logs = window.AOLA_LOGGER.getLogs();
+          }
+          if (showFeedback) {
+            showToast("Cloud logs table not reachable. Showing local telemetry buffer.", "info");
+          }
         }
       } else {
+        if (window.AOLA_LOGGER && typeof window.AOLA_LOGGER.getLogs === 'function') {
+          state.logs = window.AOLA_LOGGER.getLogs();
+        }
         if (showFeedback) showToast("Database client offline. Showing local buffer.", "info");
       }
     } catch (e) {

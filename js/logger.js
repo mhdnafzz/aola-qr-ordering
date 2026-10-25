@@ -356,9 +356,42 @@
         });
 
         if (!response.ok) {
-          // If table doesn't exist yet, we don't throw to prevent loop; keep batch in memory
-          if (response.status !== 404 && response.status !== 400) {
-            // Re-queue items if transient failure (network drop)
+          // If table doesn't exist yet (404), sync emergency fallback to settings table
+          if (response.status === 404) {
+            try {
+              const recent = this.getLogs().slice(-25);
+              const shop = (batch[0] && batch[0].shop_id && batch[0].shop_id !== "system") ? batch[0].shop_id : "bismillah";
+              fetch(`${sbUrl}/rest/v1/settings?key=eq.system_telemetry_latest`, {
+                method: "PATCH",
+                headers: {
+                  "apikey": sbKey,
+                  "Authorization": `Bearer ${sbKey}`,
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  value: JSON.stringify(recent),
+                  updated_at: new Date().toISOString()
+                })
+              }).then(patchRes => {
+                if (patchRes.status === 404 || patchRes.status === 400) {
+                  fetch(`${sbUrl}/rest/v1/settings`, {
+                    method: "POST",
+                    headers: {
+                      "apikey": sbKey,
+                      "Authorization": `Bearer ${sbKey}`,
+                      "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                      shop_id: shop,
+                      key: "system_telemetry_latest",
+                      value: JSON.stringify(recent)
+                    })
+                  }).catch(() => {});
+                }
+              }).catch(() => {});
+            } catch (fbErr) {}
+          } else if (response.status !== 400) {
+            // Re-queue items if transient network drop
             this.queue.unshift(...batch);
           }
         }

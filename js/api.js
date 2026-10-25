@@ -1120,6 +1120,13 @@ const AOLA_API = {
  * Toast Notification Helper
  */
 function showToast(message, type = "info", duration = 4000) {
+  // Automatic telemetry pipe to Health Console for error tracking
+  if (type === "error" && typeof window !== "undefined" && window.AOLA_LOGGER && typeof window.AOLA_LOGGER.error === "function") {
+    try {
+      window.AOLA_LOGGER.error("UI_TOAST_ERROR", message, { source: "showToast" });
+    } catch (e) {}
+  }
+
   let container = document.getElementById("toast-container");
   if (!container) {
     container = document.createElement("div");
