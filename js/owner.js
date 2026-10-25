@@ -2018,10 +2018,11 @@
       state.realtimeChannel = AOLA_API.subscribeToOrders(state.shopId, (orderPayload, eventType, oldPayload) => {
         const orderStatus = (orderPayload?.status || "").toLowerCase();
         const orderNotes = String(orderPayload?.customer_notes || "");
-        const isReadyUpdate = orderStatus === "ready" || orderNotes.includes("[KDS:READY]");
+        const isPaid = orderStatus === "paid" || orderStatus === "completed";
+        const isReadyUpdate = !isPaid && (orderStatus === "ready" || orderNotes.includes("[KDS:READY]"));
 
         // Realtime UPDATE: When the kitchen changes an order to 'ready', play notification audio and render
-        if (isReadyUpdate || (eventType === "UPDATE" && isReadyUpdate)) {
+        if (isReadyUpdate) {
           const ordId = String(orderPayload.id || orderPayload.order_id || "").trim();
           if (ordId) {
             state.knownOrderIds.add(ordId + "_ready");
@@ -2031,8 +2032,9 @@
           showToast(`🍽️ Order #${ordId} is READY from Kitchen! Bill now.`, "success");
         } else if (eventType === "INSERT") {
           showToast(`📋 New order placed for Table ${orderPayload.table_number || "1"} (In Kitchen Prep)`, "info");
-        } else if (orderStatus === "paid") {
-          showToast(`💰 Order #${orderPayload.id || orderPayload.order_id || ""} settled & paid!`, "info");
+        } else if (isPaid) {
+          const ordId = String(orderPayload.id || orderPayload.order_id || "").trim();
+          showToast(`💰 Order #${ordId} settled & paid!`, "info");
         }
 
         fetchOrders(false);

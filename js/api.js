@@ -1332,6 +1332,8 @@ function showToast(message, type = "info", duration = 3200) {
     container.className = "toast-container";
     document.body.appendChild(container);
   }
+  // Enforce bottom-right styling inline as guarantee against cached stylesheets
+  container.style.cssText = "position:fixed!important;bottom:24px!important;right:24px!important;top:auto!important;left:auto!important;z-index:999999!important;display:flex!important;flex-direction:column-reverse!important;align-items:flex-end!important;gap:8px!important;pointer-events:none!important;max-width:380px!important;";
 
   // Strict Stack Limit: Maximum 2 visible toasts so notifications never encroach into the UI
   while (container.children.length >= 2) {
