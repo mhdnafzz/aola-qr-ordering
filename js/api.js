@@ -295,16 +295,24 @@ const AOLA_API = {
 
         if (ordersErr) throw ordersErr;
 
+        // Filter out orders marked as [KDS:READY] in legacy constraint mode
+        const activePending = (orders || []).filter(o => {
+          const notes = String(o.customer_notes || "");
+          const st = String(o.status || "").toLowerCase().trim();
+          if (notes.includes('[KDS:READY]')) return false;
+          return st === 'pending' || st === 'new';
+        });
+
         return {
           success: true,
           shopName: shopName,
-          orders: (orders || []).map(o => ({
+          orders: activePending.map(o => ({
             orderId: o.id,
             timestamp: o.created_at,
             tableNumber: o.table_number,
             items: o.items_summary || (typeof o.items === 'string' ? o.items : JSON.stringify(o.items)),
             status: 'pending',
-            customerNotes: o.customer_notes || "",
+            customerNotes: (o.customer_notes || "").replace(/\[KDS:READY\]/gi, '').trim(),
             orderSource: o.order_source || "QR"
           }))
         };
@@ -414,15 +422,22 @@ const AOLA_API = {
           success: true,
           shopName: shopName,
           currency: currency,
-          orders: (orders || []).map(o => ({
-            orderId: o.id,
-            timestamp: o.created_at,
-            tableNumber: o.table_number,
-            items: o.items_summary || (typeof o.items === 'string' ? o.items : JSON.stringify(o.items)),
-            totalPrice: Number(o.total_price || 0),
-            status: o.status,
-            customerNotes: o.customer_notes || ""
-          }))
+          orders: (orders || []).map(o => {
+            const notes = String(o.customer_notes || "");
+            let st = o.status;
+            if (notes.includes('[KDS:READY]') && (st === 'New' || st === 'new' || st === 'pending')) {
+              st = 'ready';
+            }
+            return {
+              orderId: o.id,
+              timestamp: o.created_at,
+              tableNumber: o.table_number,
+              items: o.items_summary || (typeof o.items === 'string' ? o.items : JSON.stringify(o.items)),
+              totalPrice: Number(o.total_price || 0),
+              status: st,
+              customerNotes: (o.customer_notes || "").replace(/\[KDS:READY\]/gi, '').trim()
+            };
+          })
         };
       }
 
@@ -446,10 +461,23 @@ const AOLA_API = {
           }
         }
 
-        const { error: updateErr } = await sb
+        // Try direct update with status 'paid'
+        let { error: updateErr } = await sb
           .from('orders')
           .update({ status: 'paid' })
           .eq('id', orderId);
+
+        // Fallback for database instances with legacy check constraint ('New','Completed','Deleted','Voided')
+        if (updateErr && updateErr.message && updateErr.message.includes('orders_status_check')) {
+          console.warn("[AOLA API] orders_status_check detected. Falling back to status 'Completed'");
+          const fb = await sb
+            .from('orders')
+            .update({ status: 'Completed' })
+            .eq('id', orderId);
+          if (!fb.error) {
+            updateErr = null;
+          }
+        }
 
         if (updateErr) throw updateErr;
 
@@ -466,10 +494,35 @@ const AOLA_API = {
         if (!orderId) return { success: false, error: "Missing order ID." };
         const newStatus = String(params.status || "ready").toLowerCase().trim();
 
-        const { error: updateErr } = await sb
+        // 1. Attempt standard update to newStatus
+        let { error: updateErr } = await sb
           .from('orders')
           .update({ status: newStatus })
           .eq('id', orderId);
+
+        // 2. Intelligent Compatibility Fallback if DB table has legacy orders_status_check constraint
+        if (updateErr && updateErr.message && updateErr.message.includes('orders_status_check')) {
+          console.warn("[AOLA API] orders_status_check detected on update_order_status. Running compatibility fallback for:", newStatus);
+
+          if (newStatus === "ready") {
+            const { data: curRows } = await sb.from('orders').select('customer_notes').eq('id', orderId).limit(1);
+            const curNotes = (curRows && curRows.length ? curRows[0].customer_notes : "") || "";
+            const taggedNotes = curNotes.includes('[KDS:READY]') ? curNotes : `${curNotes} [KDS:READY]`.trim();
+
+            const fb = await sb.from('orders').update({
+              customer_notes: taggedNotes
+            }).eq('id', orderId);
+
+            if (!fb.error) {
+              updateErr = null;
+            }
+          } else if (newStatus === "paid" || newStatus === "completed") {
+            const fb = await sb.from('orders').update({ status: 'Completed' }).eq('id', orderId);
+            if (!fb.error) {
+              updateErr = null;
+            }
+          }
+        }
 
         if (updateErr) throw updateErr;
 

@@ -2014,9 +2014,11 @@
     if (AOLA_API && typeof AOLA_API.subscribeToOrders === 'function') {
       state.realtimeChannel = AOLA_API.subscribeToOrders(state.shopId, (orderPayload, eventType, oldPayload) => {
         const orderStatus = (orderPayload?.status || "").toLowerCase();
+        const orderNotes = String(orderPayload?.customer_notes || "");
+        const isReadyUpdate = orderStatus === "ready" || orderNotes.includes("[KDS:READY]");
 
         // Realtime UPDATE: When the kitchen changes an order to 'ready', play notification audio and render
-        if (orderStatus === "ready" || (eventType === "UPDATE" && orderStatus === "ready")) {
+        if (isReadyUpdate || (eventType === "UPDATE" && isReadyUpdate)) {
           playNewOrderSound();
           showToast(`🍽️ Order #${orderPayload.id || orderPayload.order_id || ""} is READY from Kitchen! Bill now.`, "success");
         } else if (eventType === "INSERT") {

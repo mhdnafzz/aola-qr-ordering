@@ -720,8 +720,9 @@
             },
             onUpdate: (updatedOrder) => {
               const st = String(updatedOrder.status || "").toLowerCase();
+              const notes = String(updatedOrder.customer_notes || "");
               // If order was marked ready or cancelled
-              if (st !== "pending" && st !== "new") {
+              if ((st !== "pending" && st !== "new") || notes.includes("[KDS:READY]")) {
                 state.orders = state.orders.filter(o => String(o.orderId) !== String(updatedOrder.id));
                 renderTickets();
               }
