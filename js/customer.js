@@ -436,6 +436,16 @@
       return;
     }
 
+    // ==========================================
+    // SECURITY LAYER 2: TABLE COOLDOWN THROTTLE
+    // ==========================================
+    const remCooldown = getTableCooldownRemaining(tableNumber);
+    if (remCooldown > 0) {
+      showToast(`Please wait ${remCooldown}s before submitting another order for Table ${tableNumber}.`, "info");
+      syncCooldownUI(tableNumber);
+      return;
+    }
+
     const cartEntries = Object.values(state.cart);
     if (cartEntries.length === 0) {
       showToast("Your cart is empty. Please select some dishes first.", "error");
@@ -468,10 +478,16 @@
       if (!response.success) {
         // Backend Rate Limiting or other error triggered
         showToast(response.error || "Order placement failed.", "error");
+        syncCooldownUI(tableNumber);
         return;
       }
 
-      // Success! Show confirmation
+      // Success! Set 45-second table cooldown lock
+      try {
+        const cooldownKey = `AOLA_COOLDOWN_${state.shopId}_${tableNumber}`;
+        localStorage.setItem(cooldownKey, String(Date.now() + 45000));
+      } catch (e) {}
+
       closeCartModal();
       const confirmedOrderId = response.order_id || response.orderId || "ORD-" + Math.floor(1000 + Math.random() * 9000);
       const confirmedTable = response.table_number || tableNumber;
@@ -482,16 +498,61 @@
       state.cart = {};
       updateCartUI();
       el.orderNotesInput.value = "";
+      syncCooldownUI(tableNumber);
     } catch (err) {
       showToast("Network error placing order. Please check your connection.", "error");
     } finally {
       state.isSubmitting = false;
-      el.btnSubmitOrder.disabled = false;
-      el.btnSubmitOrder.innerHTML = `
-        <span>Send Order to Kitchen</span>
-        <i data-lucide="send" style="width:18px;height:18px;"></i>
-      `;
-      if (window.lucide) lucide.createIcons();
+      syncCooldownUI(tableNumber);
+    }
+  }
+
+  // ── Client-side Cooldown & Anti-Spam UX Controller ──
+  let cooldownInterval = null;
+
+  function getTableCooldownRemaining(tableNumber) {
+    if (!state.shopId || !tableNumber) return 0;
+    const cooldownKey = `AOLA_COOLDOWN_${state.shopId}_${tableNumber}`;
+    const until = Number(localStorage.getItem(cooldownKey) || 0);
+    const diffMs = until - Date.now();
+    return diffMs > 0 ? Math.ceil(diffMs / 1000) : 0;
+  }
+
+  function syncCooldownUI(tableNumber) {
+    if (cooldownInterval) clearInterval(cooldownInterval);
+
+    const updateBtn = () => {
+      const targetTable = tableNumber || (el.orderTableInput ? el.orderTableInput.value.trim() : "1");
+      const rem = getTableCooldownRemaining(targetTable);
+      if (rem > 0) {
+        if (el.btnSubmitOrder) {
+          el.btnSubmitOrder.disabled = true;
+          el.btnSubmitOrder.innerHTML = `
+            <span>Kitchen Cooldown (${rem}s)</span>
+            <i data-lucide="shield-alert" style="width:17px;height:17px;"></i>
+          `;
+          if (window.lucide) lucide.createIcons();
+        }
+      } else {
+        if (cooldownInterval) {
+          clearInterval(cooldownInterval);
+          cooldownInterval = null;
+        }
+        if (el.btnSubmitOrder && !state.isSubmitting) {
+          el.btnSubmitOrder.disabled = false;
+          el.btnSubmitOrder.innerHTML = `
+            <span>Send Order to Kitchen</span>
+            <i data-lucide="send" style="width:18px;height:18px;"></i>
+          `;
+          if (window.lucide) lucide.createIcons();
+        }
+      }
+    };
+
+    updateBtn();
+    const targetTable = tableNumber || (el.orderTableInput ? el.orderTableInput.value.trim() : "1");
+    if (getTableCooldownRemaining(targetTable) > 0) {
+      cooldownInterval = setInterval(updateBtn, 1000);
     }
   }
 
@@ -500,6 +561,7 @@
    */
   function openCartModal() {
     el.cartModal.classList.add("open");
+    syncCooldownUI(el.orderTableInput ? el.orderTableInput.value.trim() : "1");
     if (window.lucide) lucide.createIcons();
   }
 

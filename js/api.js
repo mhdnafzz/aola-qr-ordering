@@ -213,8 +213,91 @@ const AOLA_API = {
         };
       }
 
-      // ── 2. PLACE ORDER (Server-side RPC Price & Stock Verification) ──
+      // ── 2. PLACE ORDER (Server-side RPC Price & Stock Verification + Anti-Spam Throttle) ──
       if (action === "place_order" || action === "create_order") {
+        const tableNumber = String(params.table_number || params.table || "1").trim();
+        const orderSource = params.order_source || (params.is_pos ? "POS" : "QR");
+
+        // 2a. Honeypot Bot Trap Check
+        const honeypotVal = String(params.customer_fax || params.honeypot || "").trim();
+        if (honeypotVal) {
+          if (window.AOLA_LOGGER) {
+            window.AOLA_LOGGER.logOrderPlaced(false, {
+              shop_id: shopId,
+              tableNumber: tableNumber,
+              error: "Automated bot submission blocked by honeypot filter"
+            });
+          }
+          return { success: false, error: "Automated submission blocked. Please order directly from the web menu." };
+        }
+
+        // 2b. Anti-Spam & DoS Controls (Enforced on QR customer orders; POS cashier exempt)
+        if (orderSource !== "POS") {
+          // Device Local Cooldown Check (45s)
+          const deviceCooldownKey = `AOLA_COOLDOWN_${shopId}_${tableNumber}`;
+          const lastDeviceOrder = Number(localStorage.getItem(deviceCooldownKey) || 0);
+          const deviceDiffMs = Date.now() - lastDeviceOrder;
+          if (deviceDiffMs >= 0 && deviceDiffMs < 45000) {
+            const waitSec = Math.ceil((45000 - deviceDiffMs) / 1000);
+            return {
+              success: false,
+              error: `Anti-Spam Cooldown: Table ${tableNumber} just placed an order. Please wait ${waitSec}s before adding more items.`
+            };
+          }
+
+          // Active Table Rate Limiting from Supabase Database
+          try {
+            const { data: tableOrders } = await sb
+              .from('orders')
+              .select('id, created_at, status')
+              .eq('shop_id', shopId)
+              .eq('table_number', tableNumber)
+              .in('status', ['pending', 'new', 'New', 'ready'])
+              .order('created_at', { ascending: false })
+              .limit(10);
+
+            if (tableOrders && tableOrders.length > 0) {
+              // Check 45-second cooldown from most recent order for this table
+              const latest = tableOrders[0];
+              const latestCreated = new Date(latest.created_at).getTime();
+              if (!isNaN(latestCreated)) {
+                const diffMs = Date.now() - latestCreated;
+                if (diffMs >= 0 && diffMs < 45000) {
+                  const waitSec = Math.ceil((45000 - diffMs) / 1000);
+                  if (window.AOLA_LOGGER) {
+                    window.AOLA_LOGGER.logOrderPlaced(false, {
+                      shop_id: shopId,
+                      tableNumber: tableNumber,
+                      error: `Table order cooldown active (${waitSec}s remaining)`
+                    });
+                  }
+                  return {
+                    success: false,
+                    error: `Anti-Spam Cooldown: Table ${tableNumber} placed an order ${Math.floor(diffMs / 1000)}s ago. Please wait ${waitSec}s before submitting additional items.`
+                  };
+                }
+              }
+
+              // Active Orders Cap (Maximum 4 active unbilled orders per table)
+              if (tableOrders.length >= 4) {
+                if (window.AOLA_LOGGER) {
+                  window.AOLA_LOGGER.logOrderPlaced(false, {
+                    shop_id: shopId,
+                    tableNumber: tableNumber,
+                    error: `Table ${tableNumber} exceeded max active orders cap (${tableOrders.length} active orders)`
+                  });
+                }
+                return {
+                  success: false,
+                  error: `Table ${tableNumber} already has ${tableOrders.length} active unbilled orders. Please ask your server or cashier to bill your current items before ordering more.`
+                };
+              }
+            }
+          } catch (checkErr) {
+            console.warn("[Anti-Spam Check Note]:", checkErr);
+          }
+        }
+
         let items = params.items;
         if (typeof items === "string") {
           try { items = JSON.parse(items); } catch (e) { items = []; }
@@ -227,11 +310,12 @@ const AOLA_API = {
 
         const rpcPayload = {
           shop_id: shopId,
-          table_number: String(params.table_number || params.table || "1"),
+          table_number: tableNumber,
           items: rpcItems,
           customer_notes: params.customer_notes || params.notes || "",
-          order_source: params.order_source || (params.is_pos ? "POS" : "QR"),
-          status: params.status || "pending"
+          order_source: orderSource,
+          status: params.status || "pending",
+          customer_fax: honeypotVal
         };
 
         // Call PostgreSQL stored procedure via Supabase RPC
@@ -249,6 +333,13 @@ const AOLA_API = {
           try {
             await sb.from('orders').update({ status: 'pending' }).eq('id', data.order_id).in('status', ['New', 'new']);
           } catch (e) {}
+
+          // Record client cooldown timestamp
+          if (orderSource !== "POS") {
+            try {
+              localStorage.setItem(`AOLA_COOLDOWN_${shopId}_${tableNumber}`, String(Date.now()));
+            } catch (e) {}
+          }
         }
 
         if (error) {
@@ -587,6 +678,95 @@ const AOLA_API = {
           order_id: orderId,
           status: "Deleted",
           message: `Order #${orderId} marked as Deleted/Voided.`
+        };
+      }
+
+      // ── 5b. BATCH VOID ORDERS FOR SPECIFIC TABLE (Spam & Flood Mitigation) ──
+      if (action === "void_table_orders") {
+        const tableNumber = String(params.table_number || params.table || "").trim();
+        if (!tableNumber) return { success: false, error: "Missing table number." };
+        if (!shopId) return { success: false, error: "Missing restaurant shop ID." };
+
+        const pin = String(params.pin || params.owner_pin || "").trim();
+        if (pin && shopId) {
+          try {
+            const { data: authResult } = await sb.rpc('verify_owner_pin', {
+              p_shop_id: shopId,
+              p_pin: pin
+            });
+            if (authResult && authResult.valid === false) {
+              return { success: false, error: (authResult && authResult.error) || "Unauthorized PIN." };
+            }
+          } catch (pinErr) {
+            console.warn("[void_table_orders pin verification note]:", pinErr);
+          }
+        }
+
+        const reason = params.reason || "Batch Voided / Spam Flood Mitigation";
+
+        // 1. Try PostgreSQL stored procedure if available
+        try {
+          const { data: rpcData, error: rpcErr } = await sb.rpc('void_table_orders', {
+            p_payload: {
+              shop_id: shopId,
+              table_number: tableNumber,
+              pin: pin,
+              reason: reason
+            }
+          });
+          if (!rpcErr && rpcData && rpcData.success) {
+            if (window.AOLA_LOGGER) {
+              window.AOLA_LOGGER.info("TABLE_ORDERS_VOIDED", `Batch voided ${rpcData.count} orders for Table ${tableNumber}`, {
+                shopId,
+                tableNumber,
+                count: rpcData.count
+              });
+            }
+            return rpcData;
+          }
+        } catch (rpcEx) {
+          console.warn("[void_table_orders rpc fallback]:", rpcEx);
+        }
+
+        // 2. Direct PostgREST batch update fallback
+        const { data: tableOrders, error: findErr } = await sb
+          .from('orders')
+          .select('id, customer_notes')
+          .eq('shop_id', shopId)
+          .eq('table_number', tableNumber)
+          .in('status', ['pending', 'new', 'New', 'ready']);
+
+        if (findErr) throw findErr;
+
+        if (!tableOrders || tableOrders.length === 0) {
+          return { success: true, count: 0, message: `No active orders found for Table ${tableNumber}.` };
+        }
+
+        const orderIds = tableOrders.map(o => o.id);
+        const { error: batchErr } = await sb
+          .from('orders')
+          .update({
+            status: 'Deleted',
+            customer_notes: `[BATCH VOIDED: ${reason}]`
+          })
+          .in('id', orderIds);
+
+        if (batchErr) throw batchErr;
+
+        if (window.AOLA_LOGGER) {
+          window.AOLA_LOGGER.info("TABLE_ORDERS_VOIDED", `Batch voided ${orderIds.length} orders for Table ${tableNumber}`, {
+            shopId,
+            tableNumber,
+            orderIds,
+            reason
+          });
+        }
+
+        return {
+          success: true,
+          count: orderIds.length,
+          orderIds,
+          message: `Successfully voided ${orderIds.length} orders for Table ${tableNumber}.`
         };
       }
 

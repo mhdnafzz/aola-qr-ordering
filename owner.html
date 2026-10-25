@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AOLA - Kitchen &amp; Owner Dashboard</title>
   <meta name="description" content="Real-time live kitchen display system and ticket manager for restaurant owners.">
-  <link rel="stylesheet" href="css/style.css?v=4.0">
+  <link rel="stylesheet" href="css/style.css?v=4.1">
   <link rel="icon" type="image/svg+xml" href="AU-dark-icon.svg">
   <!-- Lucide Vector Icons Library -->
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -30,8 +30,8 @@
       }
     })();
   </script>
-  <script src="js/config.js?v=4.0"></script>
-  <script src="js/logger.js?v=4.0"></script>
+  <script src="js/config.js?v=4.1"></script>
+  <script src="js/logger.js?v=4.1"></script>
 </head>
 
 <body>
@@ -1180,12 +1180,18 @@
         </label>
         <input type="text" id="void-order-reason-input" class="form-input" value="Customer requested cancellation" placeholder="Enter reason..." style="width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: 8px; font-size: 0.88rem;">
       </div>
-      <div style="display: flex; justify-content: flex-end; gap: 10px;">
-        <button type="button" class="btn-secondary" id="btn-cancel-void-modal" style="padding: 8px 16px; font-weight: 600;">Keep Order</button>
-        <button type="button" id="btn-confirm-void-modal" style="padding: 8px 18px; background: #dc2626; color: #ffffff; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-          <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
-          <span>Void Order</span>
-        </button>
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <button type="button" class="btn-secondary" id="btn-cancel-void-modal" style="padding: 8px 14px; font-weight: 600;">Keep Order</button>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button type="button" id="btn-void-all-table" style="display: none; padding: 8px 14px; background: #991b1b; color: #ffffff; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; align-items: center; gap: 6px;" title="Purge all active orders for this table in one click">
+            <i data-lucide="shield-alert" style="width: 14px; height: 14px;"></i>
+            <span id="btn-void-all-table-text">Void All for Table</span>
+          </button>
+          <button type="button" id="btn-confirm-void-modal" style="padding: 8px 16px; background: #dc2626; color: #ffffff; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+            <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+            <span>Void This Order</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -1612,8 +1618,8 @@
   </script>
 
   <!-- Scripts -->
-  <script src="js/api.js?v=4.0"></script>
-  <script src="js/owner.js?v=4.0"></script>
+  <script src="js/api.js?v=4.1"></script>
+  <script src="js/owner.js?v=4.1"></script>
   <script>
     // Self-initialize Lucide Icons
     if (window.lucide) {

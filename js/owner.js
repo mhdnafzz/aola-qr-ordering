@@ -244,6 +244,8 @@
     btnCloseVoidModal: document.getElementById("btn-close-void-modal"),
     btnCancelVoidModal: document.getElementById("btn-cancel-void-modal"),
     btnConfirmVoidModal: document.getElementById("btn-confirm-void-modal"),
+    btnVoidAllTable: document.getElementById("btn-void-all-table"),
+    btnVoidAllTableText: document.getElementById("btn-void-all-table-text"),
 
     // System Logs & Health Telemetry Modal
     btnSidebarLogs: document.getElementById("btn-sidebar-logs"),
@@ -1745,6 +1747,7 @@
     if (el.btnCloseVoidModal) el.btnCloseVoidModal.onclick = closeVoidModal;
     if (el.btnCancelVoidModal) el.btnCancelVoidModal.onclick = closeVoidModal;
     if (el.btnConfirmVoidModal) el.btnConfirmVoidModal.onclick = handleConfirmVoid;
+    if (el.btnVoidAllTable) el.btnVoidAllTable.onclick = handleBatchVoidTable;
     if (el.voidOrderModal) {
       el.voidOrderModal.onclick = (e) => {
         if (e.target === el.voidOrderModal) closeVoidModal();
@@ -2519,6 +2522,28 @@
     pendingVoidButtonEl = buttonEl;
     if (el.voidOrderModalId) el.voidOrderModalId.textContent = `#${orderId}`;
     if (el.voidOrderReasonInput) el.voidOrderReasonInput.value = "Customer requested cancellation";
+
+    // Detect if this table has multiple active orders (e.g. spam flood)
+    const ord = state.orders.find((o) => String(o.orderId) === String(orderId));
+    if (ord && ord.tableNumber && el.btnVoidAllTable) {
+      const activeForTable = state.orders.filter((o) => 
+        String(o.tableNumber) === String(ord.tableNumber) && 
+        (o.status === "pending" || o.status === "new" || o.status === "ready" || o.status === "New")
+      );
+      if (activeForTable.length >= 2) {
+        el.btnVoidAllTable.style.display = "inline-flex";
+        if (el.btnVoidAllTableText) {
+          el.btnVoidAllTableText.textContent = `Void All ${activeForTable.length} Orders for Table ${ord.tableNumber}`;
+        }
+        el.btnVoidAllTable.dataset.table = ord.tableNumber;
+        el.btnVoidAllTable.dataset.count = String(activeForTable.length);
+      } else {
+        el.btnVoidAllTable.style.display = "none";
+      }
+    } else if (el.btnVoidAllTable) {
+      el.btnVoidAllTable.style.display = "none";
+    }
+
     if (el.voidOrderModal) {
       el.voidOrderModal.style.display = "flex";
       el.voidOrderModal.classList.add("open");
@@ -2532,9 +2557,71 @@
   function closeVoidModal() {
     pendingVoidOrderId = null;
     pendingVoidButtonEl = null;
+    if (el.btnVoidAllTable) el.btnVoidAllTable.style.display = "none";
     if (el.voidOrderModal) {
       el.voidOrderModal.style.display = "none";
       el.voidOrderModal.classList.remove("open");
+    }
+  }
+
+  /**
+   * Action: Batch Purge All Active Orders for a Table (Spam Flood Mitigation)
+   */
+  async function handleBatchVoidTable() {
+    const tableNumber = el.btnVoidAllTable ? el.btnVoidAllTable.dataset.table : "";
+    const count = el.btnVoidAllTable ? el.btnVoidAllTable.dataset.count : "";
+    if (!tableNumber) return;
+
+    const reason = (el.voidOrderReasonInput && el.voidOrderReasonInput.value.trim()) || "Spam Flood Purge";
+
+    if (!confirm(`Are you sure you want to void ALL ${count} pending/active orders for Table ${tableNumber}? This will immediately purge all spam tickets for this table.`)) {
+      return;
+    }
+
+    if (el.btnVoidAllTable) {
+      el.btnVoidAllTable.disabled = true;
+      el.btnVoidAllTable.innerHTML = `<span class="btn-spinner"></span><span>Purging Table ${tableNumber}...</span>`;
+    }
+
+    try {
+      const activeShop = state.shopId || sessionStorage.getItem("AOLA_OWNER_SHOP") || "bismillah";
+      const activePin = state.pin || sessionStorage.getItem("AOLA_OWNER_PIN") || "1234";
+
+      const res = await AOLA_API.post("void_table_orders", {
+        shop_id: activeShop,
+        pin: activePin,
+        table_number: tableNumber,
+        reason: reason
+      });
+
+      if (!res.success) {
+        showToast(res.error || "Failed to batch void table orders.", "error");
+        return;
+      }
+
+      showToast(`🛡️ Purged ${res.count || count} orders for Table ${tableNumber}!`, "success");
+
+      // Update local state
+      state.orders.forEach((o) => {
+        if (String(o.tableNumber) === String(tableNumber) && (o.status === "pending" || o.status === "new" || o.status === "ready" || o.status === "New")) {
+          o.status = "Deleted";
+          o.customerNotes = (o.customerNotes ? o.customerNotes + " | " : "") + `[BATCH VOIDED: ${reason}]`;
+        }
+      });
+
+      closeVoidModal();
+      updateCounts();
+      renderTickets();
+      if (state.currentView === "history") renderHistoryView();
+    } catch (err) {
+      console.error("[Batch Void Error]:", err);
+      showToast("Network error purging table orders.", "error");
+    } finally {
+      if (el.btnVoidAllTable) {
+        el.btnVoidAllTable.disabled = false;
+        el.btnVoidAllTable.innerHTML = `<i data-lucide="shield-alert" style="width:14px;height:14px;"></i><span id="btn-void-all-table-text">Void All for Table</span>`;
+        if (window.lucide) lucide.createIcons();
+      }
     }
   }
 
