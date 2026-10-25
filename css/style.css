@@ -1294,6 +1294,76 @@ body.dark-mode .toast,
   to { box-shadow: 0 0 12px rgba(225, 29, 72, 0.6); }
 }
 
+/* KDS Priority Hierarchy Badges (FIFO Queueing) */
+.priority-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full, 9999px);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.priority-badge.p1 {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.25);
+  animation: pulse-priority 2s infinite ease-in-out;
+}
+
+.priority-badge.p2 {
+  background: #fffbeb;
+  color: #d97706;
+  border: 1px solid #fde68a;
+}
+
+.priority-badge.p3 {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+
+.priority-badge.p-regular {
+  background: var(--bg-subtle, #f1f5f9);
+  color: var(--text-muted, #64748b);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+}
+
+@keyframes pulse-priority {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+  }
+}
+
+body.dark-mode .priority-badge.p1,
+.dark-mode .priority-badge.p1 {
+  background: rgba(239, 68, 68, 0.18);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+body.dark-mode .priority-badge.p2,
+.dark-mode .priority-badge.p2 {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+body.dark-mode .priority-badge.p3,
+.dark-mode .priority-badge.p3 {
+  background: rgba(59, 130, 246, 0.18);
+  color: #60a5fa;
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
 .ticket-header {
   display: flex;
   justify-content: space-between;

@@ -2099,7 +2099,7 @@
 
       return {
         orderId: String(o.orderId || o.order_id || o.id || `ORD-${idx + 1}`).trim(),
-        timestamp: String(o.timestamp || o.time || new Date().toLocaleTimeString()),
+        timestamp: String(o.timestamp || o.created_at || o.time || new Date().toISOString()),
         tableNumber: String(o.tableNumber || o.table_number || o.table || "1"),
         items: String(o.items || o.itemsSummary || "Items ordered"),
         totalPrice: Number(o.totalPrice || o.total_price || o.total) || 0,
@@ -2231,7 +2231,13 @@
    */
   function formatTicketTime(rawStr) {
     if (!rawStr) return "Just now";
-    const d = new Date(rawStr);
+    let d = new Date(rawStr);
+    if (isNaN(d.getTime())) {
+      try {
+        const todayStr = new Date().toDateString();
+        d = new Date(`${todayStr} ${rawStr}`);
+      } catch (e) {}
+    }
     if (!isNaN(d.getTime())) {
       return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     }
@@ -2239,7 +2245,71 @@
   }
 
   /**
-   * Render Ticket Cards (Optimized with Rush-Hour Bullet Points & Check-off)
+   * Elapsed time formatting with second precision, clock skew protection, and rush escalation
+   */
+  function getElapsedMeta(timestamp) {
+    if (!timestamp) return { text: "0m 00s", class: "kds-timer-normal", isRush: false, icon: "clock" };
+    let created = new Date(timestamp).getTime();
+    if (isNaN(created)) {
+      try {
+        created = new Date(String(timestamp).replace(" ", "T")).getTime();
+      } catch (e) {}
+    }
+    if (isNaN(created) && typeof timestamp === "string") {
+      try {
+        const todayStr = new Date().toDateString();
+        created = new Date(`${todayStr} ${timestamp}`).getTime();
+      } catch (e) {}
+    }
+    if (isNaN(created)) {
+      return { text: "0m 00s", class: "kds-timer-normal", isRush: false, icon: "clock" };
+    }
+
+    const now = Date.now();
+    let diffMs = now - created;
+    if (diffMs < 0) diffMs = 0; // Skew protection
+
+    const totalSecs = Math.floor(diffMs / 1000);
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    const timeStr = `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
+
+    if (mins >= 12) {
+      return { text: `RUSH (${timeStr})`, class: "kds-timer-rush", isRush: true, icon: "flame" };
+    } else if (mins >= 5) {
+      return { text: timeStr, class: "kds-timer-warning", isRush: false, icon: "clock" };
+    }
+    return { text: timeStr, class: "kds-timer-normal", isRush: false, icon: "clock" };
+  }
+
+  let ownerTimerInterval = null;
+  function startOwnerElapsedTimer() {
+    if (ownerTimerInterval) clearInterval(ownerTimerInterval);
+    ownerTimerInterval = setInterval(() => {
+      if (!state.orders || state.orders.length === 0) return;
+      state.orders.forEach((ord) => {
+        const timerEl = document.getElementById(`owner-timer-${ord.orderId}`);
+        if (timerEl) {
+          const meta = getElapsedMeta(ord.timestamp);
+          if (timerEl.className !== `kds-timer-badge ${meta.class}`) {
+            timerEl.className = `kds-timer-badge ${meta.class}`;
+            const iconWrap = timerEl.querySelector('.timer-icon-wrap');
+            if (iconWrap) {
+              iconWrap.innerHTML = `<i data-lucide="${meta.icon}" style="width:12px;height:12px;"></i>`;
+              if (window.lucide) lucide.createIcons({ root: timerEl });
+            }
+          }
+          const textSpan = timerEl.querySelector('.timer-text');
+          if (textSpan) {
+            textSpan.textContent = meta.text;
+          }
+        }
+      });
+    }, 1000);
+  }
+
+  /**
+   * Render Ticket Cards (Optimized with FIFO Priority Hierarchy & Live Elapsed Timer)
    */
   function renderTickets() {
     // If activeTab is 'ready', show 'ready' orders (primary cashier queue)
@@ -2254,6 +2324,15 @@
     });
 
     const isReadyTab = state.activeTab === "ready";
+
+    // FIFO Priority Hierarchy: Orders placed first get highest priority in kitchen prep
+    if (!isReadyTab) {
+      filtered.sort((a, b) => {
+        const tA = new Date(a.timestamp || 0).getTime();
+        const tB = new Date(b.timestamp || 0).getTime();
+        return tA - tB;
+      });
+    }
 
     if (filtered.length === 0) {
       el.ticketGrid.innerHTML = `
@@ -2274,33 +2353,53 @@
     }
 
     el.ticketGrid.innerHTML = "";
-    filtered.forEach((ord) => {
+    filtered.forEach((ord, index) => {
       const s = (ord.status || "").toLowerCase();
       const isReady = s === "ready";
       const isPending = s === "pending" || s === "new";
       const dishList = parseOrderDishItems(ord.items);
       const totalQty = dishList.reduce((sum, d) => sum + (d.qty || 1), 0);
+      const elapsed = getElapsedMeta(ord.timestamp);
+      const priorityRank = index + 1;
+
+      let priorityBadgeHtml = "";
+      if (!isReady) {
+        if (priorityRank === 1) {
+          priorityBadgeHtml = `<span class="priority-badge p1"><i data-lucide="flame" style="width:11px;height:11px;"></i> Priority #1 (Next Up)</span>`;
+        } else if (priorityRank === 2) {
+          priorityBadgeHtml = `<span class="priority-badge p2"><i data-lucide="zap" style="width:11px;height:11px;"></i> Priority #2</span>`;
+        } else if (priorityRank === 3) {
+          priorityBadgeHtml = `<span class="priority-badge p3">Priority #3</span>`;
+        } else {
+          priorityBadgeHtml = `<span class="priority-badge p-regular">Priority #${priorityRank}</span>`;
+        }
+      }
 
       const card = document.createElement("article");
-      card.className = `ticket-card ${isReady ? "ready" : "pending"}`;
-      card.style.borderTop = isReady ? "4px solid #059669" : "4px solid #F59E0B";
+      card.className = `ticket-card ${isReady ? "ready" : "pending"} ${elapsed.isRush ? "urgent" : ""}`;
+      card.style.borderTop = isReady ? "4px solid #059669" : (priorityRank === 1 ? "4px solid #DC2626" : "4px solid #F59E0B");
 
       card.innerHTML = `
         <div class="ticket-header">
           <div>
-            <div style="display:flex; align-items:center; gap:8px;">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
               <span class="ticket-table-badge">TABLE ${escapeHtml(ord.tableNumber)}</span>
               ${isReady 
                 ? `<span style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:999px; background:#D1FAE5; color:#065F46; font-size:0.72rem; font-weight:700;"><i data-lucide="bell" style="width:11px;height:11px;"></i> READY TO BILL</span>` 
-                : `<span style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:999px; background:#FEF3C7; color:#92400E; font-size:0.72rem; font-weight:700;"><i data-lucide="chef-hat" style="width:11px;height:11px;"></i> PREPARING</span>`
+                : priorityBadgeHtml
               }
             </div>
             <div style="font-size:0.75rem; color:var(--text-dim); margin-top:4px; font-family:monospace; font-weight:600;">ID: ${escapeHtml(ord.orderId)}</div>
           </div>
-          <span class="ticket-time">
-            <i data-lucide="clock" style="width:13px;height:13px;"></i>
-            <span>${escapeHtml(formatTicketTime(ord.timestamp))}</span>
-          </span>
+          <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
+            <span class="kds-timer-badge ${elapsed.class}" id="owner-timer-${ord.orderId}">
+              <span class="timer-icon-wrap"><i data-lucide="${elapsed.icon}" style="width:12px;height:12px;"></i></span>
+              <span class="timer-text">${elapsed.text}</span>
+            </span>
+            <span style="font-size:0.72rem; color:var(--text-dim); font-weight:600;">
+              ${escapeHtml(formatTicketTime(ord.timestamp))}
+            </span>
+          </div>
         </div>
 
         <div class="ticket-dish-section">
@@ -2407,6 +2506,7 @@
       };
     });
 
+    startOwnerElapsedTimer();
     if (window.lucide) lucide.createIcons();
   }
 

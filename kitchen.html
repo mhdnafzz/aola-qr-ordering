@@ -9,7 +9,7 @@
   <link rel="icon" type="image/svg+xml" href="AU-dark-icon.svg">
 
   <!-- Core AOLA Design System -->
-  <link rel="stylesheet" href="css/style.css?v=3.9">
+  <link rel="stylesheet" href="css/style.css?v=4.0">
 
   <!-- Lucide Vector Icons Library -->
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -31,9 +31,9 @@
   </script>
 
   <!-- Global Application Scripts -->
-  <script src="js/config.js?v=3.9"></script>
-  <script src="js/logger.js?v=3.9"></script>
-  <script src="js/api.js?v=3.9"></script>
+  <script src="js/config.js?v=4.0"></script>
+  <script src="js/logger.js?v=4.0"></script>
+  <script src="js/api.js?v=4.0"></script>
 </head>
 
 <body class="dark-mode">
@@ -462,13 +462,33 @@
         }).filter(d => d.name.length > 0);
       }
 
-      // Elapsed time formatting with vector icon hints
+      // Robust elapsed time formatting with live second precision and rush escalation
       function getElapsedMeta(timestamp) {
-        if (!timestamp) return { text: "Just now", class: "kds-timer-normal", isRush: false, icon: "clock" };
-        const created = new Date(timestamp).getTime();
-        const diffMs = Math.max(0, Date.now() - created);
-        const mins = Math.floor(diffMs / 60000);
-        const secs = Math.floor((diffMs % 60000) / 1000);
+        if (!timestamp) return { text: "0m 00s", class: "kds-timer-normal", isRush: false, icon: "clock" };
+        let created = new Date(timestamp).getTime();
+        if (isNaN(created)) {
+          try {
+            created = new Date(String(timestamp).replace(" ", "T")).getTime();
+          } catch (e) {}
+        }
+        // Fallback for time-only strings like "10:30 am" or "10:30:15"
+        if (isNaN(created) && typeof timestamp === "string") {
+          try {
+            const todayStr = new Date().toDateString();
+            created = new Date(`${todayStr} ${timestamp}`).getTime();
+          } catch (e) {}
+        }
+        if (isNaN(created)) {
+          return { text: "0m 00s", class: "kds-timer-normal", isRush: false, icon: "clock" };
+        }
+
+        const now = Date.now();
+        let diffMs = now - created;
+        if (diffMs < 0) diffMs = 0; // Skew protection
+
+        const totalSecs = Math.floor(diffMs / 1000);
+        const mins = Math.floor(totalSecs / 60);
+        const secs = totalSecs % 60;
         const timeStr = `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
 
         if (mins >= 12) {
@@ -479,13 +499,20 @@
         return { text: timeStr, class: "kds-timer-normal", isRush: false, icon: "clock" };
       }
 
-      // Render Pending Kitchen Order Tickets
+      // Render Pending Kitchen Order Tickets (FIFO Priority Hierarchy)
       function renderTickets() {
         if (!el.grid) return;
 
         const pending = state.orders.filter(o => {
           const s = String(o.status || "pending").toLowerCase().trim();
           return s === "pending" || s === "new";
+        });
+
+        // FIFO Queue: Oldest orders are prepared first (highest priority)
+        pending.sort((a, b) => {
+          const tA = new Date(a.timestamp || 0).getTime();
+          const tB = new Date(b.timestamp || 0).getTime();
+          return tA - tB;
         });
 
         if (el.countPending) el.countPending.textContent = pending.length;
@@ -508,28 +535,43 @@
 
         el.grid.innerHTML = "";
 
-        pending.forEach(ord => {
+        pending.forEach((ord, index) => {
           const dishList = parseDishList(ord.items);
           const totalQty = dishList.reduce((sum, d) => sum + (d.qty || 1), 0);
           const elapsed = getElapsedMeta(ord.timestamp);
+          const priorityRank = index + 1;
+
+          let priorityBadgeHtml = "";
+          if (priorityRank === 1) {
+            priorityBadgeHtml = `<span class="priority-badge p1"><i data-lucide="flame" style="width:11px;height:11px;"></i> Priority #1 (Next Up)</span>`;
+          } else if (priorityRank === 2) {
+            priorityBadgeHtml = `<span class="priority-badge p2"><i data-lucide="zap" style="width:11px;height:11px;"></i> Priority #2</span>`;
+          } else if (priorityRank === 3) {
+            priorityBadgeHtml = `<span class="priority-badge p3">Priority #3</span>`;
+          } else {
+            priorityBadgeHtml = `<span class="priority-badge p-regular">Priority #${priorityRank}</span>`;
+          }
 
           const card = document.createElement("article");
           card.className = `ticket-card pending ${elapsed.isRush ? "urgent" : ""}`;
           card.id = `kds-card-${ord.orderId}`;
-          card.style.borderTop = "4px solid var(--accent-emerald)";
+          card.style.borderTop = priorityRank === 1 ? "4px solid #DC2626" : "4px solid var(--accent-emerald)";
 
           card.innerHTML = `
             <div class="ticket-header">
               <div>
-                <span class="ticket-table-badge">TABLE ${escapeHtml(ord.tableNumber || "1")}</span>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                  <span class="ticket-table-badge">TABLE ${escapeHtml(ord.tableNumber || "1")}</span>
+                  ${priorityBadgeHtml}
+                </div>
                 <div style="font-size:0.75rem; color:var(--text-dim); margin-top:4px; font-family:monospace; font-weight:700;">
                   ID: #${escapeHtml(ord.orderId)} &bull; ${escapeHtml(ord.orderSource || "QR")}
                 </div>
               </div>
               <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px;">
                 <span class="kds-timer-badge ${elapsed.class}" id="timer-${ord.orderId}">
-                  <i data-lucide="${elapsed.icon}" style="width:12px;height:12px;"></i>
-                  <span>${elapsed.text}</span>
+                  <span class="timer-icon-wrap"><i data-lucide="${elapsed.icon}" style="width:12px;height:12px;"></i></span>
+                  <span class="timer-text">${elapsed.text}</span>
                 </span>
                 <span style="font-size:0.72rem; color:var(--text-dim); font-weight:600;">
                   ${escapeHtml(ord.timestamp ? new Date(ord.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just now")}
@@ -591,19 +633,36 @@
           });
         });
 
+        // Ensure timer loop is active
+        startElapsedTimer();
+
         if (window.lucide) lucide.createIcons();
       }
 
-      // Update elapsed timers every second
+      // Update elapsed timers every second reliably without DOM thrashing
       function startElapsedTimer() {
         if (state.timerInterval) clearInterval(state.timerInterval);
         state.timerInterval = setInterval(() => {
+          if (!state.orders || state.orders.length === 0) return;
           state.orders.forEach(ord => {
             const timerEl = document.getElementById(`timer-${ord.orderId}`);
             if (timerEl) {
               const meta = getElapsedMeta(ord.timestamp);
-              timerEl.className = `kds-timer-badge ${meta.class}`;
-              timerEl.innerHTML = `<i data-lucide="${meta.icon}" style="width:12px;height:12px;"></i><span>${meta.text}</span>`;
+              if (timerEl.className !== `kds-timer-badge ${meta.class}`) {
+                timerEl.className = `kds-timer-badge ${meta.class}`;
+                const iconWrap = timerEl.querySelector('.timer-icon-wrap');
+                if (iconWrap) {
+                  iconWrap.innerHTML = `<i data-lucide="${meta.icon}" style="width:12px;height:12px;"></i>`;
+                  if (window.lucide) lucide.createIcons({ root: timerEl });
+                }
+              }
+              const textSpan = timerEl.querySelector('.timer-text');
+              if (textSpan) {
+                textSpan.textContent = meta.text;
+              } else {
+                timerEl.innerHTML = `<span class="timer-icon-wrap"><i data-lucide="${meta.icon}" style="width:12px;height:12px;"></i></span><span class="timer-text">${meta.text}</span>`;
+                if (window.lucide) lucide.createIcons({ root: timerEl });
+              }
 
               const cardEl = document.getElementById(`kds-card-${ord.orderId}`);
               if (cardEl) {
@@ -612,7 +671,6 @@
               }
             }
           });
-          if (window.lucide) lucide.createIcons();
         }, 1000);
       }
 
@@ -1007,11 +1065,17 @@
         if (el.textTheme) el.textTheme.textContent = "Light";
       }
 
-      // Initialization on DOM Ready
-      window.addEventListener("DOMContentLoaded", () => {
+      // Initialization on DOM Ready (Guaranteed execution even if document is already complete)
+      function initKDS() {
         if (window.lucide) lucide.createIcons();
         checkSession();
-      });
+      }
+
+      if (document.readyState === "loading") {
+        window.addEventListener("DOMContentLoaded", initKDS);
+      } else {
+        initKDS();
+      }
 
     })();
   </script>
