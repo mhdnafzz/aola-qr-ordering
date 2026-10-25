@@ -1119,12 +1119,30 @@ const AOLA_API = {
 /**
  * Toast Notification Helper
  */
-function showToast(message, type = "info", duration = 4000) {
+// Global de-duplication cache to prevent rapid duplicate notifications
+var _lastToastMessages = new Map();
+
+function showToast(message, type = "info", duration = 3200) {
+  if (!message) return;
+  const msgText = String(message).trim();
+
   // Automatic telemetry pipe to Health Console for error tracking
   if (type === "error" && typeof window !== "undefined" && window.AOLA_LOGGER && typeof window.AOLA_LOGGER.error === "function") {
     try {
-      window.AOLA_LOGGER.error("UI_TOAST_ERROR", message, { source: "showToast" });
+      window.AOLA_LOGGER.error("UI_TOAST_ERROR", msgText, { source: "showToast" });
     } catch (e) {}
+  }
+
+  // De-duplication: Suppress identical messages fired within 2.5 seconds
+  const now = Date.now();
+  if (_lastToastMessages.has(msgText) && (now - _lastToastMessages.get(msgText) < 2500)) {
+    return;
+  }
+  _lastToastMessages.set(msgText, now);
+  if (_lastToastMessages.size > 20) {
+    for (const [k, t] of _lastToastMessages) {
+      if (now - t > 10000) _lastToastMessages.delete(k);
+    }
   }
 
   let container = document.getElementById("toast-container");
@@ -1135,20 +1153,26 @@ function showToast(message, type = "info", duration = 4000) {
     document.body.appendChild(container);
   }
 
+  // Strict Stack Limit: Maximum 2 visible toasts so notifications never encroach into the UI
+  while (container.children.length >= 2) {
+    const oldest = container.firstElementChild;
+    if (oldest) oldest.remove();
+  }
+
   const toast = document.createElement("div");
   toast.className = `toast ${type}`;
   toast.innerHTML = `
-    <div style="flex:1;">${escapeHtml(message)}</div>
-    <button style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:1.1rem;" onclick="this.parentElement.remove()">&times;</button>
+    <div style="flex:1; word-break: break-word;">${escapeHtml(msgText)}</div>
+    <button style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:1.1rem;padding:0 0 0 8px;line-height:1;" aria-label="Close" onclick="this.parentElement.remove()">&times;</button>
   `;
 
   container.appendChild(toast);
   setTimeout(() => {
     if (toast.parentElement) {
       toast.style.opacity = "0";
-      toast.style.transform = "translateY(-10px)";
-      toast.style.transition = "all 0.3s ease";
-      setTimeout(() => toast.remove(), 300);
+      toast.style.transform = "translateX(24px)";
+      toast.style.transition = "all 0.25s ease";
+      setTimeout(() => toast.remove(), 250);
     }
   }, duration);
 }

@@ -2019,8 +2019,13 @@
 
         // Realtime UPDATE: When the kitchen changes an order to 'ready', play notification audio and render
         if (isReadyUpdate || (eventType === "UPDATE" && isReadyUpdate)) {
+          const ordId = String(orderPayload.id || orderPayload.order_id || "").trim();
+          if (ordId) {
+            state.knownOrderIds.add(ordId + "_ready");
+            state.knownOrderIds.add(ordId);
+          }
           playNewOrderSound();
-          showToast(`🍽️ Order #${orderPayload.id || orderPayload.order_id || ""} is READY from Kitchen! Bill now.`, "success");
+          showToast(`🍽️ Order #${ordId} is READY from Kitchen! Bill now.`, "success");
         } else if (eventType === "INSERT") {
           showToast(`📋 New order placed for Table ${orderPayload.table_number || "1"} (In Kitchen Prep)`, "info");
         } else if (orderStatus === "paid") {

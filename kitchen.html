@@ -9,7 +9,7 @@
   <link rel="icon" type="image/svg+xml" href="AU-dark-icon.svg">
 
   <!-- Core AOLA Design System -->
-  <link rel="stylesheet" href="css/style.css?v=3.6">
+  <link rel="stylesheet" href="css/style.css?v=3.9">
 
   <!-- Lucide Vector Icons Library -->
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -31,9 +31,9 @@
   </script>
 
   <!-- Global Application Scripts -->
-  <script src="js/config.js?v=3.8"></script>
-  <script src="js/logger.js?v=3.8"></script>
-  <script src="js/api.js?v=3.8"></script>
+  <script src="js/config.js?v=3.9"></script>
+  <script src="js/logger.js?v=3.9"></script>
+  <script src="js/api.js?v=3.9"></script>
 </head>
 
 <body class="dark-mode">
@@ -304,6 +304,9 @@
       // Toast notification helper
       function showToast(message, type = "info") {
         if (!el.toastContainer) return;
+        while (el.toastContainer.children.length >= 2) {
+          if (el.toastContainer.firstElementChild) el.toastContainer.firstElementChild.remove();
+        }
         const toast = document.createElement("div");
         toast.className = `toast ${type}`;
         toast.style.cssText = "background:var(--bg-surface); border:1px solid var(--border-subtle); padding:10px 16px; border-radius:var(--radius-sm); box-shadow:var(--shadow-md); font-size:0.84rem; font-weight:600; color:var(--text-main); display:flex; align-items:center; gap:8px; animation:slideIn 0.25s ease;";
