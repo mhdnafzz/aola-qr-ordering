@@ -49,6 +49,19 @@
     posSearchQuery: ""
   };
 
+  /**
+   * Enterprise Anti-XSS DOM Sanitizer
+   */
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
   const el = {
     // Auth & Navigation
     loginOverlay: document.getElementById("login-overlay"),
@@ -1340,9 +1353,10 @@
   function init() {
     loadStoreProfileFromStorage();
 
-    const urlShop = getUrlParam("shop");
-    if (urlShop) {
-      el.loginShopId.value = urlShop.toLowerCase().trim();
+    const rawUrlShop = getUrlParam("shop");
+    if (rawUrlShop) {
+      const sanitizedShop = String(rawUrlShop).toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 32);
+      el.loginShopId.value = sanitizedShop || "bismillah";
     } else if (!el.loginShopId.value) {
       el.loginShopId.value = "bismillah";
     }
@@ -2587,7 +2601,15 @@
 
     try {
       const activeShop = state.shopId || sessionStorage.getItem("AOLA_OWNER_SHOP") || "bismillah";
-      const activePin = state.pin || sessionStorage.getItem("AOLA_OWNER_PIN") || "1234";
+      const activePin = state.pin || sessionStorage.getItem("AOLA_OWNER_PIN");
+      if (!activePin) {
+        showToast("Authentication required: Please log in with your PIN to purge orders.", "error");
+        if (el.btnVoidAllTable) {
+          el.btnVoidAllTable.disabled = false;
+          el.btnVoidAllTable.innerHTML = `<i data-lucide="shield-alert" style="width:14px;height:14px;"></i><span>Void All for Table</span>`;
+        }
+        return;
+      }
 
       const res = await AOLA_API.post("void_table_orders", {
         shop_id: activeShop,
@@ -2749,7 +2771,15 @@
 
     try {
       const activeShop = state.shopId || sessionStorage.getItem("AOLA_OWNER_SHOP") || "bismillah";
-      const activePin = state.pin || sessionStorage.getItem("AOLA_OWNER_PIN") || "1234";
+      const activePin = state.pin || sessionStorage.getItem("AOLA_OWNER_PIN");
+      if (!activePin) {
+        showToast("Authentication required: Please log in with your PIN to void orders.", "error");
+        if (buttonEl) {
+          buttonEl.disabled = false;
+          buttonEl.innerHTML = `<i data-lucide="trash-2" style="width:13px;height:13px;"></i><span>Void</span>`;
+        }
+        return;
+      }
 
       const response = await AOLA_API.post("delete_order", {
         shop_id: activeShop,
@@ -2816,7 +2846,15 @@
 
     try {
       const activeShop = state.shopId || sessionStorage.getItem("AOLA_OWNER_SHOP") || "bismillah";
-      const activePin = state.pin || sessionStorage.getItem("AOLA_OWNER_PIN") || "1234";
+      const activePin = state.pin || sessionStorage.getItem("AOLA_OWNER_PIN");
+      if (!activePin) {
+        showToast("Authentication required: Please log in with your PIN to settle orders.", "error");
+        if (buttonEl) {
+          buttonEl.disabled = false;
+          buttonEl.innerHTML = `<i data-lucide="credit-card" style="width:14px;height:14px;"></i><span>Checkout / Pay</span>`;
+        }
+        return;
+      }
 
       const response = await AOLA_API.post("update_order_status", {
         shop_id: activeShop,
@@ -2875,7 +2913,15 @@
 
     try {
       const activeShop = state.shopId || sessionStorage.getItem("AOLA_OWNER_SHOP") || "bismillah";
-      const activePin = state.pin || sessionStorage.getItem("AOLA_OWNER_PIN") || "1234";
+      const activePin = state.pin || sessionStorage.getItem("AOLA_OWNER_PIN");
+      if (!activePin) {
+        showToast("Authentication required: Please log in with your PIN.", "error");
+        if (buttonEl) {
+          buttonEl.disabled = false;
+          buttonEl.innerHTML = `<i data-lucide="check" style="width:13px;height:13px;"></i><span>Mark Ready</span>`;
+        }
+        return;
+      }
 
       const response = await AOLA_API.post("update_order_status", {
         shop_id: activeShop,

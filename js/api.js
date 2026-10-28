@@ -1145,7 +1145,7 @@ const AOLA_API = {
           id: cleanId,
           name: params.shop_name,
           logo_url: params.logo_url || "",
-          owner_pin: params.owner_pin || "1234",
+          owner_pin: params.owner_pin ? String(params.owner_pin).trim() : null,
           status: params.status || "Active",
           currency: params.currency || "₹"
         };
@@ -1343,10 +1343,21 @@ function showToast(message, type = "info", duration = 3200) {
 
   const toast = document.createElement("div");
   toast.className = `toast ${type}`;
-  toast.innerHTML = `
-    <div style="flex:1; word-break: break-word;">${escapeHtml(msgText)}</div>
-    <button style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:1.1rem;padding:0 0 0 8px;line-height:1;" aria-label="Close" onclick="this.parentElement.remove()">&times;</button>
-  `;
+
+  const msgDiv = document.createElement("div");
+  msgDiv.style.cssText = "flex:1; word-break: break-word;";
+  msgDiv.textContent = msgText;
+
+  const closeBtn = document.createElement("button");
+  closeBtn.style.cssText = "background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:1.1rem;padding:0 0 0 8px;line-height:1;";
+  closeBtn.setAttribute("aria-label", "Close");
+  closeBtn.textContent = "×";
+  closeBtn.onclick = () => {
+    if (toast.parentElement) toast.remove();
+  };
+
+  toast.appendChild(msgDiv);
+  toast.appendChild(closeBtn);
 
   container.appendChild(toast);
   setTimeout(() => {

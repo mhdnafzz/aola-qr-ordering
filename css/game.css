@@ -1,0 +1,1095 @@
+/* ==========================================================================
+   AOLA RESTAURANT WAIT-TIME GAME (Flappy Burger) - SIMULATION INTERFACE
+   Aesthetic: Warm, Appetizing Modern Culinary Theme & Frosted Glass UI
+   Strictly NO purple gradients, neon, or synthwave.
+   ========================================================================== */
+
+:root {
+  /* ── Restaurant Brand Theme Variables (Easy Rebranding) ─────────────── */
+  --game-primary: #C85A32;             /* Warm Terracotta Red */
+  --game-primary-hover: #D96941;
+  --game-primary-dark: #9E3E1C;
+  --game-primary-shadow: #7A2E12;
+  
+  --game-accent: #E08A3C;              /* Honey Roasted Amber */
+  --game-accent-glow: rgba(224, 138, 60, 0.35);
+  --game-gold: #F59E0B;
+  
+  --game-bg-cream: #FFFDF9;            /* Warm Off-White / Parchment */
+  --game-bg-wood-dark: #271711;        /* Dark Espresso Oak */
+  --game-bg-wood-floor: #3E2419;
+  
+  --game-phone-bezel: #1A110D;         /* Matte Blackened Bronze Chassis */
+  --game-phone-rim: rgba(255, 255, 255, 0.14);
+  
+  --game-text-dark: #2A1A14;
+  --game-text-muted: #7A6357;
+  --game-text-light: #F4EBE3;
+  
+  /* ── Frosted Glass (Glassmorphism) Tokens ───────────────────────────── */
+  --glass-bg: rgba(255, 252, 247, 0.78);
+  --glass-bg-subtle: rgba(255, 255, 255, 0.62);
+  --glass-border: rgba(255, 255, 255, 0.75);
+  --glass-border-subtle: rgba(230, 210, 195, 0.45);
+  --glass-shadow: 0 20px 48px rgba(35, 18, 12, 0.32), inset 0 1px 2px rgba(255, 255, 255, 0.95);
+  --glass-blur: blur(20px) saturate(180%);
+  
+  --game-receipt-bg: #FFFDF7;
+  --game-receipt-border: #E8D9C8;
+  --game-receipt-tear: #E2CFBB;
+}
+
+/* ==========================================================================
+   1. TRIGGER CARD (Post-Checkout Entry Button)
+   ========================================================================== */
+.wait-time-game-trigger-card {
+  background: linear-gradient(135deg, #FFF9F2 0%, #FFF2E5 100%);
+  border: 1.5px solid #F6D6BA;
+  border-radius: 18px;
+  padding: 16px;
+  margin: 18px 0 14px;
+  box-shadow: 0 4px 18px rgba(200, 90, 50, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+  animation: triggerCardFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes triggerCardFadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.game-promo-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.game-promo-badge-icon {
+  font-size: 26px;
+  background: #FFFFFF;
+  border: 1px solid #F0D4BE;
+  border-radius: 14px;
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  flex-shrink: 0;
+}
+
+.game-promo-text {
+  flex: 1;
+}
+
+.game-promo-title {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--game-text-dark);
+  letter-spacing: -0.2px;
+}
+
+.game-promo-subtitle {
+  margin: 3px 0 0;
+  font-size: 0.82rem;
+  color: var(--game-primary);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+/* ==========================================================================
+   2. TACTILE PHYSICAL BUTTONS (Snappy Press & 3D Layering)
+   ========================================================================== */
+.btn-play-wait-game,
+.btn-game-submit,
+.btn-game-start-action,
+.btn-game-restart {
+  position: relative;
+  border: none;
+  border-radius: 12px;
+  font-family: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 0.12s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.12s ease, background 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.btn-play-wait-game,
+.btn-game-submit,
+.btn-game-start-action {
+  background: linear-gradient(180deg, var(--game-primary-hover) 0%, var(--game-primary) 100%);
+  color: #FFFFFF;
+  padding: 13px 20px;
+  font-size: 0.92rem;
+  box-shadow: 0 4px 0 var(--game-primary-shadow), 0 8px 18px rgba(180, 70, 30, 0.28);
+}
+
+.btn-play-wait-game:hover,
+.btn-game-submit:hover,
+.btn-game-start-action:hover {
+  background: linear-gradient(180deg, #E2724A 0%, var(--game-primary-hover) 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--game-primary-shadow), 0 10px 22px rgba(180, 70, 30, 0.35);
+}
+
+.btn-play-wait-game:active,
+.btn-game-submit:active,
+.btn-game-start-action:active {
+  transform: translateY(3px) scale(0.97);
+  box-shadow: 0 1px 0 var(--game-primary-shadow), 0 2px 6px rgba(180, 70, 30, 0.2);
+}
+
+.btn-game-restart {
+  background: linear-gradient(180deg, #F5ECE3 0%, #E8D9C9 100%);
+  color: var(--game-text-dark);
+  padding: 11px 18px;
+  font-size: 0.86rem;
+  box-shadow: 0 3px 0 #C9B5A2, 0 6px 14px rgba(60, 35, 20, 0.08);
+  width: 100%;
+}
+
+.btn-game-restart:hover {
+  background: linear-gradient(180deg, #FAF1E9 0%, #EEDFCE 100%);
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 0 #C9B5A2, 0 8px 16px rgba(60, 35, 20, 0.12);
+}
+
+.btn-game-restart:active {
+  transform: translateY(2px) scale(0.97);
+  box-shadow: 0 1px 0 #C9B5A2, 0 2px 5px rgba(60, 35, 20, 0.08);
+}
+
+/* Audio & Exit Controls */
+.game-sound-btn,
+.game-close-btn {
+  background: #2D1D17;
+  border: 1px solid #483228;
+  color: #D3C3B8;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.2, 0.8, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.game-sound-btn {
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  gap: 6px;
+  box-shadow: 0 2px 0 #1A100C;
+}
+
+.game-sound-btn:hover {
+  background: #3B261F;
+  transform: translateY(-1px);
+}
+
+.game-sound-btn:active {
+  transform: translateY(1.5px) scale(0.95);
+  box-shadow: 0 0 0;
+}
+
+.game-sound-btn.unmuted,
+.game-btn-mute.unmuted {
+  background: var(--game-primary);
+  border-color: #E26E42;
+  color: #FFF;
+  box-shadow: 0 2px 0 var(--game-primary-shadow);
+}
+
+/* ==========================================================================
+   3. SIMULATED DEVICE SHELL (High-End Smartphone / Arcade Terminal)
+   ========================================================================== */
+.game-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  display: none !important;
+  visibility: hidden !important;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none !important;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 12px;
+  box-sizing: border-box;
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.game-modal-overlay:not(.open) * {
+  pointer-events: none !important;
+}
+
+.game-modal-overlay.open {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1;
+  pointer-events: auto !important;
+}
+
+.game-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 35%, rgba(217, 119, 6, 0.28) 0%, rgba(18, 11, 8, 0.92) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.game-modal-frame {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 414px;
+  height: 96vh;
+  max-height: 820px;
+  background: #25130A;
+  border-radius: 42px;
+  overflow: hidden;
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 0 0 6px #1A0D07,
+    0 0 45px rgba(224, 138, 60, 0.22);
+  transform: scale(0.94) translateY(14px);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.game-modal-overlay.open .game-modal-frame {
+  transform: scale(1) translateY(0);
+}
+
+/* Screen Shake Keyframes */
+@keyframes screenShake {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  15% { transform: translate(-6px, 4px) rotate(-1.2deg); }
+  30% { transform: translate(5px, -4px) rotate(1.2deg); }
+  45% { transform: translate(-4px, 3px) rotate(-0.8deg); }
+  60% { transform: translate(4px, -2px) rotate(0.6deg); }
+  75% { transform: translate(-2px, 1px) rotate(-0.3deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+.screen-shake {
+  animation: screenShake 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.impact-flash-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at center, rgba(239, 68, 68, 0.38) 0%, rgba(185, 28, 28, 0.68) 100%);
+  opacity: 0;
+  z-index: 15;
+  transition: opacity 0.06s ease-out;
+}
+
+.impact-flash-vignette.active {
+  opacity: 1;
+  transition: none;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   TOP UI OVERLAYS: MAIN HEADER, GLASS STATUS BANNER, SCORE BOARD TAB
+   ────────────────────────────────────────────────────────────────────────── */
+.game-top-section {
+  position: absolute;
+  top: 14px;
+  left: 12px;
+  right: 12px;
+  z-index: 22;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+.game-top-section > * {
+  pointer-events: auto;
+}
+
+/* 1. Main Header: Dark Brown Pill Container */
+.game-main-header {
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #29150D;
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  border-radius: 9999px;
+  padding: 6px 10px 6px 14px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+}
+
+.game-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.game-header-title {
+  color: #FFFFFF;
+  font-size: 0.96rem;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+}
+
+/* Pulsing Green "Live" Pill Badge */
+.game-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #18331E;
+  border: 1px solid #2E6A38;
+  border-radius: 9999px;
+  padding: 2.5px 8px;
+  color: #4ADE80;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  line-height: 1;
+}
+
+.game-live-dot {
+  width: 6.5px;
+  height: 6.5px;
+  border-radius: 50%;
+  background: #4ADE80;
+  box-shadow: 0 0 6px #4ADE80;
+  animation: pulseLive 1.4s infinite ease-in-out;
+}
+
+@keyframes pulseLive {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.65); opacity: 0.35; }
+}
+
+/* Segmented Action Buttons: Mute & Close */
+.game-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.game-btn-mute {
+  background: #733617;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 9999px;
+  padding: 5px 12px;
+  color: #FFFFFF;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  box-shadow: 0 2px 0 #4C240E;
+  transition: transform 0.12s ease, background 0.15s ease, box-shadow 0.12s ease;
+  user-select: none;
+}
+
+.game-btn-mute:hover {
+  background: #85431E;
+  transform: translateY(-1px);
+}
+
+.game-btn-mute:active {
+  transform: translateY(1px);
+  box-shadow: 0 0 0;
+}
+
+.game-header-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.game-btn-close {
+  background: #733617;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 0 #4C240E;
+  transition: transform 0.12s ease, background 0.15s ease;
+}
+
+.game-btn-close:hover {
+  background: #85431E;
+  transform: translateY(-1px);
+}
+
+.game-btn-close:active {
+  transform: translateY(1px);
+  box-shadow: 0 0 0;
+}
+
+/* 2. Secondary Status Banner: CSS Glassmorphism */
+.game-status-banner {
+  margin: 7px auto 0;
+  width: 94%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1.5px solid rgba(255, 255, 255, 0.72);
+  border-radius: 9999px;
+  padding: 5px 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.game-status-text {
+  color: #24140C;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: -0.1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 3. Score Board: Dark Brown Hanging Tab */
+.game-score-tab {
+  margin: -1px auto 0;
+  width: 120px;
+  background: #25120A;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  border-top: none;
+  border-radius: 0 0 22px 22px;
+  padding: 5px 10px 8px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.58);
+  text-align: center;
+  position: relative;
+  z-index: 10;
+}
+
+.game-score-label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #A36645;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+}
+
+.game-score-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 1px;
+}
+
+.score-star {
+  font-size: 0.76rem;
+  color: #6B4E3D;
+  user-select: none;
+}
+
+.game-score-number {
+  color: #FFFFFF;
+  font-size: 2.35rem;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+  transition: transform 0.15s ease;
+}
+
+@keyframes scorePop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.24); color: #F59E0B; }
+  100% { transform: scale(1); color: #FFFFFF; }
+}
+
+.score-pop {
+  animation: scorePop 0.22s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   CANVAS AREA & GAME ENVIRONMENT (FULL BLEED STAGE)
+   ────────────────────────────────────────────────────────────────────────── */
+.game-canvas-wrapper {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* Blurred Warm Kitchen Background with Checkered Floor */
+.game-kitchen-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url('../images/kitchen_arcade_bg.jpg');
+  background-size: cover;
+  background-position: center bottom;
+  background-repeat: no-repeat;
+  filter: blur(2.2px) brightness(0.97) saturate(1.1);
+  transform: scale(1.03);
+  pointer-events: none;
+  z-index: 1;
+}
+
+#flappy-restaurant-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: transparent;
+  touch-action: none;
+  pointer-events: auto;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   BOTTOM UI: GLASSMORPHISM GOAL CARD, TAP TO FLAP & LEADERBOARD BUTTONS
+   ────────────────────────────────────────────────────────────────────────── */
+.game-bottom-dock {
+  position: absolute;
+  bottom: 14px;
+  left: 10px;
+  right: 10px;
+  z-index: 22;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.game-bottom-dock > * {
+  pointer-events: auto;
+}
+
+.game-corner-btn-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: auto;
+  width: 66px;
+  flex-shrink: 0;
+}
+
+.game-circular-icon-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(38, 20, 13, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.game-circular-icon-btn:hover {
+  transform: scale(1.08);
+  background: rgba(60, 32, 22, 0.85);
+}
+
+.game-circular-icon-btn:active {
+  transform: scale(0.92);
+}
+
+.game-corner-label {
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: #FFFFFF;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  margin-top: 4px;
+  text-align: center;
+  user-select: none;
+}
+
+/* Center Frosted Glass Goal Card with Wings */
+.game-goal-card {
+  flex: 1;
+  max-width: 248px;
+  margin: 0 auto;
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1.5px solid rgba(255, 255, 255, 0.75);
+  border-radius: 20px;
+  padding: 10px 12px 8px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22), inset 0 1px 1px rgba(255, 255, 255, 0.85);
+  text-align: center;
+  position: relative;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+  user-select: none;
+}
+
+.game-goal-card:hover {
+  transform: translateY(-2px);
+}
+
+.game-goal-card:active {
+  transform: scale(0.98);
+}
+
+/* Wing Accents on Left & Right */
+.goal-card-wing {
+  position: absolute;
+  top: 10px;
+  z-index: 15;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.goal-card-wing.left {
+  left: -14px;
+}
+
+.goal-card-wing.right {
+  right: -14px;
+}
+
+.goal-card-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.goal-card-header {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #24130B;
+  margin-bottom: 2px;
+  letter-spacing: -0.1px;
+}
+
+.goal-card-body {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #321A10;
+  line-height: 1.32;
+}
+
+/* Tap to Flap Continuous Breathing/Pulsing Animation */
+.goal-card-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 6px;
+  font-size: 0.86rem;
+  font-weight: 900;
+  color: #FFFFFF;
+  text-shadow: 0 1px 4px rgba(35, 15, 8, 0.85);
+  letter-spacing: 0.5px;
+  animation: pulseFlap 1.6s ease-in-out infinite;
+}
+
+.cta-hand {
+  font-size: 0.95rem;
+}
+
+@keyframes pulseFlap {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.95;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
+.sim-phone-home-indicator {
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 108px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 4px;
+  z-index: 25;
+  pointer-events: none;
+}
+
+/* In-App Toast Container */
+.game-toast-container {
+  position: absolute;
+  top: 48px;
+  left: 14px;
+  right: 14px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.game-toast {
+  background: rgba(30, 18, 14, 0.94);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(240, 217, 195, 0.2);
+  border-radius: 14px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #FFFDF9;
+  font-size: 0.82rem;
+  font-weight: 600;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  transform: translateY(-24px) scale(0.92);
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28), opacity 0.25s ease;
+  pointer-events: auto;
+}
+
+.game-toast.show {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+
+.game-toast-icon {
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+
+.game-toast-text {
+  flex: 1;
+  line-height: 1.35;
+}
+
+/* ==========================================================================
+   4. FROSTED GLASS (GLASSMORPHISM) OVERLAYS: START & GAME OVER SCREENS
+   ========================================================================== */
+.game-overlay-screen {
+  position: absolute;
+  inset: 0;
+  background: rgba(22, 14, 10, 0.65);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  z-index: 35;
+  overflow-y: auto;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.game-overlay-screen.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Glassmorphism Card Core */
+.glass-overlay-card {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1.5px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 326px;
+  padding: 22px 18px;
+  text-align: center;
+  position: relative;
+  transform: scale(0.9) translateY(14px);
+  transition: transform 0.32s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.game-overlay-screen.active .glass-overlay-card {
+  transform: scale(1) translateY(0);
+}
+
+/* Start Screen Styling */
+.start-burger-hero {
+  font-size: 44px;
+  display: inline-block;
+  margin-bottom: 6px;
+  animation: heroFloat 2.2s infinite ease-in-out;
+}
+
+@keyframes heroFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-7px) rotate(-4deg); }
+}
+
+.start-app-title {
+  font-size: 1.38rem;
+  font-weight: 800;
+  color: var(--game-text-dark);
+  margin: 0 0 4px;
+  letter-spacing: -0.3px;
+}
+
+.start-instructions {
+  color: var(--game-text-muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+  margin: 8px 0 16px;
+}
+
+.glass-info-pill {
+  background: var(--glass-bg-subtle);
+  border: 1px solid var(--glass-border-subtle);
+  border-radius: 12px;
+  padding: 9px 12px;
+  margin-bottom: 16px;
+  font-size: 0.78rem;
+  color: #786257;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ==========================================================================
+   5. FROSTED GLASS DIGITAL RECEIPT (Game Over & Daily Leaderboard)
+   ========================================================================== */
+.receipt-glass-card {
+  background: rgba(255, 253, 247, 0.88);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  box-shadow: var(--glass-shadow);
+  border-radius: 18px;
+  width: 100%;
+  max-width: 326px;
+  padding: 20px 18px;
+  text-align: center;
+  position: relative;
+  transform: scale(0.9) translateY(14px);
+  transition: transform 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.game-overlay-screen.active .receipt-glass-card {
+  transform: scale(1) translateY(0);
+}
+
+/* Jagged Perforated Edge Effect */
+.receipt-glass-card::before,
+.receipt-glass-card::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background-size: 12px 6px;
+  background-repeat: repeat-x;
+}
+
+.receipt-glass-card::before {
+  top: -6px;
+  background-image: radial-gradient(circle at 6px 0, transparent 6px, rgba(255, 253, 247, 0.88) 7px);
+}
+
+.receipt-glass-card::after {
+  bottom: -6px;
+  background-image: radial-gradient(circle at 6px 6px, transparent 6px, rgba(255, 253, 247, 0.88) 7px);
+}
+
+.receipt-header {
+  border-bottom: 1.5px dashed var(--game-receipt-tear);
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+}
+
+.receipt-brand {
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--game-text-muted);
+}
+
+.receipt-title {
+  font-size: 1.22rem;
+  font-weight: 800;
+  color: var(--game-text-dark);
+  margin: 2px 0 4px;
+}
+
+.receipt-meta-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: #8C756B;
+  font-family: monospace;
+}
+
+.receipt-reward-badge {
+  background: linear-gradient(135deg, rgba(255, 246, 233, 0.95) 0%, rgba(254, 234, 208, 0.95) 100%);
+  border: 1.5px dashed var(--game-gold);
+  color: #92400E;
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-size: 0.77rem;
+  font-weight: 700;
+  margin: 10px 0 12px;
+  line-height: 1.35;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+}
+
+.receipt-reward-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.receipt-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.receipt-stat-box {
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.receipt-stat-label {
+  font-size: 0.66rem;
+  color: var(--game-text-muted);
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.receipt-stat-val {
+  font-size: 1.48rem;
+  font-weight: 800;
+  color: var(--game-primary);
+  margin-top: 1px;
+}
+
+.receipt-table-wrap {
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 10px;
+  padding: 8px;
+  margin-bottom: 10px;
+}
+
+.receipt-table-title {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #6C5449;
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+  letter-spacing: 0.5px;
+}
+
+.receipt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.76rem;
+}
+
+.receipt-table th {
+  color: #937C71;
+  font-weight: 600;
+  padding: 2px 4px;
+  border-bottom: 1px dashed var(--game-receipt-tear);
+  font-family: monospace;
+}
+
+.receipt-table td {
+  padding: 5px 4px;
+  color: var(--game-text-dark);
+  border-bottom: 1px solid rgba(239, 228, 217, 0.7);
+}
+
+.receipt-table tr:last-child td {
+  border-bottom: none;
+}
+
+.receipt-table tr:first-child td {
+  font-weight: 700;
+  color: var(--game-primary);
+}
+
+.rank-badge {
+  display: inline-block;
+  background: #E8D9C9;
+  color: #4A3328;
+  font-size: 0.66rem;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 5px;
+}
+
+.receipt-table tr:first-child .rank-badge {
+  background: var(--game-gold);
+  color: #FFF;
+}
+
+.receipt-form {
+  margin-top: 8px;
+}
+
+.receipt-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  border: 1.5px solid #DFC9B8;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  margin-bottom: 8px;
+  outline: none;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--game-text-dark);
+  transition: border-color 0.15s ease;
+}
+
+.receipt-input:focus {
+  border-color: var(--game-primary);
+}
+
+.receipt-barcode {
+  font-family: 'Courier New', Courier, monospace;
+  letter-spacing: 3px;
+  font-size: 0.68rem;
+  color: #9C8578;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1.5px dashed var(--game-receipt-tear);
+}

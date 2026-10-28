@@ -492,6 +492,12 @@
       const confirmedOrderId = response.order_id || response.orderId || "ORD-" + Math.floor(1000 + Math.random() * 9000);
       const confirmedTable = response.table_number || tableNumber;
       const confirmedTotal = response.total_price || totalPrice;
+
+      try {
+        localStorage.setItem(`AOLA_LAST_ORDER_${state.shopId}`, confirmedOrderId);
+        sessionStorage.setItem("AOLA_LAST_ORDER", confirmedOrderId);
+      } catch (e) {}
+
       showSuccessModal(confirmedOrderId, confirmedTable, confirmedTotal);
 
       // Reset cart
@@ -569,10 +575,69 @@
     el.cartModal.classList.remove("open");
   }
 
+  /**
+   * Anti-Spam Shadowban Guard:
+   * Monitors rapid order cancellations and abusive order-and-cancel loops.
+   * If detected, silently shadowbans the device from accessing the game.
+   */
+  function isDeviceShadowbanned() {
+    try {
+      if (localStorage.getItem("AOLA_DEVICE_SHADOWBAN") === "true") {
+        return true;
+      }
+      const logs = JSON.parse(localStorage.getItem("AOLA_CANCELLATION_LOGS") || "[]");
+      const fifteenMinsAgo = Date.now() - 15 * 60 * 1000;
+      const recent = logs.filter(ts => ts > fifteenMinsAgo);
+      if (recent.length >= 3) {
+        localStorage.setItem("AOLA_DEVICE_SHADOWBAN", "true");
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
   function showSuccessModal(orderId, tableNum, totalAmt) {
     el.successOrderId.textContent = orderId;
     el.successTableNum.textContent = `Table ${tableNum}`;
     el.successTotalAmt.textContent = formatCurrency(totalAmt);
+
+    // Bind the Post-Checkout Wait-Time Game Trigger
+    const btnTrigger = document.getElementById("btn-trigger-game");
+    if (btnTrigger) {
+      btnTrigger.onclick = async () => {
+        btnTrigger.disabled = true;
+        btnTrigger.innerHTML = `<span class="btn-spinner"></span><span>Connecting to Arcade...</span>`;
+
+        try {
+          const res = await fetch("/api/game", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "start",
+              orderId: orderId,
+              table: tableNum
+            })
+          });
+          const data = await res.json();
+          const modal = document.getElementById("game-modal-overlay");
+          if (modal) modal.classList.add("open");
+
+          if (window.startNewGameSession) {
+            window.startNewGameSession(orderId, data && data.success ? (data.sessionToken || data.sessionId) : null, tableNum);
+          }
+        } catch (err) {
+          const modal = document.getElementById("game-modal-overlay");
+          if (modal) modal.classList.add("open");
+          if (window.startNewGameSession) {
+            window.startNewGameSession(orderId, null, tableNum);
+          }
+        } finally {
+          btnTrigger.disabled = false;
+          btnTrigger.innerHTML = `<span class="btn-icon-play">▶</span><span>Play "Aola Kitchen Arcade" While Waiting</span>`;
+        }
+      };
+    }
+
     el.successModal.classList.add("open");
     if (window.lucide) lucide.createIcons();
   }
@@ -647,6 +712,45 @@
         el.orderTableInput.value = state.tableNumber;
       }
     };
+
+    // ── Quick-Launch Arcade Buttons ──
+    const launchArcadeQuick = async () => {
+      const tableNum = state.tableNumber || "1";
+      const lastOrderId = localStorage.getItem(`AOLA_LAST_ORDER_${state.shopId}`) || sessionStorage.getItem("AOLA_LAST_ORDER") || `TBL-${tableNum}`;
+      
+      const modal = document.getElementById("game-modal-overlay");
+      if (modal) modal.classList.add("open");
+
+      try {
+        const res = await fetch("/api/game", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "start", orderId: lastOrderId, table: tableNum })
+        });
+        const data = await res.json();
+        if (window.startNewGameSession) {
+          window.startNewGameSession(lastOrderId, data && data.success ? (data.sessionToken || data.sessionId) : null, tableNum);
+        }
+      } catch (e) {
+        if (window.startNewGameSession) {
+          window.startNewGameSession(lastOrderId, null, tableNum);
+        }
+      }
+    };
+
+    const btnHeroArcade = document.getElementById("btn-hero-play-arcade");
+    if (btnHeroArcade) btnHeroArcade.onclick = launchArcadeQuick;
+
+    const stripArcade = document.getElementById("arcade-promo-strip");
+    if (stripArcade) stripArcade.onclick = launchArcadeQuick;
+
+    const btnStripArcade = document.getElementById("btn-strip-play-arcade");
+    if (btnStripArcade) {
+      btnStripArcade.onclick = (e) => {
+        e.stopPropagation();
+        launchArcadeQuick();
+      };
+    }
   }
 
   /**

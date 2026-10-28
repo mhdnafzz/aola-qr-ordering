@@ -1,9 +1,51 @@
 /**
  * AOLA - Frontend Global Configuration
  * 
- * Replace APPS_SCRIPT_URL with your deployed Google Apps Script Web App URL:
- * e.g., "https://script.google.com/macros/s/AKfycb.../exec"
+ * Includes Enterprise Production Anti-Leak Protocol
  */
+
+// --- PRODUCTION ANTI-LEAK PROTOCOL: SUPPRESS CONSOLE IN PROD ---
+(function initProductionAntiLeak() {
+  if (typeof window === "undefined" || !window.console) return;
+  try {
+    const hostname = window.location.hostname || "";
+    const isLocalDev = (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "[::1]" ||
+      hostname.endsWith(".local") ||
+      hostname.startsWith("192.168.") ||
+      hostname.startsWith("10.") ||
+      hostname === ""
+    );
+    let debugAllowed = false;
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      debugAllowed = (
+        urlParams.get("debug") === "1" ||
+        sessionStorage.getItem("AOLA_DEBUG") === "1" ||
+        localStorage.getItem("AOLA_DEBUG") === "1"
+      );
+    } catch (e) {}
+
+    if (!isLocalDev && !debugAllowed) {
+      window.__AOLA_SECURE_CONSOLE__ = {
+        log: console.log.bind(console),
+        warn: console.warn.bind(console),
+        error: console.error.bind(console),
+        info: console.info.bind(console)
+      };
+      const noop = function () {};
+      console.log = noop;
+      console.info = noop;
+      console.debug = noop;
+      console.warn = noop;
+      console.error = noop;
+      console.table = noop;
+      console.trace = noop;
+    }
+  } catch (err) {}
+})();
 
 const AOLA_CONFIG = {
   // ── Supabase Production Database ──────────────────────────────────────
